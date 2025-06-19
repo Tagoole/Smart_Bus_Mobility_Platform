@@ -1,3 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
+
 class FeedbackModel {
   final String feedbackId;
   final String userId;
@@ -12,4 +15,23 @@ class FeedbackModel {
     required this.rating,
     required this.timestamp,
   });
+
+  factory FeedbackModel.fromJson(Map<String, dynamic> json, String docId) {
+    return FeedbackModel(
+      feedbackId: docId,
+      userId: json['userId'],
+      message: json['message'],
+      rating: json['rating'],
+      timestamp: (json['timestamp'] as Timestamp).toDate(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'userId':userId,
+      'message':message,
+      'rating':rating,
+      'timestamp':timestamp,
+    };
+  }
 }

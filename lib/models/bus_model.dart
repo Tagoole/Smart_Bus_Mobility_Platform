@@ -12,4 +12,23 @@ class BusModel {
     required this.driverId,
     required this.seatCapacity,
   });
+
+  factory BusModel.fromJson(Map<String, dynamic> json, String docId) {
+    return BusModel(
+      busId: docId,
+      numberPlate: json['numberPlate'],
+      vehicleModel: json['vehicleModel'],
+      driverId: json['driverId'],
+      seatCapacity: json['seatCapacity'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'numberPlate': numberPlate,
+      'vehicleModel': vehicleModel,
+      'seatCapacity': seatCapacity,
+      'driverId': driverId,
+    };
+  }
 }
