@@ -25,7 +25,7 @@ for file in $files; do
   git commit -m "Add or update $file"
 
   echo "📤 Pushing $file to origin/$branch..."
-  git push --force origin "$branch"
+  git push origin "$branch"
 
   echo "✅ Done with $file"
   echo "--------------------------"
