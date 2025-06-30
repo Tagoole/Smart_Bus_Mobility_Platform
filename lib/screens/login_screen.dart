@@ -1,119 +1,452 @@
 import 'package:flutter/material.dart';
 
-class LoginScreen extends StatelessWidget {
-  const LoginScreen({super.key});
+class SignInScreen extends StatefulWidget {
+  const SignInScreen({Key? key}) : super(key: key);
+
+  @override
+  State<SignInScreen> createState() => _SignInScreenState();
+}
+
+class _SignInScreenState extends State<SignInScreen> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  bool _rememberMe = false;
+  bool _obscurePassword = true;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.blue, Colors.yellow.shade600],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
+        decoration: const BoxDecoration(
+          borderRadius: BorderRadius.all(Radius.circular(30)),
         ),
-        child: Center(
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircleAvatar(
-                  radius: 50,
-                  backgroundImage: AssetImage('assets/bus_image.jpg'), // Replace with your image asset
-                ),
-                SizedBox(height: 20),
-                Text(
-                  'Sign In',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green,
-                  ),
-                ),
-                SizedBox(height: 30),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      prefixIcon: Icon(Icons.email, color: Colors.green),
-                      hintText: 'Enter your email',
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 20),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20),
-                  child: TextField(
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      prefixIcon: Icon(Icons.lock, color: Colors.green),
-                      suffixIcon: Icon(Icons.visibility_off, color: Colors.green),
-                      hintText: 'Password',
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Checkbox(value: false, onChanged: (value) {}),
-                        Text('Remember me', style: TextStyle(color: Colors.white)),
-                      ],
-                    ),
-                    TextButton(
-                      onPressed: () {},
-                      child: Text('Forgot Password', style: TextStyle(color: Colors.white)),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 20),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20),
-                  child: ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      minimumSize: Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: Text('Sign In', style: TextStyle(fontSize: 18, color: Colors.white)),
-                  ),
-                ),
-                SizedBox(height: 20),
-                Text('Continue with', style: TextStyle(color: Colors.white)),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    IconButton(icon: Icon(Icons.camera_alt), onPressed: () {}),
-                    IconButton(icon: Icon(Icons.facebook), onPressed: () {}),
-                    IconButton(icon: Icon(Icons.g_mobiledata), onPressed: () {}),
-                  ],
-                ),
-                TextButton(
-                  onPressed: () {},
-                  child: Text("Don't have an account? Sign Up", style: TextStyle(color: Colors.white)),
-                ),
-              ],
-            ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.all(Radius.circular(30)),
+          child: Stack(
+            children: [
+              // Background with luxury bus image
+              _buildBackground(),
+              
+              // Diagonal divider
+              _buildDiagonalDivider(),
+              
+              // Circular profile overlay
+              _buildCircularOverlay(),
+              
+              // Main content
+              _buildMainContent(),
+            ],
           ),
         ),
       ),
     );
   }
+
+  Widget _buildBackground() {
+    return Column(
+      children: [
+        // Top 40% - Bus image
+        Expanded(
+          flex: 40,
+          child: Container(
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: NetworkImage(
+                  'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80',
+                ),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+        ),
+        // Bottom 60% - Gradient yellow
+        Expanded(
+          flex: 60,
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFFFFF59D), // Light yellow
+                  Color(0xFFFFD700), // Rich golden yellow
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDiagonalDivider() {
+    return Positioned(
+      top: MediaQuery.of(context).size.height * 0.35,
+      left: 0,
+      right: 0,
+      child: CustomPaint(
+        size: Size(MediaQuery.of(context).size.width, 100),
+        painter: DiagonalDividerPainter(),
+      ),
+    );
+  }
+
+  Widget _buildCircularOverlay() {
+    return Positioned(
+      top: MediaQuery.of(context).size.height * 0.32,
+      right: 30,
+      child: Container(
+        width: 80,
+        height: 80,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: ClipOval(
+          child: Image.network(
+            'https://images.unsplash.com/photo-1570125909232-eb263c188f7e?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
+            fit: BoxFit.cover,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMainContent() {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        child: Column(
+          children: [
+            // Spacer to push content down
+            SizedBox(height: MediaQuery.of(context).size.height * 0.45),
+            
+            // Sign In Form
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title
+                    const Text(
+                      'Sign In',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1B5E20), // Dark green
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                    
+                    // Email Input
+                    _buildInputField(
+                      controller: _emailController,
+                      labelText: 'Email', // <-- Use labelText
+                      prefixIcon: Icons.email_outlined,
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Password Input
+                    _buildPasswordField(),
+                    const SizedBox(height: 20),
+                    
+                    // Remember me & Forgot password row
+                    _buildRememberMeRow(),
+                    const SizedBox(height: 30),
+                    
+                    // Sign In Button
+                    _buildSignInButton(),
+                    const SizedBox(height: 30),
+                    
+                    // Divider and social login
+                    _buildSocialLoginSection(),
+                    const SizedBox(height: 30),
+                    
+                    // Footer text
+                    _buildFooterText(),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String labelText,
+    required IconData prefixIcon,
+    Widget? suffixIcon,
+    bool obscureText = false,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(
+          color: const Color(0xFF8BC34A), // Lime green
+          width: 2,
+        ),
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: obscureText,
+        decoration: InputDecoration(
+          labelText: labelText, // <-- Use labelText for floating label
+          labelStyle: const TextStyle(
+            color: Color(0xFF1B5E20), // Dark green
+            fontWeight: FontWeight.w500,
+          ),
+          prefixIcon: Icon(
+            prefixIcon,
+            color: const Color(0xFF1B5E20),
+          ),
+          suffixIcon: suffixIcon,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 16,
+          ),
+        ),
+        style: const TextStyle(color: Colors.black),
+      ),
+    );
+  }
+
+  Widget _buildPasswordField() {
+    return _buildInputField(
+      controller: _passwordController,
+      labelText: 'Password', // <-- Use labelText
+      prefixIcon: Icons.lock_outline,
+      obscureText: _obscurePassword,
+      suffixIcon: IconButton(
+        icon: Icon(
+          _obscurePassword ? Icons.visibility_off : Icons.visibility,
+          color: const Color(0xFF1B5E20),
+        ),
+        onPressed: () {
+          setState(() {
+            _obscurePassword = !_obscurePassword;
+          });
+        },
+      ),
+    );
+  }
+
+  Widget _buildRememberMeRow() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            Checkbox(
+              value: _rememberMe,
+              onChanged: (value) {
+                setState(() {
+                  _rememberMe = value ?? false;
+                });
+              },
+              activeColor: const Color(0xFF1B5E20),
+            ),
+            const Text(
+              'Remember me',
+              style: TextStyle(
+                color: Color(0xFF1B5E20),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+        TextButton(
+          onPressed: () {
+            // Handle forgot password
+          },
+          child: const Text(
+            'Forgot Password?',
+            style: TextStyle(
+              color: Color(0xFF1B5E20),
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSignInButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: () {
+          // Handle sign in
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF1B5E20), // Dark green
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
+          ),
+          elevation: 8,
+        ),
+        child: const Text(
+          'Sign In',
+          style: TextStyle(
+            color: Color(0xFF76FF03), // Neon green
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSocialLoginSection() {
+    return Column(
+      children: [
+        Row(
+          children: [
+            const Expanded(child: Divider(color: Colors.black)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Continue with',
+                style: TextStyle(
+                  color: Colors.black.withOpacity(0.7),
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            const Expanded(child: Divider(color: Colors.black)),
+          ],
+        ),
+        const SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildSocialIcon(
+              icon: Icons.camera_alt, // Instagram placeholder
+              color: const Color(0xFFE1306C),
+              onTap: () {},
+            ),
+            _buildSocialIcon(
+              icon: Icons.facebook,
+              color: const Color(0xFF1877F2),
+              onTap: () {},
+            ),
+            _buildSocialIcon(
+              icon: Icons.search, // Google placeholder
+              color: const Color(0xFFDB4437),
+              onTap: () {},
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSocialIcon({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 50,
+        height: 50,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Icon(
+          icon,
+          color: color,
+          size: 24,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFooterText() {
+    return Center(
+      child: RichText(
+        text: const TextSpan(
+          text: "Don't have an account? ",
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 14,
+          ),
+          children: [
+            TextSpan(
+              text: 'Sign Up',
+              style: TextStyle(
+                color: Color(0xFF1B5E20),
+                fontWeight: FontWeight.bold,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class DiagonalDividerPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFFFF59D) // Light yellow
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    path.moveTo(0, size.height);
+    path.lineTo(size.width, 0);
+    path.lineTo(size.width, size.height);
+    path.close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
+}
+
+// Main app to demonstrate the screen
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Transportation Sign In',
+      theme: ThemeData(
+        primarySwatch: Colors.green,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
+      home: const SignInScreen(),
+      debugShowCheckedModeBanner: false,
+    );
+  }
+}
+
+void main() {
+  runApp(const MyApp());
 }
