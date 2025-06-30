@@ -20,6 +20,7 @@ class SplashScreen extends StatelessWidget {
           child: Text(
             'Smart Bus Mobility Platform',
             style: TextStyle(
+              fontFamily: 'Poppins',
               fontSize: 24,
               fontWeight: FontWeight.bold,
               color: Colors.black,
