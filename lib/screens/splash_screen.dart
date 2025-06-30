@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
 class SplashScreen extends StatefulWidget {
   @override
@@ -10,32 +11,80 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late AnimationController _scaleController;
+  late AnimationController _rotateController;
+  late AnimationController _busController;
+  
+  // Controllers for individual bus animations
+  late AnimationController _bus1Controller;
+  late AnimationController _bus2Controller;
+  late AnimationController _bus3Controller;
   
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _scaleAnimation;
+  late Animation<double> _rotateAnimation;
+  late Animation<double> _busAnimation;
+  
+  // Individual bus animations
+  late Animation<double> _bus1Scale;
+  late Animation<double> _bus2Scale;
+  late Animation<double> _bus3Scale;
+  
+  // Track which bus is currently selected
+  int _selectedBus = -1;
 
   @override
   void initState() {
     super.initState();
-    
-    // Initialize animation controllers
+    _initializeControllers();
+    _setupAnimations();
+    _startAnimations();
+  }
+
+  void _initializeControllers() {
     _fadeController = AnimationController(
-      duration: Duration(milliseconds: 1500),
+      duration: Duration(milliseconds: 2000),
       vsync: this,
     );
     
     _slideController = AnimationController(
-      duration: Duration(milliseconds: 1200),
+      duration: Duration(milliseconds: 1500),
       vsync: this,
     );
     
     _scaleController = AnimationController(
-      duration: Duration(milliseconds: 800),
+      duration: Duration(milliseconds: 1000),
       vsync: this,
     );
 
-    // Setup animations
+    _rotateController = AnimationController(
+      duration: Duration(milliseconds: 2500),
+      vsync: this,
+    );
+
+    _busController = AnimationController(
+      duration: Duration(milliseconds: 2000),
+      vsync: this,
+    );
+
+    // Individual bus controllers
+    _bus1Controller = AnimationController(
+      duration: Duration(milliseconds: 300),
+      vsync: this,
+    );
+    
+    _bus2Controller = AnimationController(
+      duration: Duration(milliseconds: 300),
+      vsync: this,
+    );
+    
+    _bus3Controller = AnimationController(
+      duration: Duration(milliseconds: 300),
+      vsync: this,
+    );
+  }
+
+  void _setupAnimations() {
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -45,7 +94,7 @@ class _SplashScreenState extends State<SplashScreen>
     ));
 
     _slideAnimation = Tween<Offset>(
-      begin: Offset(-1.0, 0.0),
+      begin: Offset(-1.5, 0.0),
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _slideController,
@@ -60,19 +109,100 @@ class _SplashScreenState extends State<SplashScreen>
       curve: Curves.bounceOut,
     ));
 
-    // Start animations sequentially
-    _startAnimations();
+    _rotateAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _rotateController,
+      curve: Curves.easeInOut,
+    ));
+
+    _busAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _busController,
+      curve: Curves.easeOutBack,
+    ));
+
+    // Individual bus scale animations
+    _bus1Scale = Tween<double>(
+      begin: 1.0,
+      end: 1.15,
+    ).animate(CurvedAnimation(
+      parent: _bus1Controller,
+      curve: Curves.elasticOut,
+    ));
+    
+    _bus2Scale = Tween<double>(
+      begin: 1.0,
+      end: 1.15,
+    ).animate(CurvedAnimation(
+      parent: _bus2Controller,
+      curve: Curves.elasticOut,
+    ));
+    
+    _bus3Scale = Tween<double>(
+      begin: 1.0,
+      end: 1.15,
+    ).animate(CurvedAnimation(
+      parent: _bus3Controller,
+      curve: Curves.elasticOut,
+    ));
   }
 
   void _startAnimations() async {
     await Future.delayed(Duration(milliseconds: 300));
     _fadeController.forward();
     
-    await Future.delayed(Duration(milliseconds: 600));
+    await Future.delayed(Duration(milliseconds: 400));
     _slideController.forward();
     
-    await Future.delayed(Duration(milliseconds: 400));
+    await Future.delayed(Duration(milliseconds: 600));
     _scaleController.forward();
+    
+    await Future.delayed(Duration(milliseconds: 200));
+    _rotateController.forward();
+    
+    await Future.delayed(Duration(milliseconds: 500));
+    _busController.forward();
+  }
+
+  void _onBusPressed(int busIndex) {
+    setState(() {
+      _selectedBus = busIndex;
+    });
+
+    // Animate the selected bus
+    switch (busIndex) {
+      case 0:
+        _bus1Controller.forward();
+        _bus2Controller.reverse();
+        _bus3Controller.reverse();
+        break;
+      case 1:
+        _bus1Controller.reverse();
+        _bus2Controller.forward();
+        _bus3Controller.reverse();
+        break;
+      case 2:
+        _bus1Controller.reverse();
+        _bus2Controller.reverse();
+        _bus3Controller.forward();
+        break;
+    }
+
+    // Reset after a delay
+    Future.delayed(Duration(milliseconds: 2000), () {
+      if (mounted) {
+        setState(() {
+          _selectedBus = -1;
+        });
+        _bus1Controller.reverse();
+        _bus2Controller.reverse();
+        _bus3Controller.reverse();
+      }
+    });
   }
 
   @override
@@ -80,6 +210,11 @@ class _SplashScreenState extends State<SplashScreen>
     _fadeController.dispose();
     _slideController.dispose();
     _scaleController.dispose();
+    _rotateController.dispose();
+    _busController.dispose();
+    _bus1Controller.dispose();
+    _bus2Controller.dispose();
+    _bus3Controller.dispose();
     super.dispose();
   }
 
@@ -94,208 +229,197 @@ class _SplashScreenState extends State<SplashScreen>
         height: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            stops: [0.0, 0.4, 0.7, 1.0],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            stops: [0.0, 0.3, 0.7, 1.0],
             colors: [
-              Color(0xFFFFFFFF), // White at top
-              Color(0xFFFFF8E1), // Light cream
-              Color(0xFFFAC32D), // Yellow
-              Color(0xFFF57F17), // Deeper yellow/orange at bottom
+              Color(0xFFFFF8DC), // Cream white
+              Color(0xFFFFF176), // Light yellow
+              Color(0xFFFFD54F), // Medium yellow
+              Color(0xFFFFA726), // Orange yellow
             ],
           ),
         ),
         child: Stack(
           children: [
-            // Background decorative elements
-            _buildBackgroundDecorations(screenWidth, screenHeight),
+            // Animated dotted path
+            _buildDottedPath(screenWidth, screenHeight),
             
             // Main content
             _buildMainContent(screenWidth, screenHeight),
+            
+            // Interactive bus images
+            _buildInteractiveBusImages(screenWidth, screenHeight),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildBackgroundDecorations(double screenWidth, double screenHeight) {
-    return Stack(
-      children: [
-        // Decorative circles
-        Positioned(
-          top: screenHeight * 0.1,
-          right: -50,
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: Container(
-              width: 150,
-              height: 150,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.1),
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          bottom: screenHeight * 0.2,
-          left: -30,
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.black.withOpacity(0.05),
-              ),
-            ),
-          ),
-        ),
-        // Subtle geometric shapes
-        Positioned(
-          top: screenHeight * 0.3,
-          right: 20,
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: Transform.rotate(
-              angle: 0.785398, // 45 degrees
-              child: Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
+  Widget _buildDottedPath(double screenWidth, double screenHeight) {
+    return AnimatedBuilder(
+      animation: _rotateAnimation,
+      builder: (context, child) {
+        return CustomPaint(
+          size: Size(screenWidth, screenHeight),
+          painter: DottedPathPainter(_rotateAnimation.value),
+        );
+      },
     );
   }
 
   Widget _buildMainContent(double screenWidth, double screenHeight) {
     return Stack(
       children: [
-        // SMART text - top center with fade animation
+        // Location pin icon (top left)
+        Positioned(
+          top: screenHeight * 0.12,
+          left: screenWidth * 0.05,
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: Icon(
+              Icons.location_on,
+              size: 30,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+
+        // Bus icon (top right)
+        Positioned(
+          top: screenHeight * 0.08,
+          right: screenWidth * 0.1,
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: Transform.rotate(
+              angle: -0.2,
+              child: Icon(
+                Icons.directions_bus,
+                size: 35,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+        ),
+
+        // SMART text - top left with advanced typography
         Positioned(
           top: screenHeight * 0.15,
-          left: 0,
-          right: 0,
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: Center(
-              child: Text(
-                'SMART',
-                style: TextStyle(
-                  fontFamily: 'SF Pro Display',
-                  fontWeight: FontWeight.w800,
-                  fontSize: screenWidth * 0.16, // Responsive font size
-                  color: Colors.black,
-                  letterSpacing: 2,
-                  shadows: [
-                    Shadow(
-                      offset: Offset(2, 2),
-                      blurRadius: 4,
-                      color: Colors.black.withOpacity(0.1),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-
-        // BUS text - left side with slide animation
-        Positioned(
-          top: screenHeight * 0.35,
-          left: screenWidth * 0.08, // 8% from left edge
+          left: screenWidth * 0.08,
           child: SlideTransition(
             position: _slideAnimation,
-            child: _buildStrokedText(
-              'BUS',
-              fontSize: screenWidth * 0.18, // Responsive font size
-              fillColor: Color(0xFFD3E601),
-              strokeColor: Colors.black,
-              strokeWidth: 5,
+            child: Text(
+              'Smart',
+              style: TextStyle(
+                fontFamily: 'Roboto',
+                fontWeight: FontWeight.w900,
+                fontSize: screenWidth * 0.15,
+                color: Colors.black87,
+                letterSpacing: -1,
+                shadows: [
+                  Shadow(
+                    offset: Offset(3, 3),
+                    blurRadius: 8,
+                    color: Colors.black.withOpacity(0.2),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
 
-        // Enhanced subtitle with scale animation
+        // BUS text - right side with modern stroke effect
         Positioned(
-          bottom: screenHeight * 0.25,
-          left: 0,
-          right: 0,
+          top: screenHeight * 0.22,
+          right: screenWidth * 0.08,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: Offset(1.5, 0.0),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(
+              parent: _slideController,
+              curve: Curves.elasticOut,
+            )),
+            child: _buildModernStrokedText(
+              'Bus',
+              fontSize: screenWidth * 0.15,
+              fillColor: Color(0xFFCDDC39),
+              strokeColor: Colors.black87,
+              strokeWidth: 3,
+            ),
+          ),
+        ),
+
+        // Quick & Easy circular badge with floating animation
+        Positioned(
+          top: screenHeight * 0.38,
+          left: screenWidth * 0.25,
+          right: screenWidth * 0.25,
           child: ScaleTransition(
             scale: _scaleAnimation,
-            child: Column(
-              children: [
-                Text(
-                  'Mobility Platform',
-                  style: TextStyle(
-                    fontFamily: 'SF Pro Display',
-                    fontSize: screenWidth * 0.065, // Responsive font size
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                    letterSpacing: 1.2,
+            child: AnimatedBuilder(
+              animation: _scaleController,
+              builder: (context, child) {
+                return Transform.translate(
+                  offset: Offset(0, math.sin(_scaleController.value * math.pi * 4) * 3),
+                  child: Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          Color(0xFFFFEB3B),
+                          Color(0xFFFFC107),
+                        ],
+                      ),
+                      border: Border.all(
+                        color: Colors.white,
+                        width: 3,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 15,
+                          offset: Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Quick',
+                          style: TextStyle(
+                            fontFamily: 'Roboto',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        Text(
+                          '&',
+                          style: TextStyle(
+                            fontFamily: 'Roboto',
+                            fontWeight: FontWeight.w400,
+                            fontSize: 14,
+                            color: Colors.black54,
+                          ),
+                        ),
+                        Text(
+                          'Easy',
+                          style: TextStyle(
+                            fontFamily: 'Roboto',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 8),
-                Container(
-                  width: 60,
-                  height: 3,
-                  decoration: BoxDecoration(
-                    color: Color(0xFFD3E601),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        // Additional tagline
-        Positioned(
-          bottom: screenHeight * 0.15,
-          left: 0,
-          right: 0,
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: Text(
-              'Smart Transportation Solutions',
-              style: TextStyle(
-                fontFamily: 'SF Pro Display',
-                fontSize: screenWidth * 0.04,
-                fontWeight: FontWeight.w400,
-                color: Colors.black54,
-                letterSpacing: 0.8,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-
-        // Loading indicator at bottom
-        Positioned(
-          bottom: screenHeight * 0.08,
-          left: 0,
-          right: 0,
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: Center(
-              child: SizedBox(
-                width: 30,
-                height: 30,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    Color(0xFFD3E601),
-                  ),
-                ),
-              ),
+                );
+              },
             ),
           ),
         ),
@@ -303,7 +427,147 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  Widget _buildStrokedText(
+  Widget _buildInteractiveBusImages(double screenWidth, double screenHeight) {
+    return Stack(
+      children: [
+        // Bus 1 - Left oval
+        Positioned(
+          top: screenHeight * 0.55,
+          left: screenWidth * 0.05,
+          child: _buildInteractiveBus(
+            busIndex: 0,
+            imagePath: 'assets/images/bus1.png',
+            width: screenWidth * 0.25,
+            height: screenHeight * 0.35,
+            scaleAnimation: _bus1Scale,
+            initialDelay: 0,
+          ),
+        ),
+
+        // Bus 2 - Center oval
+        Positioned(
+          top: screenHeight * 0.52,
+          left: screenWidth * 0.375,
+          child: _buildInteractiveBus(
+            busIndex: 1,
+            imagePath: 'assets/images/bus2.png',
+            width: screenWidth * 0.25,
+            height: screenHeight * 0.38,
+            scaleAnimation: _bus2Scale,
+            initialDelay: 200,
+          ),
+        ),
+
+        // Bus 3 - Right oval
+        Positioned(
+          top: screenHeight * 0.55,
+          right: screenWidth * 0.05,
+          child: _buildInteractiveBus(
+            busIndex: 2,
+            imagePath: 'assets/images/bus3.png',
+            width: screenWidth * 0.25,
+            height: screenHeight * 0.35,
+            scaleAnimation: _bus3Scale,
+            initialDelay: 400,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInteractiveBus({
+    required int busIndex,
+    required String imagePath,
+    required double width,
+    required double height,
+    required Animation<double> scaleAnimation,
+    required int initialDelay,
+  }) {
+    return ScaleTransition(
+      scale: Tween<double>(
+        begin: 0.0,
+        end: 1.0,
+      ).animate(CurvedAnimation(
+        parent: _busController,
+        curve: Interval(initialDelay / 1000, 1.0, curve: Curves.easeOutBack),
+      )),
+      child: AnimatedBuilder(
+        animation: scaleAnimation,
+        builder: (context, child) {
+          bool isSelected = _selectedBus == busIndex;
+          bool isOtherSelected = _selectedBus != -1 && _selectedBus != busIndex;
+          
+          return AnimatedOpacity(
+            duration: Duration(milliseconds: 300),
+            opacity: isOtherSelected ? 0.6 : 1.0,
+            child: Transform.scale(
+              scale: isOtherSelected ? 0.85 : scaleAnimation.value,
+              child: GestureDetector(
+                onTap: () => _onBusPressed(busIndex),
+                onTapDown: (_) => _onBusPressed(busIndex),
+                child: AnimatedContainer(
+                  duration: Duration(milliseconds: 300),
+                  width: width,
+                  height: height,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(width / 2),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.white.withOpacity(0.9),
+                        Colors.white.withOpacity(0.7),
+                      ],
+                    ),
+                    border: Border.all(
+                      color: isSelected ? Color(0xFFFFEB3B) : Colors.white,
+                      width: isSelected ? 4 : 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(isSelected ? 0.25 : 0.15),
+                        blurRadius: isSelected ? 30 : 20,
+                        offset: Offset(0, isSelected ? 15 : 10),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(width / 2),
+                    child: AnimatedContainer(
+                      duration: Duration(milliseconds: 300),
+                      transform: Matrix4.identity()
+                        ..translate(isSelected ? 5.0 : 0.0, 0.0)
+                        ..scale(isSelected ? 1.1 : 1.0),
+                      child: Image.asset(
+                        imagePath,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Color(0xFF64B5F6), Color(0xFF1976D2)],
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.directions_bus,
+                              size: width * 0.4,
+                              color: Colors.white,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildModernStrokedText(
     String text, {
     required double fontSize,
     required Color fillColor,
@@ -312,32 +576,102 @@ class _SplashScreenState extends State<SplashScreen>
   }) {
     return Stack(
       children: [
-        // Stroke
+        // Outer glow effect
         Text(
           text,
           style: TextStyle(
-            fontFamily: 'Poppins',
-            fontWeight: FontWeight.w800,
+            fontFamily: 'Roboto',
+            fontWeight: FontWeight.w900,
             fontSize: fontSize,
-            letterSpacing: 2,
+            letterSpacing: -1,
+            foreground: Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = strokeWidth + 2
+              ..color = strokeColor.withOpacity(0.3),
+          ),
+        ),
+        // Main stroke
+        Text(
+          text,
+          style: TextStyle(
+            fontFamily: 'Roboto',
+            fontWeight: FontWeight.w900,
+            fontSize: fontSize,
+            letterSpacing: -1,
             foreground: Paint()
               ..style = PaintingStyle.stroke
               ..strokeWidth = strokeWidth
               ..color = strokeColor,
           ),
         ),
-        // Fill
-        Text(
-          text,
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontWeight: FontWeight.w800,
-            fontSize: fontSize,
-            letterSpacing: 2,
-            color: fillColor,
+        // Fill with gradient effect
+        ShaderMask(
+          shaderCallback: (bounds) => LinearGradient(
+            colors: [fillColor, fillColor.withOpacity(0.8)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ).createShader(bounds),
+          child: Text(
+            text,
+            style: TextStyle(
+              fontFamily: 'Roboto',
+              fontWeight: FontWeight.w900,
+              fontSize: fontSize,
+              letterSpacing: -1,
+              color: Colors.white,
+            ),
           ),
         ),
       ],
     );
   }
+}
+
+class DottedPathPainter extends CustomPainter {
+  final double animationValue;
+
+  DottedPathPainter(this.animationValue);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.black87
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    final path = Path();
+    
+    // Create curved dotted path
+    final startX = size.width * 0.1;
+    final startY = size.height * 0.2;
+    final controlX = size.width * 0.6;
+    final controlY = size.height * 0.35;
+    final endX = size.width * 0.9;
+    final endY = size.height * 0.15;
+
+    path.moveTo(startX, startY);
+    path.quadraticBezierTo(controlX, controlY, endX, endY);
+
+    // Draw animated dotted line
+    final pathMetrics = path.computeMetrics().toList();
+    if (pathMetrics.isNotEmpty) {
+      final pathMetric = pathMetrics.first;
+      final totalLength = pathMetric.length;
+      final animatedLength = totalLength * animationValue;
+      
+      for (double distance = 0; distance < animatedLength; distance += 15) {
+        if ((distance / 15) % 2 == 0) {
+          final pos1 = pathMetric.getTangentForOffset(distance);
+          final pos2 = pathMetric.getTangentForOffset(math.min(distance + 8, animatedLength));
+          
+          if (pos1 != null && pos2 != null) {
+            canvas.drawLine(pos1.position, pos2.position, paint);
+          }
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
