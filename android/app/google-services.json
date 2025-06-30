@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "231972373008",
+    "project_id": "smart-bus-mobility",
+    "storage_bucket": "smart-bus-mobility.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:231972373008:android:9d5c4989bdef913ec48095",
+        "android_client_info": {
+          "package_name": "com.example.smart_bus_mobility_platform"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "231972373008-h1mn14lvs9h9hk328d7i4dhdm0t5eb55.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDe19949XPI_2bPQky2yDhCUUtjQWv0_2A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "231972373008-h1mn14lvs9h9hk328d7i4dhdm0t5eb55.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:231972373008:android:1cf37f22b20bbbc8c48095",
+        "android_client_info": {
+          "package_name": "com.example.smart_bus_mobility_platform1"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "231972373008-h1mn14lvs9h9hk328d7i4dhdm0t5eb55.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDe19949XPI_2bPQky2yDhCUUtjQWv0_2A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "231972373008-h1mn14lvs9h9hk328d7i4dhdm0t5eb55.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,4 +1,4 @@
-name: smart_bus_mobility_platform
+name: smart_bus_mobility_platform1
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -30,26 +30,28 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # Maps and location
-  google_maps_flutter: 
-  geolocator: 
-  geocoding: 
-  #State Management
-  provider: 
-  #Auth and backend 
-  http: 
-  flutter_secure_storage: 
-  # Payments
-  flutterwave: 
-  # Messaging
-  firebase_messaging: 
-  #SVG images
-  flutter_svg: 
-  # other flutter
-  firebase_auth: 
-  firebase_core: 
-  firebase_storage: 
-  cloud_firestore: 
+
+  google_maps_flutter: ^2.6.1
+  geolocator: ^10.1.0
+  geocoding: ^2.1.1
+
+  flutter_bloc: ^8.1.4
+  equatable: ^2.0.5
+
+  http: ^1.2.1
+  flutter_secure_storage: ^9.0.0
+
+  firebase_messaging: ^14.7.19
+  firebase_auth: ^4.17.5
+  firebase_core: ^2.31.1
+  firebase_storage: ^11.7.4
+  cloud_firestore: ^4.17.2
+
+  flutter_svg: ^2.0.10+1
+
+  # Dotenv
+  flutter_dotenv: ^5.1.0
+
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -83,6 +85,7 @@ flutter:
   #   - images/a_dot_ham.jpeg
   assets:
     - assets/
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 
