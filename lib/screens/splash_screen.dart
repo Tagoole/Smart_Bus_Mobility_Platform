@@ -250,6 +250,9 @@ class _SplashScreenState extends State<SplashScreen>
             
             // Interactive bus images
             _buildInteractiveBusImages(screenWidth, screenHeight),
+            
+            // Bottom text
+            _buildBottomText(screenWidth, screenHeight),
           ],
         ),
       ),
@@ -472,6 +475,29 @@ class _SplashScreenState extends State<SplashScreen>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildBottomText(double screenWidth, double screenHeight) {
+    return Positioned(
+      bottom: screenHeight * 0.05, // 5% from bottom
+      left: 0,
+      right: 0,
+      child: FadeTransition(
+        opacity: _fadeAnimation,
+        child: Center(
+          child: Text(
+            'Efficient • Real-time • Smart',
+            style: TextStyle(
+              fontFamily: 'Inknut Antiqua',
+              fontSize: 16,
+              fontWeight: FontWeight.normal,
+              color: Color(0xFF014421),
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ),
     );
   }
 
