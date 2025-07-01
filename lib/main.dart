@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:smart_bus_mobility_platform1/routes/app_routes.dart';
 import 'package:smart_bus_mobility_platform1/screens/login_screen.dart';
-
+//import 'firebase_options.dart';
+import 'package:smart_bus_mobility_platform1/screens/map_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,7 +34,7 @@ void main() async {
     );
   }
 
-  runApp(const MyApp());
+  runApp( MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -50,7 +52,7 @@ class MyApp extends StatelessWidget {
         routes: AppRoutes.getRoutes(),
 
         //initialRoute: AppRoutes.mapScreen,
-        home: LoginScreen(),
+        home: SignInScreen(),
         //home: Scaffold(
         //  backgroundColor: Colors.blue,
         //  body: Container(width: 200, height: 200, color: Colors.amberAccent),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:smart_bus_mobility_platform1/screens/login_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/map_screen.dart';
 
 class AppRoutes {
   static const String mapScreen = '/map';
@@ -18,6 +20,9 @@ class AppRoutes {
     return {
       // Add more routes here
       // homeScreen: (context) => HomeScreen(),
+      loginScreen: (context) => SignInScreen(),
+      mapScreen: (context) => MapScreen(),
+      
     };
   }
 }

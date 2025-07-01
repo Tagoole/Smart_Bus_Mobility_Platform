@@ -63,23 +63,17 @@ class _MapScreenState extends State<MapScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: SizedBox(
-          width: 500,
-          height: 500,
-          child: GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: _currentLocation,
-              zoom: 16,
-            ),
-            myLocationEnabled: false, // Disable default blue dot because we're showing custom marker
-            myLocationButtonEnabled: true,
-            markers: _markers,
-            onMapCreated: (GoogleMapController controller) {
-              _mapController = controller;
-            },
-          ),
+      body: GoogleMap(
+        initialCameraPosition: CameraPosition(
+          target: _currentLocation,
+          zoom: 16,
         ),
+        myLocationEnabled: false, // Disable default blue dot because we're showing custom marker
+        myLocationButtonEnabled: true,
+        markers: _markers,
+        onMapCreated: (GoogleMapController controller) {
+          _mapController = controller;
+        },
       ),
     );
   }
