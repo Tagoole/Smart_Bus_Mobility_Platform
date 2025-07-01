@@ -21,7 +21,7 @@ class LoginScreen extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 50,
-                  backgroundImage: AssetImage('assets/bus_image.jpg'), // Replace with your image asset
+                  backgroundImage:  NetworkImage('https://plus.unsplash.com/premium_photo-1664302152991-d013ff125f3f?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8YnVzfGVufDB8fDB8fHww')//AssetImage('assets/bus_image.jpg'), // Replace with your image asset
                 ),
                 SizedBox(height: 20),
                 Text(
