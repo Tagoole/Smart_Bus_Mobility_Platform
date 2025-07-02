@@ -52,16 +52,9 @@ class MyApp extends StatelessWidget {
         theme: ThemeData.light().copyWith(
           scaffoldBackgroundColor: Colors.blueGrey,
         ),
-        routes: {
-          ...AppRoutes.getRoutes(), // Spread your existing routes
-          '/signup': (context) => const SignUpScreen(), // Add signup route
-          '/signin': (context) => const SignInScreen(), // Add signin route
-          '/forgotpassword': (context) => const ForgotPasswordScreen(), // Forgot password route
-          '/emailverification': (context) => const EmailVerificationScreen(), // Email verification route
-        },
-                 
+        routes: AppRoutes.getRoutes(), // Spread your existing routes
         //initialRoute: AppRoutes.mapScreen,
-        home:SignUpScreen(),
+        home:SignInScreen(),
                  
         //home: Scaffold(
         //  backgroundColor: Colors.blue,

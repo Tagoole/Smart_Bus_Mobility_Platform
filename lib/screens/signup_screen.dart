@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:smart_bus_mobility_platform1/resources/auth_service.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -9,7 +10,7 @@ class SignUpScreen extends StatefulWidget {
 
 class _SignUpScreenState extends State<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController(); // Added username controller
+  final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _contactController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -18,12 +19,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _isConfirmPasswordVisible = false;
   String? _selectedRole;
   bool _isFormValid = false;
-  final List<String> _roles = ['User', 'Driver']; // Removed 'Admin'
+  bool _isLoading = false; // Added loading state
+  final List<String> _roles = ['User', 'Driver'];
 
   @override
   void initState() {
     super.initState();
-    _usernameController.addListener(_validateForm); // Added username listener
+    _usernameController.addListener(_validateForm);
     _emailController.addListener(_validateForm);
     _contactController.addListener(_validateForm);
     _passwordController.addListener(_validateForm);
@@ -31,8 +33,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   void _validateForm() {
-    final isUsernameValid = _usernameController.text.isNotEmpty &&
-                           _usernameController.text.length >= 3; // Added username validation
+    final isUsernameValid =
+        _usernameController.text.isNotEmpty &&
+        _usernameController.text.length >= 3;
     final isEmailValid = _isValidEmail(_emailController.text);
     final isContactValid =
         _contactController.text.isNotEmpty &&
@@ -45,7 +48,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     setState(() {
       _isFormValid =
-          isUsernameValid && // Added username validation to form validation
+          isUsernameValid &&
           isEmailValid &&
           isContactValid &&
           isPasswordValid &&
@@ -62,10 +65,62 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return RegExp(r'^[0-9]+$').hasMatch(str);
   }
 
-  // Added username validation method
   bool _isValidUsername(String username) {
-    // Username should be at least 3 characters and contain only letters, numbers, and underscores
     return RegExp(r'^[a-zA-Z0-9_]{3,}$').hasMatch(username);
+  }
+
+  // Create separate async method for handling sign up
+  Future<void> _handleSignUp() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      String result = await AuthMethods().signUpUser(
+        username: _usernameController.text,
+        email: _emailController.text,
+        contact: _contactController.text,
+        password: _passwordController.text,
+        role: _selectedRole!,
+      );
+
+      if (mounted) {
+        if (result == "success") {
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Account created successfully!'),
+              backgroundColor: Color(0xFF014421),
+            ),
+          );
+
+          // Navigate to sign in or home screen
+          Navigator.pushReplacementNamed(context, '/signin');
+        } else {
+          // Show error message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result), backgroundColor: Color(0xFF014421)),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('An error occurred: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -78,11 +133,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             stops: [0.0, 0.4, 1.0],
-            colors: [
-              Color(0xFF87CEEB), // Sky blue for mountain background
-              Color(0xFFFFEB3B), // Yellow transition
-              Color(0xFFFFF176), // Light yellow at bottom
-            ],
+            colors: [Color(0xFF87CEEB), Color(0xFFFFEB3B), Color(0xFFFFF176)],
           ),
         ),
         child: SafeArea(
@@ -93,9 +144,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 height: 200,
                 decoration: const BoxDecoration(
                   image: DecorationImage(
-                    image: AssetImage(
-                      'assets/images/bus_sign_in.png',
-                    ), // Add your bus and mountains image
+                    image: AssetImage('assets/images/bus_sign_in.png'),
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -111,7 +160,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
-                            // ignore: deprecated_member_use
                             color: Colors.white.withOpacity(0.9),
                             shape: BoxShape.circle,
                           ),
@@ -130,13 +178,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         width: 50,
                         height: 50,
                         decoration: BoxDecoration(
-                          // ignore: deprecated_member_use
                           color: Colors.white.withOpacity(0.9),
                           shape: BoxShape.circle,
                           image: const DecorationImage(
-                            image: AssetImage(
-                              'assets/images/bus2_sign_in.png',
-                            ), // Add bus interior thumbnail
+                            image: AssetImage('assets/images/bus2_sign_in.png'),
                             fit: BoxFit.cover,
                           ),
                         ),
@@ -154,7 +199,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     child: Column(
                       children: [
                         const SizedBox(height: 20),
-                        // Username Field - Added as first field
+                        // Username Field
                         _buildTextField(
                           controller: _usernameController,
                           hintText: 'Enter your username',
@@ -301,6 +346,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             onChanged: (String? newValue) {
                               setState(() {
                                 _selectedRole = newValue;
+                                print(_selectedRole);
                               });
                               _validateForm();
                             },
@@ -318,9 +364,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           width: double.infinity,
                           height: 56,
                           child: ElevatedButton(
-                            onPressed: _isFormValid ? _handleSignUp : null,
+                            onPressed: (_isFormValid && !_isLoading)
+                                ? _handleSignUp
+                                : null,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: _isFormValid
+                              backgroundColor: (_isFormValid && !_isLoading)
                                   ? const Color(0xFF014421)
                                   : Colors.grey,
                               shape: RoundedRectangleBorder(
@@ -328,14 +376,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               ),
                               elevation: 3,
                             ),
-                            child: const Text(
-                              'Sign Up',
-                              style: TextStyle(
-                                color: Color(0xFFFFEB3B),
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Color(0xFFFFEB3B),
+                                      ),
+                                    ),
+                                  )
+                                : const Text(
+                                    'Sign Up',
+                                    style: TextStyle(
+                                      color: Color(0xFFFFEB3B),
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -352,7 +411,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             ),
                             GestureDetector(
                               onTap: () {
-                                // Navigate to Sign In screen
                                 Navigator.pushReplacementNamed(
                                   context,
                                   '/signin',
@@ -425,27 +483,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  void _handleSignUp() {
-    if (_formKey.currentState!.validate()) {
-      // Handle sign up logic here with username included
-      print('Username: ${_usernameController.text}');
-      print('Email: ${_emailController.text}');
-      print('Contact: ${_contactController.text}');
-      print('Role: $_selectedRole');
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Sign up successful!'),
-          backgroundColor: Color(0xFF014421),
-        ),
-      );
-      // Navigate to next screen or perform sign up
-    }
-  }
-
   @override
   void dispose() {
-    _usernameController.dispose(); // Added username controller disposal
+    _usernameController.dispose();
     _emailController.dispose();
     _contactController.dispose();
     _passwordController.dispose();
