@@ -44,24 +44,42 @@ class AuthMethods {
     return '';
   }
 
-  Future<String> loginUser({
+  Future<Map<String, String>> loginUser({
     required String password,
     required String email,
   }) async {
     String result = 'Some error occurred..';
     try {
       if (email.isNotEmpty && password.isNotEmpty) {
-        await _auth.signInWithEmailAndPassword(
+        UserCredential credential = await _auth.signInWithEmailAndPassword(
           email: email,
           password: password,
         );
-        result = 'Success';
+
+        DocumentSnapshot userDoc = await _firestore
+            .collection('users')
+            .doc(credential.user!.uid)
+            .get();
+        if (userDoc.exists) {
+          Map<String, dynamic> userData =
+              userDoc.data() as Map<String, dynamic>;
+          String userRole = userData['role'] ?? '';
+
+          return {
+            'status': 'Success',
+            'role': userRole,
+            'uid': credential.user!.uid,
+          };
+        } else {
+          return {'status': 'User data not found'};
+        }
+        //result = 'Success';
       } else {
-        result = 'Enter all fields';
+        return {'status': 'Enter all fields'};
       }
     } catch (error) {
       result = error.toString();
     }
-    return result;
+    throw 'Some Error occurred';
   }
 }
