@@ -4,13 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:smart_bus_mobility_platform1/routes/app_routes.dart';
 import 'package:smart_bus_mobility_platform1/screens/login_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/signup_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/forgot_password_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/email_verification_screen.dart'; // Add this import
-
-//import 'firebase_options.dart';
-import 'package:smart_bus_mobility_platform1/screens/map_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

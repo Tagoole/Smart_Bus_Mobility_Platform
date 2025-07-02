@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'email_verification_success_screen_animated.dart';
 
 class EmailVerificationScreen extends StatefulWidget {
   final String email;
@@ -47,31 +48,13 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     }
   }
 
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.green, size: 28),
-              SizedBox(width: 8),
-              Text("Success!"),
-            ],
-          ),
-          content: const Text("Email verified successfully!"),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                // Navigate to next screen or perform success action
-                // Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => NextScreen()));
-              },
-              child: const Text("Continue"),
-            ),
-          ],
-        );
-      },
+  void _navigateToSuccessScreen() {
+    // Navigate to the animated success screen
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const EmailVerificationSuccessScreenAnimated(),
+      ),
     );
   }
 
@@ -146,8 +129,8 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       
       // Example validation logic (replace with your actual validation)
       if (code == "123456") {
-        // Success case
-        _showSuccessDialog();
+        // Success case - Navigate to animated success screen
+        _navigateToSuccessScreen();
       } else {
         // Error case
         _showErrorDialog();
@@ -181,13 +164,15 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     
     // Simulate API call
     Future.delayed(const Duration(seconds: 2), () {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Verification code sent successfully!"),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Verification code sent successfully!"),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
     });
   }
 
