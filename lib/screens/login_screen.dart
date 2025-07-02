@@ -22,20 +22,39 @@ class _SignInScreenState extends State<SignInScreen> {
     setState(() {
       _isLoading = true;
     });
-    String result = await AuthMethods().loginUser(
+    Map<String, String> result = await AuthMethods().loginUser(
       password: _passwordController.text,
       email: _emailController.text,
     );
 
-    if (result == 'Success') {
+    if (result['status'] == 'Success') {
       print('Logging in was a success');
-      showSnackBar(result, context);
+      String role = result['role'] ?? '';
+      _navigateBasedOnRole(role);
     } else {
-      showSnackBar(result, context);
+      showSnackBar(result['status'] ?? 'Login failed', context);
     }
     setState(() {
       _isLoading = false;
     });
+  }
+
+  // method to navigate user to appropriate page after login success
+  void _navigateBasedOnRole(String role) {
+    switch (role.toLowerCase()) {
+      case 'admin':
+        Navigator.pushReplacementNamed(context, AppRoutes.adminScreen);
+        break;
+      case 'user':
+        Navigator.pushReplacementNamed(context, AppRoutes.passengerHomeScreen);
+        break;
+      case 'driver':
+        Navigator.pushReplacementNamed(context, AppRoutes.busDriverHomeScreen);
+      default:
+        showSnackBar('Unknown user role: $role', context);
+        Navigator.pushReplacementNamed(context, AppRoutes.loginScreen);
+        break;
+    }
   }
 
   @override
