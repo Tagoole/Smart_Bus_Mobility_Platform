@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/foundation.dart';
 
 class PickupPoint {
   final String id;
@@ -90,179 +91,213 @@ class RouteManagementProvider with ChangeNotifier {
   }
 }
 
-class RouteManagementScreen extends StatelessWidget {
+class RouteManagementScreen extends StatefulWidget {
   const RouteManagementScreen({super.key});
+
+  @override
+  State<RouteManagementScreen> createState() => _RouteManagementScreenState();
+}
+
+class _RouteManagementScreenState extends State<RouteManagementScreen> {
+  bool _sidebarCollapsed = false;
+
+  void _toggleSidebar() {
+    setState(() => _sidebarCollapsed = !_sidebarCollapsed);
+  }
+
+  void _showPickupFormModal(BuildContext context, {PickupPoint? point}) async {
+    final provider = Provider.of<RouteManagementProvider>(context, listen: false);
+    final result = await showModalBottomSheet<PickupPoint>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          left: 16, right: 16, top: 24,
+        ),
+        child: PickupFormWidget(editPoint: point),
+      ),
+    );
+    if (result != null) {
+      if (point == null) {
+        provider.addPickupPoint(result);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Pickup point added!')),
+        );
+      } else {
+        provider.updatePickupPoint(point.id, result);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Pickup point updated!')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => RouteManagementProvider(),
-      child: const _RouteManagementBody(),
-    );
-  }
-}
-
-class _RouteManagementBody extends StatefulWidget {
-  const _RouteManagementBody();
-
-  @override
-  State<_RouteManagementBody> createState() => _RouteManagementBodyState();
-}
-
-class _RouteManagementBodyState extends State<_RouteManagementBody> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  final List<Tab> _tabs = const [
-    Tab(icon: Icon(Icons.map), text: "Manual Entry"),
-    Tab(icon: Icon(Icons.upload_file), text: "File Upload"),
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: _tabs.length, vsync: this);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = Provider.of<RouteManagementProvider>(context);
-    return Scaffold(
-      backgroundColor: Colors.grey[100],
-      body: Row(
-        children: [
-          // Sidebar (optional, can be expanded)
-          Container(
-            width: 320,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border(
-                right: BorderSide(color: Colors.grey[300]!),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
-                  blurRadius: 8,
-                  offset: const Offset(2, 0),
-                ),
-              ],
+      child: Builder(
+        builder: (context) {
+          final provider = Provider.of<RouteManagementProvider>(context);
+          return Scaffold(
+            backgroundColor: Colors.grey[100],
+            floatingActionButton: FloatingActionButton.extended(
+              onPressed: () => _showPickupFormModal(context),
+              icon: const Icon(Icons.add_location_alt),
+              label: const Text("Add Pickup Point"),
             ),
-            child: Column(
+            body: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(24),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  width: _sidebarCollapsed ? 60 : 320,
                   decoration: BoxDecoration(
+                    color: Colors.white,
                     border: Border(
-                      bottom: BorderSide(color: Colors.grey[300]!),
+                      right: BorderSide(color: Colors.grey[300]!),
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.03),
+                        blurRadius: 8,
+                        offset: const Offset(2, 0),
+                      ),
+                    ],
                   ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text(
-                        "Route Management",
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                      ),
-                      SizedBox(height: 6),
-                      Text(
-                        "Create optimized pickup routes for drivers",
-                        style: TextStyle(color: Colors.grey, fontSize: 14),
-                      ),
-                    ],
-                  ),
-                ),
-                TabBar(
-                  controller: _tabController,
-                  tabs: _tabs,
-                  labelColor: Colors.blue[800],
-                  unselectedLabelColor: Colors.grey[600],
-                  indicatorColor: Colors.blue[800],
-                  indicatorWeight: 3,
-                ),
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
                     children: [
-                      PickupFormWidget(),
-                      FileUploadWidget(),
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(color: Colors.grey[300]!),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            if (!_sidebarCollapsed)
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: const [
+                                    Text(
+                                      "Route Management",
+                                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                                    ),
+                                    SizedBox(height: 6),
+                                    Text(
+                                      "Create optimized pickup routes for drivers",
+                                      style: TextStyle(color: Colors.grey, fontSize: 14),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            IconButton(
+                              icon: Icon(_sidebarCollapsed ? Icons.chevron_right : Icons.chevron_left),
+                              onPressed: _toggleSidebar,
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (!_sidebarCollapsed) ...[
+                        Expanded(
+                          child: PickupPointsListWidget(
+                            onEdit: (point) => _showPickupFormModal(context, point: point),
+                          ),
+                        ),
+                        if (provider.pickupPoints.length > 1)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            child: RouteOptimizerWidget(),
+                          ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          child: FileUploadWidget(),
+                        ),
+                      ],
                     ],
                   ),
                 ),
-                if (provider.pickupPoints.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: PickupPointsListWidget(),
-                  ),
-                if (provider.pickupPoints.length > 1)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: RouteOptimizerWidget(),
-                  ),
-              ],
-            ),
-          ),
-          // Map Panel
-          Expanded(
-            child: Stack(
-              children: [
-                MapViewWidget(),
-                if (provider.pickupPoints.isEmpty)
-                  Positioned.fill(
-                    child: Container(
-                      color: Colors.white.withOpacity(0.85),
-                      child: Center(
-                        child: Card(
-                          elevation: 6,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                          child: Padding(
-                            padding: const EdgeInsets.all(32),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                CircleAvatar(
-                                  radius: 36,
-                                  backgroundColor: Colors.blue[50],
-                                  child: Icon(Icons.pin_drop, color: Colors.blue[700], size: 36),
+                // Map Panel
+                Expanded(
+                  child: Stack(
+                    children: [
+                      MapViewWidget(),
+                      if (provider.pickupPoints.isEmpty)
+                        Positioned.fill(
+                          child: Container(
+                            color: Colors.white.withOpacity(0.85),
+                            child: Center(
+                              child: Card(
+                                elevation: 6,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(32),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 36,
+                                        backgroundColor: Colors.blue[50],
+                                        child: Icon(Icons.pin_drop, color: Colors.blue[700], size: 36),
+                                      ),
+                                      const SizedBox(height: 18),
+                                      const Text(
+                                        "No Pickup Points Yet",
+                                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      const Text(
+                                        "Add pickup points to get started with route optimization.",
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(color: Colors.grey, fontSize: 15),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                const SizedBox(height: 18),
-                                const Text(
-                                  "No Pickup Points Yet",
-                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(height: 8),
-                                const Text(
-                                  "Add pickup points manually or upload a file to get started with route optimization.",
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(color: Colors.grey, fontSize: 15),
-                                ),
-                              ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
+                    ],
                   ),
+                ),
               ],
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 }
 
-// --- Manual Entry Form ---
+// --- Pickup Form Widget as Modal/BottomSheet ---
 class PickupFormWidget extends StatefulWidget {
+  final PickupPoint? editPoint;
+  const PickupFormWidget({this.editPoint});
+
   @override
   State<PickupFormWidget> createState() => _PickupFormWidgetState();
 }
 
 class _PickupFormWidgetState extends State<PickupFormWidget> {
   final _formKey = GlobalKey<FormState>();
-  final _name = TextEditingController();
-  final _phone = TextEditingController();
-  final _address = TextEditingController();
-  final _lat = TextEditingController();
-  final _lng = TextEditingController();
+  late TextEditingController _name, _phone, _address, _lat, _lng;
   bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _name = TextEditingController(text: widget.editPoint?.name ?? '');
+    _phone = TextEditingController(text: widget.editPoint?.phone ?? '');
+    _address = TextEditingController(text: widget.editPoint?.address ?? '');
+    _lat = TextEditingController(text: widget.editPoint?.lat.toString() ?? '');
+    _lng = TextEditingController(text: widget.editPoint?.lng.toString() ?? '');
+  }
 
   @override
   void dispose() {
@@ -274,96 +309,167 @@ class _PickupFormWidgetState extends State<PickupFormWidget> {
     super.dispose();
   }
 
-  void _submit(BuildContext context) async {
+  void _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSubmitting = true);
-
     double? lat = double.tryParse(_lat.text);
     double? lng = double.tryParse(_lng.text);
-
-    // Mock geocoding if not provided
     lat ??= 37.7749 + (Random().nextDouble() - 0.5) * 0.1;
     lng ??= -122.4194 + (Random().nextDouble() - 0.5) * 0.1;
-
     final point = PickupPoint(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: widget.editPoint?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
       name: _name.text,
       phone: _phone.text,
       address: _address.text,
       lat: lat,
       lng: lng,
     );
-
-    Provider.of<RouteManagementProvider>(context, listen: false).addPickupPoint(point);
-
-    _formKey.currentState!.reset();
-    _name.clear();
-    _phone.clear();
-    _address.clear();
-    _lat.clear();
-    _lng.clear();
-
-    setState(() => _isSubmitting = false);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Pickup point added!')),
-    );
+    Navigator.pop(context, point);
   }
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Form(
-        key: _formKey,
+    return Form(
+      key: _formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            widget.editPoint == null ? "Add Pickup Point" : "Edit Pickup Point",
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _name,
+            decoration: const InputDecoration(labelText: "Name *"),
+            validator: (v) => v == null || v.isEmpty ? "Required" : null,
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _phone,
+            decoration: const InputDecoration(labelText: "Phone *"),
+            validator: (v) => v == null || v.isEmpty ? "Required" : null,
+            keyboardType: TextInputType.phone,
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _address,
+            decoration: const InputDecoration(labelText: "Address *"),
+            validator: (v) => v == null || v.isEmpty ? "Required" : null,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _lat,
+                  decoration: const InputDecoration(labelText: "Latitude"),
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextFormField(
+                  controller: _lng,
+                  decoration: const InputDecoration(labelText: "Longitude"),
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              icon: _isSubmitting
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.save),
+              label: Text(_isSubmitting ? "Saving..." : widget.editPoint == null ? "Add" : "Save"),
+              onPressed: _isSubmitting ? null : _submit,
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+}
+
+// --- Pickup Points List Widget with Drag-and-Drop ---
+typedef EditPickupPointCallback = void Function(PickupPoint point);
+
+class PickupPointsListWidget extends StatelessWidget {
+  final EditPickupPointCallback? onEdit;
+  const PickupPointsListWidget({this.onEdit});
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = Provider.of<RouteManagementProvider>(context);
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
         child: Column(
           children: [
-            TextFormField(
-              controller: _name,
-              decoration: const InputDecoration(labelText: "Name *"),
-              validator: (v) => v == null || v.isEmpty ? "Required" : null,
-            ),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _phone,
-              decoration: const InputDecoration(labelText: "Phone *"),
-              validator: (v) => v == null || v.isEmpty ? "Required" : null,
-              keyboardType: TextInputType.phone,
-            ),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _address,
-              decoration: const InputDecoration(labelText: "Address *"),
-              validator: (v) => v == null || v.isEmpty ? "Required" : null,
-            ),
-            const SizedBox(height: 8),
             Row(
               children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _lat,
-                    decoration: const InputDecoration(labelText: "Latitude"),
-                    keyboardType: TextInputType.numberWithOptions(decimal: true),
-                  ),
-                ),
+                const Icon(Icons.pin_drop, color: Colors.blue, size: 20),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: TextFormField(
-                    controller: _lng,
-                    decoration: const InputDecoration(labelText: "Longitude"),
-                    keyboardType: TextInputType.numberWithOptions(decimal: true),
-                  ),
-                ),
+                Text("Pickup Points (${provider.pickupPoints.length})",
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
               ],
             ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.add_location_alt),
-                label: Text(_isSubmitting ? "Adding..." : "Add Pickup Point"),
-                onPressed: _isSubmitting ? null : () => _submit(context),
-              ),
+            const Divider(),
+            ReorderableListView(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              onReorder: (oldIndex, newIndex) {
+                if (newIndex > oldIndex) newIndex--;
+                final point = provider.pickupPoints.removeAt(oldIndex);
+                provider.pickupPoints.insert(newIndex, point);
+                provider.notifyListeners();
+              },
+              children: [
+                for (final point in provider.pickupPoints)
+                  ListTile(
+                    key: ValueKey(point.id),
+                    selected: provider.selectedPoint?.id == point.id,
+                    selectedTileColor: Colors.blue[50],
+                    leading: CircleAvatar(
+                      backgroundColor: provider.selectedPoint?.id == point.id ? Colors.blue : Colors.grey[400],
+                      child: Text(
+                        (provider.pickupPoints.indexOf(point) + 1).toString(),
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                    title: Text(point.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: Text("${point.phone}\n${point.address}", maxLines: 2, overflow: TextOverflow.ellipsis),
+                    isThreeLine: true,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit, size: 20),
+                          onPressed: onEdit == null ? null : () => onEdit!(point),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                          onPressed: () {
+                            provider.removePickupPoint(point.id);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Pickup point removed')),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                    onTap: () => provider.selectPoint(point),
+                  ),
+              ],
             ),
           ],
         ),
@@ -467,138 +573,6 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
           ),
         ),
       ),
-    );
-  }
-}
-
-// --- Pickup Points List Widget ---
-class PickupPointsListWidget extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final provider = Provider.of<RouteManagementProvider>(context);
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.pin_drop, color: Colors.blue, size: 20),
-                const SizedBox(width: 8),
-                Text("Pickup Points (${provider.pickupPoints.length})",
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-              ],
-            ),
-            const Divider(),
-            ...provider.pickupPoints.map((point) {
-              final isSelected = provider.selectedPoint?.id == point.id;
-              return ListTile(
-                selected: isSelected,
-                selectedTileColor: Colors.blue[50],
-                leading: CircleAvatar(
-                  backgroundColor: isSelected ? Colors.blue : Colors.grey[400],
-                  child: Text(
-                    (provider.pickupPoints.indexOf(point) + 1).toString(),
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-                title: Text(point.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                subtitle: Text("${point.phone}\n${point.address}", maxLines: 2, overflow: TextOverflow.ellipsis),
-                isThreeLine: true,
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit, size: 20),
-                      onPressed: () async {
-                        final updated = await showDialog<PickupPoint>(
-                          context: context,
-                          builder: (ctx) => _EditPickupPointDialog(point: point),
-                        );
-                        if (updated != null) {
-                          Provider.of<RouteManagementProvider>(context, listen: false)
-                              .updatePickupPoint(point.id, updated);
-                        }
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-                      onPressed: () {
-                        Provider.of<RouteManagementProvider>(context, listen: false)
-                            .removePickupPoint(point.id);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Pickup point removed')),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-                onTap: () => provider.selectPoint(point),
-              );
-            }),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _EditPickupPointDialog extends StatefulWidget {
-  final PickupPoint point;
-  const _EditPickupPointDialog({required this.point});
-
-  @override
-  State<_EditPickupPointDialog> createState() => _EditPickupPointDialogState();
-}
-
-class _EditPickupPointDialogState extends State<_EditPickupPointDialog> {
-  late TextEditingController _name, _phone, _address;
-
-  @override
-  void initState() {
-    super.initState();
-    _name = TextEditingController(text: widget.point.name);
-    _phone = TextEditingController(text: widget.point.phone);
-    _address = TextEditingController(text: widget.point.address);
-  }
-
-  @override
-  void dispose() {
-    _name.dispose();
-    _phone.dispose();
-    _address.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text("Edit Pickup Point"),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(controller: _name, decoration: const InputDecoration(labelText: "Name")),
-          TextField(controller: _phone, decoration: const InputDecoration(labelText: "Phone")),
-          TextField(controller: _address, decoration: const InputDecoration(labelText: "Address")),
-        ],
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-        ElevatedButton(
-          onPressed: () {
-            Navigator.pop(
-              context,
-              widget.point.copyWith(
-                name: _name.text,
-                phone: _phone.text,
-                address: _address.text,
-              ),
-            );
-          },
-          child: const Text("Save"),
-        ),
-      ],
     );
   }
 }
