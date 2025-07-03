@@ -7,9 +7,10 @@ import 'package:smart_bus_mobility_platform1/screens/forgot_password_screen.dart
 import 'package:smart_bus_mobility_platform1/screens/login_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/signup_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/passenger_map_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/transform_lat_lng.dart';
 
 class AppRoutes {
-  static const String mapScreen = '/map';
+  static const String passengerMapScreen = '/passengerMap';
   static const String homeScreen = '/home';
   static const String loginScreen = '/login';
   static const String paymentScreen = '/payment';
@@ -23,6 +24,7 @@ class AppRoutes {
   static const String busDriverHomeScreen = '/busdriver';
   static const String emailVerificationScreen = '/verifyEmail';
   static const String forgotPasswordScreen = '/forgotPassword';
+  static const String coordinatetoAddressScreen = '/coordinateToAddress';
 
 
   static Map<String, WidgetBuilder> getRoutes() {
@@ -31,12 +33,13 @@ class AppRoutes {
       //homeScreen: (context) => SplashScreen(),
       signUpScreen: (context) => SignUpScreen(),
       loginScreen: (context) => SignInScreen(),
-      mapScreen: (context) => MapScreen(),
+      passengerMapScreen: (context) => PassengerMapScreen(),
       emailVerificationScreen: (context) => EmailVerificationScreen(),
       forgotPasswordScreen: (context) => ForgotPasswordScreen(),
       adminScreen: (context) => AdminHomeScreen(),
       passengerHomeScreen: (context) => CustomerHomeScreen(),
-      busDriverHomeScreen: (context) => BusDriverHomeScreen()
+      busDriverHomeScreen: (context) => BusDriverHomeScreen(),
+      coordinatetoAddressScreen: (context) => TransformLatLngToAddress()
 
 
 

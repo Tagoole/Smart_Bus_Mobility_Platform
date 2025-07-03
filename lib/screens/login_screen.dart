@@ -47,7 +47,7 @@ class _SignInScreenState extends State<SignInScreen> {
         Navigator.pushReplacementNamed(context, AppRoutes.adminScreen);
         break;
       case 'user':
-        Navigator.pushReplacementNamed(context, AppRoutes.passengerHomeScreen);
+        Navigator.pushReplacementNamed(context, AppRoutes.coordinatetoAddressScreen);
         break;
       case 'driver':
         Navigator.pushReplacementNamed(context, AppRoutes.busDriverHomeScreen);
@@ -467,24 +467,7 @@ class DiagonalDividerPainter extends CustomPainter {
   bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
 
-// Main app to demonstrate the screen
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Transportation Sign In',
-      theme: ThemeData(
-        primarySwatch: Colors.green,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
-      home: const SignInScreen(),
-      debugShowCheckedModeBanner: false,
-    );
-  }
-}
 
-void main() {
-  runApp(const MyApp());
-}
+
+
