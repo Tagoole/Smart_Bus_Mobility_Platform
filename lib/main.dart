@@ -56,7 +56,7 @@ class MyApp extends StatelessWidget {
         routes: AppRoutes.getRoutes(),
 
         //initialRoute: AppRoutes.mapScreen,
-        home: BusBuddyApp(),
+        home:  BusTrackingScreen(),
         //home: Scaffold(
         //  backgroundColor: Colors.blue,
         //  body: Container(width: 200, height: 200, color: Colors.amberAccent),
