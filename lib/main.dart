@@ -15,8 +15,8 @@ import 'package:smart_bus_mobility_platform1/screens/email_verification_screen.d
 //import 'package:smart_bus_mobility_platform1/screens/paymentsuccess_screen.dart';
 //import 'package:smart_bus_mobility_platform1/screens/map_screen.dart';
 //import 'package:smart_bus_mobility_platform1/screens/splash_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/booking_screen.dart'; // Import your booking screen
-//import 'package:smart_bus_mobility_platform1/screens/AvailableBus_screen.dart'; // Import your available bus screen
+//import 'package:smart_bus_mobility_platform1/screens/booking_screen.dart'; // Import your booking screen
+import 'package:smart_bus_mobility_platform1/screens/AvailableBus_screen.dart'; // Import your available bus screen
 //import 'package:smart_bus_mobility_platform1/screens/selectseat_screen.dart'; // Import your seat selection screen
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,7 +67,7 @@ class MyApp extends StatelessWidget {
         },
                  
         //initialRoute: AppRoutes.mapScreen,
-        home:BusBooking(), // Set the initial home screen
+        home:AvailableBus(), // Set the initial home screen
                  
         //home: Scaffold(
         //  backgroundColor: Colors.blue,

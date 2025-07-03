@@ -230,8 +230,8 @@ class _AvailableBus extends State<AvailableBus> {
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF6D6), // Light cream/yellow
-        borderRadius: BorderRadius.circular(16),
+        color: const Color.fromARGB(255, 77, 78, 61), // Light cream/yellow
+        borderRadius: BorderRadius.circular(28),
         border: Border.all(
           color: const Color(0xFF004225).withOpacity(0.2),
           width: 1,
@@ -325,7 +325,7 @@ class _AvailableBus extends State<AvailableBus> {
                         : const Color(0xFF004225),
                     side: BorderSide(color: const Color(0xFF004225), width: 1),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(19),
                     ),
                   ),
                   child: const Text('One way'),
@@ -348,7 +348,7 @@ class _AvailableBus extends State<AvailableBus> {
                         : const Color(0xFF004225),
                     side: BorderSide(color: const Color(0xFF004225), width: 1),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(19),
                     ),
                   ),
                   child: const Text('Round trip'),
