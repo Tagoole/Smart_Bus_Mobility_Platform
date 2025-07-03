@@ -30,6 +30,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  google_fonts: 
 
   google_maps_flutter: ^2.6.1
   geolocator: ^10.1.0
@@ -85,6 +86,9 @@ flutter:
   #   - images/a_dot_ham.jpeg
   #assets:
     
+  assets:
+    - assets/images/bus_sign_in.png
+    - assets/images/bus2_sign_in.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
