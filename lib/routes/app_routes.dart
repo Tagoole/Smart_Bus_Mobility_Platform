@@ -34,6 +34,7 @@ class AppRoutes {
       signUpScreen: (context) => SignUpScreen(),
       loginScreen: (context) => SignInScreen(),
       passengerMapScreen: (context) => PassengerMapScreen(),
+      //mapScreen: (context) => MapScreen(),
       emailVerificationScreen: (context) => EmailVerificationScreen(),
       forgotPasswordScreen: (context) => ForgotPasswordScreen(),
       adminScreen: (context) => AdminHomeScreen(),
