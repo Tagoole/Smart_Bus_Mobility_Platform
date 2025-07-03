@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'selectseat_screen.dart';
 
 class AvailableBus extends StatefulWidget {
   final String? origin;
@@ -613,7 +614,15 @@ class _AvailableBus extends State<AvailableBus> {
               alignment: Alignment.centerRight,
               child: ElevatedButton(
                 onPressed: () {
-                  // Add your booking logic here
+                  // Navigate to SelectSeatScreen when Book Now is pressed
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SelectSeatScreen(
+                        busInfo: bus, // Pass the selected bus info if needed
+                      ),
+                    ),
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF004225),
