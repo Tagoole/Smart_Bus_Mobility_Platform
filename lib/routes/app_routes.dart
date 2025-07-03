@@ -4,10 +4,9 @@ import 'package:smart_bus_mobility_platform1/screens/bus_driver_home_screen.dart
 import 'package:smart_bus_mobility_platform1/screens/customer_home_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/email_verification_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/forgot_password_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/home_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/login_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/signup_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/map_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/passenger_map_screen.dart';
 
 class AppRoutes {
   static const String mapScreen = '/map';
