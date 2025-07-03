@@ -1,20 +1,19 @@
 import 'dart:io';
-
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:smart_bus_mobility_platform1/routes/app_routes.dart';
-import 'package:smart_bus_mobility_platform1/screens/admin_screens/admin_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/home_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/login_screen.dart';
-//import 'firebase_options.dart';
-import 'package:smart_bus_mobility_platform1/screens/map_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/route_managment.dart';
-import 'package:smart_bus_mobility_platform1/screens/route_optimization.dart';
-import 'package:smart_bus_mobility_platform1/screens/splash_screen.dart';
+import 'package:flutter/services.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
 
   if (kIsWeb) {
     await Firebase.initializeApp(
@@ -38,7 +37,7 @@ void main() async {
     );
   }
 
-  runApp( MyApp());
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -53,10 +52,26 @@ class MyApp extends StatelessWidget {
         theme: ThemeData.light().copyWith(
           scaffoldBackgroundColor: Colors.blueGrey,
         ),
-        routes: AppRoutes.getRoutes(),
-
+        routes: AppRoutes.getRoutes(), // Spread your existing routes
+        //home: SplashScreen(),
         //initialRoute: AppRoutes.mapScreen,
-        home:  BusTrackingScreen(),
+        home: StreamBuilder(
+          stream: FirebaseAuth.instance.authStateChanges(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.active) {
+              if (snapshot.hasData) {
+              } else if (snapshot.hasError) {
+                return Center(child: Text('${snapshot.error}'));
+              }
+            } else if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              );
+            }
+            return SignInScreen();
+          },
+        ),
+
         //home: Scaffold(
         //  backgroundColor: Colors.blue,
         //  body: Container(width: 200, height: 200, color: Colors.amberAccent),
