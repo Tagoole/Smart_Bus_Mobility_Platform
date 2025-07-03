@@ -2,808 +2,781 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 void main() {
-  runApp(const BusBuddyApp());
+  runApp(BusTrackingApp());
 }
 
-class BusBuddyApp extends StatelessWidget {
-  const BusBuddyApp({Key? key}) : super(key: key);
-
+class BusTrackingApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Bus Buddy',
+      title: 'Bus Tracking',
       theme: ThemeData(
-        primarySwatch: Colors.green,
-        primaryColor: const Color(0xFF576238), // Dark Olive Green
-        scaffoldBackgroundColor: const Color(0xFFF0EADC), // Light Cream
-        fontFamily: 'Inter',
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF576238),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        ),
+        primarySwatch: Colors.blue,
+        scaffoldBackgroundColor: Colors.white,
       ),
-      home: const HomeScreen(),
+      home: BusTrackingScreen(),
     );
   }
 }
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
-
+class BusTrackingScreen extends StatefulWidget {
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  _BusTrackingScreenState createState() => _BusTrackingScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  int _currentIndex = 0;
-  
+class _BusTrackingScreenState extends State<BusTrackingScreen> {
+  int _selectedIndex = 0;
+  bool _showActiveJourney = false;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0EADC),
+      backgroundColor: Colors.grey[100],
       body: SafeArea(
-        bottom: false,
         child: Column(
           children: [
-            const HeaderWidget(),
-            const NotificationBanner(),
+            // Header
+            _buildHeader(),
+            
+            // Notifications
+            _buildNotifications(),
+            
+            // Map and Content
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: const [
-                    MapPreviewWidget(),
-                    QuickActionsWidget(),
-                    ActiveJourneyWidget(hasActiveJourney: true),
-                    SizedBox(height: 100), // Space for bottom navigation
-                  ],
-                ),
+              child: Stack(
+                children: [
+                  // Map Background
+                  _buildMapBackground(),
+                  
+                  // Content Panel
+                  DraggableScrollableSheet(
+                    initialChildSize: 0.5,
+                    minChildSize: 0.3,
+                    maxChildSize: 0.8,
+                    builder: (context, scrollController) {
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 10,
+                              offset: Offset(0, -5),
+                            ),
+                          ],
+                        ),
+                        child: SingleChildScrollView(
+                          controller: scrollController,
+                          child: _showActiveJourney ? _buildActiveJourney() : _buildMainContent(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
             ),
+            
+            // Bottom Navigation
+            _buildBottomNavigation(),
           ],
         ),
       ),
-      bottomNavigationBar: const BottomNavigationWidget(),
     );
   }
-}
 
-class HeaderWidget extends StatelessWidget {
-  const HeaderWidget({Key? key}) : super(key: key);
-
-  String getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(16),
       child: Row(
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "${getGreeting()}, Larry 👋",
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  "Where are we heading today?",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.black54,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: const [
-                    Text("🌤️", style: TextStyle(fontSize: 14)),
-                    SizedBox(width: 8),
-                    Text(
-                      "24°C, Kampala",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.black54,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Stack(
+              Text(
+                'Good morning, Larry 👋',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Where are we heading today?',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+              ),
+              SizedBox(height: 8),
+              Row(
                 children: [
-                  IconButton(
-                    onPressed: () {},
-                    icon: const Icon(Icons.notifications_outlined),
-                    iconSize: 24,
-                  ),
-                  Positioned(
-                    right: 8,
-                    top: 8,
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFFFD95D),
-                        shape: BoxShape.circle,
-                      ),
+                  Icon(Icons.location_on, size: 16, color: Colors.orange),
+                  SizedBox(width: 4),
+                  Text(
+                    '24°C, Kampala',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(width: 12),
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: const Color(0xFF576238).withOpacity(0.2),
-                child: const Text(
-                  "LM",
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF576238),
-                  ),
-                ),
-              ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class NotificationBanner extends StatefulWidget {
-  const NotificationBanner({Key? key}) : super(key: key);
-
-  @override
-  State<NotificationBanner> createState() => _NotificationBannerState();
-}
-
-class _NotificationBannerState extends State<NotificationBanner> {
-  List<NotificationItem> notifications = [
-    NotificationItem(
-      id: "1",
-      type: NotificationType.warning,
-      message: "Bus #19 on Route 3 is delayed by 8 mins",
-    ),
-    NotificationItem(
-      id: "2",
-      type: NotificationType.info,
-      message: "Route 4 temporarily suspended due to maintenance",
-    ),
-  ];
-
-  void dismissNotification(String id) {
-    setState(() {
-      notifications.removeWhere((n) => n.id == id);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (notifications.isEmpty) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      child: Column(
-        children: notifications.map((notification) {
-          return Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: notification.type == NotificationType.warning
-                  ? const Color(0xFFFFD95D).withOpacity(0.1)
-                  : const Color(0xFF576238).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border(
-                left: BorderSide(
-                  color: notification.type == NotificationType.warning
-                      ? const Color(0xFFFFD95D)
-                      : const Color(0xFF576238),
-                  width: 4,
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  notification.type == NotificationType.warning
-                      ? Icons.warning_amber_outlined
-                      : Icons.info_outline,
-                  color: notification.type == NotificationType.warning
-                      ? const Color(0xFFFFD95D)
-                      : const Color(0xFF576238),
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    notification.message,
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => dismissNotification(notification.id),
-                  icon: const Icon(Icons.close, size: 20),
-                  splashRadius: 20,
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-}
-
-class MapPreviewWidget extends StatelessWidget {
-  const MapPreviewWidget({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Map Preview
-          Container(
-            height: 200,
-            decoration: const BoxDecoration(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
-              ),
-            ),
-            child: Stack(
-              children: [
-                // Location indicator
-                Positioned(
-                  top: 16,
-                  left: 16,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.9),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(
-                          Icons.location_on,
-                          size: 16,
-                          color: Color(0xFF576238),
-                        ),
-                        SizedBox(width: 4),
-                        Text(
-                          "Bugolobi Stage",
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                // Live tracking button
-                Positioned(
-                  bottom: 16,
-                  right: 16,
-                  child: ElevatedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.navigation, size: 16),
-                    label: const Text("Live Tracking"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFFD95D),
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Bus information
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "Next Buses",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _buildBusInfo("12", "Route 12 - City Center", "4 mins", true),
-                const SizedBox(height: 8),
-                _buildBusInfo("19", "Route 19 - Ntinda", "9 mins", false),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBusInfo(String route, String destination, String time, bool isNext) {
-    return Row(
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: isNext ? const Color(0xFF576238) : Colors.grey.shade300,
-            shape: BoxShape.circle,
-          ),
-          child: Center(
+          Spacer(),
+          CircleAvatar(
+            backgroundColor: Colors.green[700],
             child: Text(
-              route,
+              'LM',
               style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: isNext ? Colors.white : Colors.grey.shade600,
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotifications() {
+    return Column(
+      children: [
+        _buildNotificationItem(
+          Icons.warning_amber,
+          'Bus #19 on Route 3 is delayed by 8 mins',
+          Colors.orange,
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            destination,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-        Text(
-          time,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: isNext ? const Color(0xFF576238) : Colors.grey.shade600,
-          ),
+        _buildNotificationItem(
+          Icons.info,
+          'Route 4 temporarily suspended due to maintenance',
+          Colors.blue,
         ),
       ],
     );
   }
-}
 
-class QuickActionsWidget extends StatelessWidget {
-  const QuickActionsWidget({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final actions = [
-      QuickAction(
-        icon: Icons.map_outlined,
-        title: "Plan Journey",
-        description: "Find best route",
+  Widget _buildNotificationItem(IconData icon, String text, Color color) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
       ),
-      QuickAction(
-        icon: Icons.confirmation_number_outlined,
-        title: "Buy Ticket",
-        description: "Quick purchase",
-      ),
-      QuickAction(
-        icon: Icons.directions_bus_outlined,
-        title: "Track My Bus",
-        description: "Live location",
-      ),
-      QuickAction(
-        icon: Icons.receipt_long_outlined,
-        title: "My Tickets",
-        description: "View history",
-      ),
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          const Text(
-            "Quick Actions",
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
+          Icon(icon, color: color, size: 20),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.black87,
+              ),
             ),
           ),
-          const SizedBox(height: 16),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 1.2,
-            ),
-            itemCount: actions.length,
-            itemBuilder: (context, index) {
-              final action = actions[index];
-              return InkWell(
-                onTap: () {},
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        action.icon,
-                        size: 32,
-                        color: const Color(0xFF576238),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        action.title,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        action.description,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
+          Icon(Icons.close, size: 20, color: Colors.grey),
         ],
       ),
     );
   }
-}
 
-class ActiveJourneyWidget extends StatelessWidget {
-  final bool hasActiveJourney;
-
-  const ActiveJourneyWidget({Key? key, this.hasActiveJourney = true}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildMapBackground() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      width: double.infinity,
+      height: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border(
-          left: BorderSide(
-            color: hasActiveJourney ? const Color(0xFF576238) : Colors.grey.shade300,
-            width: 4,
-          ),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFB8E6B8),
+            Color(0xFF90EE90),
+            Color(0xFFADFF2F),
+          ],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 2),
+      ),
+      child: Stack(
+        children: [
+          // Map-like pattern
+          Positioned.fill(
+            child: CustomPaint(
+              painter: MapPatternPainter(),
+            ),
           ),
+          
+          // Location marker
+          Positioned(
+            left: 40,
+            top: 100,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.location_on, size: 16, color: Colors.red),
+                  SizedBox(width: 4),
+                  Text(
+                    'Bugolobi Stage',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          // Live tracking button
+          Positioned(
+            right: 16,
+            top: 100,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.amber,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.my_location, size: 16, color: Colors.black),
+                  SizedBox(width: 4),
+                  Text(
+                    'Live Tracking',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          // Bus route line
+          Positioned(
+            right: 20,
+            top: 150,
+            child: Container(
+              width: 4,
+              height: 120,
+              decoration: BoxDecoration(
+                color: Colors.amber,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          
+          // Bus stops
+          for (int i = 0; i < 4; i++)
+            Positioned(
+              right: 16,
+              top: 150 + (i * 30.0),
+              child: Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: Colors.amber,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: hasActiveJourney ? _buildActiveJourney() : _buildNoActiveJourney(),
-      ),
+    );
+  }
+
+  Widget _buildMainContent() {
+    return Column(
+      children: [
+        // Handle bar
+        Container(
+          width: 40,
+          height: 4,
+          margin: EdgeInsets.only(top: 12, bottom: 20),
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        
+        // Next Buses
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Next Buses',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              SizedBox(height: 16),
+              _buildBusItem('12', 'Route 12 - City Center', '4 mins'),
+              _buildBusItem('19', 'Route 19 - Ntinda', '9 mins'),
+            ],
+          ),
+        ),
+        
+        SizedBox(height: 24),
+        
+        // Quick Actions
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Quick Actions',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildActionCard(
+                      Icons.route,
+                      'Plan Journey',
+                      'Find best route',
+                      () {
+                        // Plan journey action
+                      },
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: _buildActionCard(
+                      Icons.confirmation_number,
+                      'Buy Ticket',
+                      'Quick purchase',
+                      () {
+                        // Buy ticket action
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildActionCard(
+                      Icons.location_searching,
+                      'Track My Bus',
+                      'Live location',
+                      () {
+                        setState(() {
+                          _showActiveJourney = true;
+                        });
+                      },
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: _buildActionCard(
+                      Icons.receipt,
+                      'My Tickets',
+                      'View history',
+                      () {
+                        // View tickets action
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        
+        SizedBox(height: 32),
+      ],
     );
   }
 
   Widget _buildActiveJourney() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              "Active Journey",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+        // Handle bar
+        Container(
+          width: 40,
+          height: 4,
+          margin: EdgeInsets.only(top: 12, bottom: 20),
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        
+        // Active Journey Header
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              Text(
+                'Active Journey',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
               ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFF576238).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF576238),
-                      shape: BoxShape.circle,
-                    ),
+              Spacer(),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.green,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Live',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                   ),
-                  const SizedBox(width: 4),
-                  const Text(
-                    "Live",
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF576238),
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        SizedBox(height: 16),
+        
+        // Journey Details
+        Container(
+          margin: EdgeInsets.symmetric(horizontal: 16),
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey[50],
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.location_on, color: Colors.blue, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Kampala → Ntinda',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          'Route 19',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: const [
-            Icon(
-              Icons.location_on,
-              size: 20,
-              color: Color(0xFF576238),
-            ),
-            SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Kampala → Ntinda",
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Text(
-                  "Route 19",
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.black54,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: Row(
-                children: const [
-                  Icon(
-                    Icons.access_time,
-                    size: 16,
-                    color: Color(0xFFFFD95D),
-                  ),
-                  SizedBox(width: 4),
+              SizedBox(height: 16),
+              Row(
+                children: [
+                  Icon(Icons.schedule, color: Colors.orange, size: 20),
+                  SizedBox(width: 8),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "ETA 14 mins",
+                        'ETA 14 mins',
                         style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       Text(
-                        "3 stops left",
+                        '3 stops left',
                         style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.black54,
+                          fontSize: 14,
+                          color: Colors.grey[600],
                         ),
                       ),
                     ],
                   ),
                 ],
               ),
+            ],
+          ),
+        ),
+        
+        SizedBox(height: 16),
+        
+        // View Live Map Button
+        Container(
+          width: double.infinity,
+          margin: EdgeInsets.symmetric(horizontal: 16),
+          child: ElevatedButton(
+            onPressed: () {
+              // View live map action
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.amber,
+              foregroundColor: Colors.black,
+              padding: EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-            ElevatedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.navigation, size: 16),
-              label: const Text("View Live Map"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFD95D),
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.warning, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'View Live Map',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
+              ],
+            ),
+          ),
+        ),
+        
+        SizedBox(height: 24),
+        
+        // Back to main content
+        TextButton(
+          onPressed: () {
+            setState(() {
+              _showActiveJourney = false;
+            });
+          },
+          child: Text(
+            'Back to Main',
+            style: TextStyle(
+              color: Colors.blue,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        
+        SizedBox(height: 32),
+      ],
+    );
+  }
+
+  Widget _buildBusItem(String busNumber, String routeName, String time) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.blue,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Center(
+              child: Text(
+                busNumber,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              routeName,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Text(
+            time,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[600],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionCard(IconData icon, String title, String subtitle, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey[50],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey[200]!),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 24, color: Colors.blue),
+            SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
               ),
             ),
           ],
         ),
-      ],
+      ),
     );
   }
 
-  Widget _buildNoActiveJourney() {
-    return Column(
-      children: [
-        Icon(
-          Icons.directions_bus_outlined,
-          size: 48,
-          color: Colors.grey.shade400,
-        ),
-        const SizedBox(height: 12),
-        Text(
-          "No active trip",
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey.shade600,
-          ),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFFD95D),
-              foregroundColor: Colors.black,
-            ),
-            child: const Text("Plan a Trip"),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class BottomNavigationWidget extends StatefulWidget {
-  const BottomNavigationWidget({Key? key}) : super(key: key);
-
-  @override
-  State<BottomNavigationWidget> createState() => _BottomNavigationWidgetState();
-}
-
-class _BottomNavigationWidgetState extends State<BottomNavigationWidget> {
-  int _currentIndex = 0;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildBottomNavigation() {
     return Container(
-      decoration: const BoxDecoration(
+      padding: EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black12,
-            blurRadius: 8,
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
             offset: Offset(0, -2),
           ),
         ],
       ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(0, Icons.home_outlined, Icons.home, "Home"),
-              _buildNavItem(1, Icons.map_outlined, Icons.map, "Plan"),
-              _buildNavItem(2, Icons.confirmation_number_outlined, Icons.confirmation_number, "Tickets"),
-              _buildNavItem(3, Icons.person_outline, Icons.person, "Profile"),
-            ],
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildNavItem(Icons.home, 'Home', 0),
+          _buildNavItem(Icons.route, 'Plan', 1),
+          _buildNavItem(Icons.confirmation_number, 'Tickets', 2),
+          _buildNavItem(Icons.person, 'Profile', 3),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavItem(IconData icon, String label, int index) {
+    bool isSelected = _selectedIndex == index;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedIndex = index;
+        });
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            color: isSelected ? Colors.blue : Colors.grey,
+            size: 24,
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(int index, IconData inactiveIcon, IconData activeIcon, String label) {
-    final isActive = _currentIndex == index;
-    
-    return InkWell(
-      onTap: () => setState(() => _currentIndex = index),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: isActive ? const Color(0xFF576238).withOpacity(0.1) : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isActive ? activeIcon : inactiveIcon,
-              size: 24,
-              color: isActive ? const Color(0xFF576238) : Colors.grey.shade600,
+          SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: isSelected ? Colors.blue : Colors.grey,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: isActive ? const Color(0xFF576238) : Colors.grey.shade600,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-// Data Models
-class NotificationItem {
-  final String id;
-  final NotificationType type;
-  final String message;
+class MapPatternPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.3)
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
 
-  NotificationItem({
-    required this.id,
-    required this.type,
-    required this.message,
-  });
-}
+    // Draw some map-like lines
+    for (int i = 0; i < 10; i++) {
+      double y = (size.height / 10) * i;
+      canvas.drawLine(
+        Offset(0, y),
+        Offset(size.width, y),
+        paint,
+      );
+    }
 
-enum NotificationType { info, warning }
+    for (int i = 0; i < 8; i++) {
+      double x = (size.width / 8) * i;
+      canvas.drawLine(
+        Offset(x, 0),
+        Offset(x, size.height),
+        paint,
+      );
+    }
 
-class QuickAction {
-  final IconData icon;
-  final String title;
-  final String description;
+    // Draw some curved roads
+    final path = Path();
+    path.moveTo(size.width * 0.2, size.height * 0.3);
+    path.quadraticBezierTo(
+      size.width * 0.5, size.height * 0.1,
+      size.width * 0.8, size.height * 0.4,
+    );
+    canvas.drawPath(path, paint);
 
-  QuickAction({
-    required this.icon,
-    required this.title,
-    required this.description,
-  });
+    final path2 = Path();
+    path2.moveTo(size.width * 0.1, size.height * 0.6);
+    path2.quadraticBezierTo(
+      size.width * 0.4, size.height * 0.8,
+      size.width * 0.9, size.height * 0.5,
+    );
+    canvas.drawPath(path2, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
