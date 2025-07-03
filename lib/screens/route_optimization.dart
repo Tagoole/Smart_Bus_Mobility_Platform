@@ -251,6 +251,14 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ),
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          // Show dialog or bottom sheet to add a new point
+        },
+        icon: const Icon(Icons.add_location_alt),
+        label: const Text('Add Pickup Point'),
+        backgroundColor: Colors.blueAccent,
+      ),
     );
   }
 
@@ -509,24 +517,32 @@ class _RouteOptimizerScreenState extends State<RouteOptimizerScreen>
       lat: 40.7128,
       lng: -74.0060,
       address: '123 Main St, New York, NY',
+      order: null,
+      eta: null,
     ),
     PickupPoint(
       id: '2',
       lat: 40.7589,
       lng: -73.9851,
       address: '456 Broadway, New York, NY',
+      order: null,
+      eta: null,
     ),
     PickupPoint(
       id: '3',
       lat: 40.7614,
       lng: -73.9776,
       address: '789 5th Ave, New York, NY',
+      order: null,
+      eta: null,
     ),
     PickupPoint(
       id: '4',
       lat: 40.7505,
       lng: -73.9934,
       address: '321 Park Ave, New York, NY',
+      order: null,
+      eta: null,
     ),
   ];
 
@@ -619,13 +635,12 @@ class _RouteOptimizerScreenState extends State<RouteOptimizerScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text(
           'Route Optimizer',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -634,34 +649,42 @@ class _RouteOptimizerScreenState extends State<RouteOptimizerScreen>
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Map Section
-            _buildMapSection(),
-            const SizedBox(height: 24),
-            // Stats and Route Info
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    children: [
-                      if (_routeStats != null) ...[
-                        _buildRouteStats(),
-                        const SizedBox(height: 16),
+      body: AnimatedGradientContainer(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildMapSection(),
+              const SizedBox(height: 24),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      children: [
+                        if (_routeStats != null) ...[
+                          _buildRouteStats(),
+                          const SizedBox(height: 16),
+                        ],
+                        _buildRouteList(),
                       ],
-                      _buildRouteList(),
-                    ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          // Show dialog or bottom sheet to add a new point
+        },
+        icon: const Icon(Icons.add_location_alt),
+        label: const Text('Add Pickup Point'),
+        backgroundColor: Colors.blueAccent,
       ),
     );
   }
@@ -961,72 +984,85 @@ class _RouteOptimizerScreenState extends State<RouteOptimizerScreen>
   }
 
   Widget _buildRouteItem(PickupPoint point, int index, bool isOptimized) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isOptimized
-            ? Colors.green.withOpacity(0.05)
-            : Colors.grey.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isOptimized
-              ? Colors.green.withOpacity(0.2)
-              : Colors.grey.withOpacity(0.2),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: isOptimized ? Colors.green : Colors.grey[600],
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Center(
-              child: Text(
-                (point.order ?? index + 1).toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-            ),
+    return TweenAnimationBuilder<double>(
+      duration: Duration(milliseconds: 400 + index * 80),
+      tween: Tween(begin: 0.0, end: 1.0),
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 30 * (1 - value)),
+            child: child,
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  point.address,
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isOptimized
+              ? Colors.green.withOpacity(0.05)
+              : Colors.grey.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isOptimized
+                ? Colors.green.withOpacity(0.2)
+                : Colors.grey.withOpacity(0.2),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: isOptimized ? Colors.green : Colors.grey[600],
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Center(
+                child: Text(
+                  (point.order ?? index + 1).toString(),
                   style: const TextStyle(
-                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
                 ),
-                if (point.eta != null) ...[
-                  const SizedBox(height: 4),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    'ETA: ${point.eta}',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 12,
+                    point.address,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
                     ),
                   ),
+                  if (point.eta != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'ETA: ${point.eta}',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          if (isOptimized)
-            Icon(
-              Icons.check_circle,
-              color: Colors.green,
-              size: 20,
-            ),
-        ],
+            if (isOptimized)
+              Icon(
+                Icons.check_circle,
+                color: Colors.green,
+                size: 20,
+              ),
+          ],
+        ),
       ),
     );
   }
