@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:smart_bus_mobility_platform1/resources/auth_service.dart';
 import 'package:smart_bus_mobility_platform1/routes/app_routes.dart';
 import 'package:smart_bus_mobility_platform1/utils/utils.dart';
+import 'package:flutter/gestures.dart';
 
 // work on remember me
 class SignInScreen extends StatefulWidget {
@@ -419,26 +420,31 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   Widget _buildFooterText() {
-    return Center(
-      child: RichText(
-        text: const TextSpan(
-          text: "Don't have an account? ",
-          style: TextStyle(color: Colors.black, fontSize: 14),
-          children: [
-            TextSpan(
-              text: 'Sign Up',
-              style: TextStyle(
-                color: Color(0xFF1B5E20),
-                fontWeight: FontWeight.bold,
-                decoration: TextDecoration.underline,
-              ),
+  return Center(
+    child: RichText(
+      text: TextSpan(
+        text: "Don't have an account? ",
+        style: const TextStyle(color: Colors.black, fontSize: 14),
+        children: [
+          TextSpan(
+            text: 'Sign Up',
+            style: const TextStyle(
+              color: Color(0xFF1B5E20),
+              fontWeight: FontWeight.bold,
+              decoration: TextDecoration.underline,
             ),
-          ],
-        ),
+            recognizer: TapGestureRecognizer()
+              ..onTap = () {
+                Navigator.pushNamed(context, AppRoutes.signUpScreen);
+              },
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
 }
+  }
+
 
 class DiagonalDividerPainter extends CustomPainter {
   @override
