@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:smart_bus_mobility_platform1/resources/auth_service.dart';
+import 'package:smart_bus_mobility_platform1/routes/app_routes.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -411,15 +412,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             ),
                             GestureDetector(
                               onTap: () {
-                                Navigator.pushReplacementNamed(
+                                Navigator.pushNamed(
                                   context,
-                                  '/signin',
+                                  AppRoutes.loginScreen,
                                 );
                               },
                               child: const Text(
                                 'Sign In',
                                 style: TextStyle(
-                                  color: Color(0xFFFFEB3B),
+                                  color: Color.fromARGB(255, 9, 9, 9),
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                   decoration: TextDecoration.underline,
