@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'paymentsuccess_screen.dart';
 
 class PaymentScreen extends StatefulWidget {
   const PaymentScreen({Key? key}) : super(key: key);
@@ -429,6 +430,19 @@ class _PaymentScreen extends State<PaymentScreen> {
                     backgroundColor: Colors.green,
                   ),
                 );
+                bool paymentSuccess =
+                    true; // Replace with your actual payment result
+
+                if (paymentSuccess) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const PaymentSuccess(),
+                    ),
+                  );
+                } else {
+                  
+                }
               }
             },
             style: ElevatedButton.styleFrom(

@@ -10,9 +10,9 @@ import 'package:smart_bus_mobility_platform1/screens/email_verification_screen.d
 
 //import 'firebase_options.dart';
 //import 'package:smart_bus_mobility_platform1/screens/map_screen.dart'
-import 'package:smart_bus_mobility_platform1/screens/payment_screen.dart';
+//import 'package:smart_bus_mobility_platform1/screens/payment_screen.dart';
 //import 'package:smart_bus_mobility_platform1/screens/payment1_screen.dart';
-//import 'package:smart_bus_mobility_platform1/screens/paymentsuccess_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/paymentsuccess_screen.dart';
 //import 'package:smart_bus_mobility_platform1/screens/map_screen.dart';
 //import 'package:smart_bus_mobility_platform1/screens/splash_screen.dart';
 //import 'package:smart_bus_mobility_platform1/screens/booking_screen.dart'; // Import your booking screen
@@ -67,7 +67,8 @@ class MyApp extends StatelessWidget {
         },
                  
         //initialRoute: AppRoutes.mapScreen,
-        home:PaymentScreen(), // Set the initial home screen
+  
+        home: PaymentSuccess(), // Set the initial home screen
                  
         //home: Scaffold(
         //  backgroundColor: Colors.blue,
