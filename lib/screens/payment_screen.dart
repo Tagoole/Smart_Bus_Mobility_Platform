@@ -213,7 +213,11 @@ class _PaymentScreen extends State<PaymentScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.phone_android, color: Colors.yellow.shade600, size: 24),
+              Icon(
+                Icons.phone_android,
+                color: Colors.yellow.shade600,
+                size: 24,
+              ),
               const SizedBox(width: 10),
               const Text(
                 'Manual Payment',
@@ -342,24 +346,106 @@ class _PaymentScreen extends State<PaymentScreen> {
   }
 
   Widget _buildAmountInput() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.green, width: 2),
-      ),
-      child: TextField(
-        controller: amountController,
-        style: TextStyle(color: Colors.yellow.shade600),
-        keyboardType: TextInputType.number,
-        decoration: InputDecoration(
-          hintText: 'Enter amount you are paying',
-          hintStyle: TextStyle(color: Colors.grey.shade400),
-          border: InputBorder.none,
-          suffixIcon: Icon(Icons.edit, color: Colors.yellow.shade600),
+    final TextEditingController phoneController = TextEditingController();
+    final TextEditingController pinController = TextEditingController();
+
+    return Column(
+      children: [
+        // Amount input
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 15),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.green, width: 2),
+          ),
+          child: TextField(
+            controller: amountController,
+            style: TextStyle(color: Colors.yellow.shade600),
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              hintText: 'Enter amount you are paying',
+              hintStyle: TextStyle(color: Colors.grey.shade400),
+              border: InputBorder.none,
+              suffixIcon: Icon(Icons.edit, color: Colors.yellow.shade600),
+            ),
+          ),
         ),
-      ),
+        const SizedBox(height: 15),
+        // Telephone number input
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 15),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.green, width: 2),
+          ),
+          child: TextField(
+            controller: phoneController,
+            style: TextStyle(color: Colors.yellow.shade600),
+            keyboardType: TextInputType.phone,
+            decoration: InputDecoration(
+              hintText: 'Enter telephone number',
+              hintStyle: TextStyle(color: Colors.grey.shade400),
+              border: InputBorder.none,
+              prefixIcon: Icon(Icons.phone, color: Colors.yellow.shade600),
+            ),
+          ),
+        ),
+        const SizedBox(height: 15),
+        // Pay Now button
+        Center(
+          child: ElevatedButton(
+            onPressed: () async {
+              // Prompt for PIN
+              String? pin = await showDialog<String>(
+                context: context,
+                builder: (context) {
+                  return AlertDialog(
+                    title: const Text('Enter your PIN'),
+                    content: TextField(
+                      controller: pinController,
+                      obscureText: true,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(hintText: 'PIN'),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () =>
+                            Navigator.of(context).pop(pinController.text),
+                        child: const Text('OK'),
+                      ),
+                    ],
+                  );
+                },
+              );
+              if (pin != null && pin.isNotEmpty) {
+                // Simulate deduction
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'UGX ${amountController.text} deducted from ${phoneController.text}',
+                    ),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.yellow.shade600,
+              foregroundColor: Colors.green.shade900,
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text(
+              'Pay Now',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -418,6 +504,59 @@ class _PaymentScreen extends State<PaymentScreen> {
           ),
           const SizedBox(height: 15),
           _buildCardInput('Cardholder Name', 'John Doe'),
+          const SizedBox(height: 15),
+          // Add amount input field here
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 15),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.green, width: 2),
+            ),
+            child: TextField(
+              keyboardType: TextInputType.number,
+              style: TextStyle(color: Colors.yellow.shade600),
+              decoration: InputDecoration(
+                hintText: 'Enter amount to pay',
+                hintStyle: TextStyle(color: Colors.grey.shade400),
+                border: InputBorder.none,
+                prefixIcon: Icon(
+                  Icons.attach_money,
+                  color: Colors.yellow.shade600,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 15),
+          // Add Pay Now button here
+          Center(
+            child: ElevatedButton(
+              onPressed: () {
+                // Simulate payment deduction logic here
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Amount deducted from credit card!'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.yellow.shade600,
+                foregroundColor: Colors.green.shade900,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 15,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text(
+                'Pay Now',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -443,7 +582,10 @@ class _PaymentScreen extends State<PaymentScreen> {
             ),
           ),
           const SizedBox(height: 5),
-          Text(hint, style: TextStyle(color: Colors.grey.shade400, fontSize: 16)),
+          Text(
+            hint,
+            style: TextStyle(color: Colors.grey.shade400, fontSize: 16),
+          ),
         ],
       ),
     );
