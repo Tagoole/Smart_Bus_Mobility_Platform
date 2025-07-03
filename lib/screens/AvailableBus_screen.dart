@@ -618,7 +618,7 @@ class _AvailableBus extends State<AvailableBus> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => SelectSeatScreen(
+                      builder: (context) => selectseat_screen(
                         busInfo: bus, // Pass the selected bus info if needed
                       ),
                     ),
@@ -641,6 +641,9 @@ class _AvailableBus extends State<AvailableBus> {
       ),
     );
   }
+}
+
+selectseat_screen({required BusInfo busInfo}) {
 }
 
 // BusInfo model class
