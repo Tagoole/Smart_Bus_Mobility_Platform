@@ -47,7 +47,7 @@ class _SignInScreenState extends State<SignInScreen> {
         Navigator.pushReplacementNamed(context, AppRoutes.adminScreen);
         break;
       case 'user':
-        Navigator.pushReplacementNamed(context, AppRoutes.coordinatetoAddressScreen);
+        Navigator.pushReplacementNamed(context, AppRoutes.passengerHomeScreen);
         break;
       case 'driver':
         Navigator.pushReplacementNamed(context, AppRoutes.busDriverHomeScreen);
