@@ -21,7 +21,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   String? _selectedRole;
   bool _isFormValid = false;
   bool _isLoading = false; // Added loading state
-  final List<String> _roles = ['User', 'Driver'];
+  final List<String> _roles = ['User', 'Driver','Admin'];
 
   @override
   void initState() {
