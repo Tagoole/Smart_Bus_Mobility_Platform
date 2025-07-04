@@ -37,8 +37,8 @@ class AppRoutes {
       //mapScreen: (context) => MapScreen(),
       emailVerificationScreen: (context) => EmailVerificationScreen(),
       forgotPasswordScreen: (context) => ForgotPasswordScreen(),
-      adminScreen: (context) => AdminHomeScreen(),
-      passengerHomeScreen: (context) => CustomerHomeScreen(),
+      adminScreen: (context) => AdminDashboardScreen(),
+      passengerHomeScreen: (context) => BusTrackingScreen(),
       busDriverHomeScreen: (context) => BusDriverHomeScreen(),
       coordinatetoAddressScreen: (context) => TransformLatLngToAddress()
 
