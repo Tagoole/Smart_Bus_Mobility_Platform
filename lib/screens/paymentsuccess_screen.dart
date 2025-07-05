@@ -13,7 +13,7 @@ class PaymentSuccess extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Colors.lightGreenAccent,
+              const Color.fromARGB(255, 148, 181, 111),
               Colors.green[900]!,
             ],
           ),
@@ -121,25 +121,16 @@ class PaymentSuccess extends StatelessWidget {
                   ),
                   const SizedBox(height: 40),
                   
-                  // Bottom Navigation
-                  Container(
-                    margin: const EdgeInsets.all(20),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _buildNavIcon(Icons.home, false),
-                        _buildNavIcon(Icons.access_time, false),
-                        _buildNavIcon(Icons.qr_code, false),
-                        _buildNavIcon(Icons.settings, false),
-                        _buildNavIcon(Icons.help, true), // Emphasized
-                      ],
-                    ),
-                  ),
+                 
+                    
+                  
+                
+              
+            
+          
+        
+  
+                  // You can add more widgets here if needed
                 ],
               ),
             ),
