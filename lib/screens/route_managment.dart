@@ -278,7 +278,7 @@ class _RouteManagementScreenState extends State<RouteManagementScreen> {
 // --- Pickup Form Widget as Modal/BottomSheet ---
 class PickupFormWidget extends StatefulWidget {
   final PickupPoint? editPoint;
-  const PickupFormWidget({this.editPoint});
+  const PickupFormWidget({super.key, this.editPoint});
 
   @override
   State<PickupFormWidget> createState() => _PickupFormWidgetState();
@@ -404,7 +404,7 @@ typedef EditPickupPointCallback = void Function(PickupPoint point);
 
 class PickupPointsListWidget extends StatelessWidget {
   final EditPickupPointCallback? onEdit;
-  const PickupPointsListWidget({this.onEdit});
+  const PickupPointsListWidget({super.key, this.onEdit});
 
   @override
   Widget build(BuildContext context) {
@@ -480,6 +480,8 @@ class PickupPointsListWidget extends StatelessWidget {
 
 // --- File Upload Widget ---
 class FileUploadWidget extends StatefulWidget {
+  const FileUploadWidget({super.key});
+
   @override
   State<FileUploadWidget> createState() => _FileUploadWidgetState();
 }
@@ -579,6 +581,8 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
 
 // --- Route Optimizer Widget ---
 class RouteOptimizerWidget extends StatelessWidget {
+  const RouteOptimizerWidget({super.key});
+
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<RouteManagementProvider>(context);
@@ -619,7 +623,7 @@ class RouteOptimizerWidget extends StatelessWidget {
                 Column(
                   children: [
                     Icon(Icons.straighten, color: Colors.orange),
-                    Text("${estimatedDistance} km", style: const TextStyle(fontSize: 13)),
+                    Text("$estimatedDistance km", style: const TextStyle(fontSize: 13)),
                   ],
                 ),
               ],
@@ -663,6 +667,8 @@ class RouteOptimizerWidget extends StatelessWidget {
 
 // --- Map View Widget (Mock) ---
 class MapViewWidget extends StatelessWidget {
+  const MapViewWidget({super.key});
+
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<RouteManagementProvider>(context);

@@ -977,7 +977,7 @@ class _RouteOptimizerScreenState extends State<RouteOptimizerScreen>
             final index = entry.key;
             final point = entry.value;
             return _buildRouteItem(point, index, isOptimized);
-          }).toList(),
+          }),
         ],
       ),
     );

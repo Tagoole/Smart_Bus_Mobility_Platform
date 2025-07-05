@@ -317,7 +317,7 @@ class BusRouteSOM {
 }
 
 class DynamicBusRouteManager extends ChangeNotifier {
-  List<BusStop> _busStops = [];
+  final List<BusStop> _busStops = [];
   OptimizedRoute? _currentRoute;
   bool _isOptimizing = false;
   Timer? _optimizationTimer;

@@ -14,7 +14,7 @@ class PassengerMapScreen extends StatefulWidget {
 
 class _PassengerMapScreenState extends State<PassengerMapScreen> {
   final Completer<GoogleMapController> _controller = Completer();
-  static CameraPosition _initialPosition = CameraPosition(
+  static final CameraPosition _initialPosition = CameraPosition(
     target: LatLng(0.34540783865964797, 32.54297125499706),
     zoom: 14,
   );
@@ -63,7 +63,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
           markerId: MarkerId(a.toString()),
           position: latlngForImages[a],
           icon: BitmapDescriptor.bytes(iconMaker),
-          infoWindow: InfoWindow(title: 'Title Marker${a}'),
+          infoWindow: InfoWindow(title: 'Title Marker$a'),
           anchor: Offset(0.5, 0.5),
         ),
       );
@@ -82,7 +82,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
           markerId: MarkerId(a.toString()),
           position: myPolylinePoints[a],
           infoWindow: InfoWindow(
-            title: "Adventure ${a}",
+            title: "Adventure $a",
             snippet: 'I am a Star..',
           ),
           icon: BitmapDescriptor.defaultMarker,

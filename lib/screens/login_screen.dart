@@ -6,7 +6,7 @@ import 'package:flutter/gestures.dart';
 
 // work on remember me
 class SignInScreen extends StatefulWidget {
-  const SignInScreen({Key? key}) : super(key: key);
+  const SignInScreen({super.key});
 
   @override
   State<SignInScreen> createState() => _SignInScreenState();
@@ -19,41 +19,98 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _obscurePassword = true;
   bool _isLoading = false;
 
-  void loginUser() async {
-    setState(() {
-      _isLoading = true;
-    });
+  Future<void> _loginUser() async {
+  // Validate inputs first
+  if (_emailController.text.trim().isEmpty ||
+      _passwordController.text.trim().isEmpty) {
+    showSnackBar('Please fill in all fields', context);
+    return;
+  }
+
+  setState(() {
+    _isLoading = true;
+  });
+
+  print('Starting login process...');
+
+  try {
     Map<String, String> result = await AuthMethods().loginUser(
       password: _passwordController.text,
       email: _emailController.text,
     );
 
+    print('Login result: $result');
+
+    // Check if widget is still mounted before proceeding
+    if (!mounted) {
+      print('Widget unmounted, returning early');
+      return;
+    }
+
     if (result['status'] == 'Success') {
-      print('Logging in was a success');
+      print('Login was successful');
       String role = result['role'] ?? '';
+      print('User role: $role');
+
+      // Navigate immediately - no need to reset loading state since we're navigating away
       _navigateBasedOnRole(role);
     } else {
+      print('Login failed: ${result['status']}');
+      // Reset loading state and show error
+      setState(() {
+        _isLoading = false;
+      });
       showSnackBar(result['status'] ?? 'Login failed', context);
     }
-    setState(() {
-      _isLoading = false;
-    });
+  } catch (e) {
+    print('Login error: $e');
+    // Only update state if still mounted
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+      showSnackBar('Login failed: ${e.toString()}', context);
+    }
   }
+}
 
   // method to navigate user to appropriate page after login success
   void _navigateBasedOnRole(String role) {
+    print('Navigating based on role: $role');
+
     switch (role.toLowerCase()) {
       case 'admin':
-        Navigator.pushReplacementNamed(context, AppRoutes.adminScreen);
+        print('Navigating to admin screen');
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRoutes.adminScreen,
+          (route) => false,
+        );
         break;
       case 'user':
-        Navigator.pushReplacementNamed(context, AppRoutes.passengerMapScreen);
+        print('Navigating to passenger map screen');
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRoutes.passengerHomeScreen,
+          (route) => false,
+        );
         break;
       case 'driver':
-        Navigator.pushReplacementNamed(context, AppRoutes.busDriverHomeScreen);
+        print('Navigating to bus driver screen');
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRoutes.busDriverHomeScreen,
+          (route) => false,
+        );
+        break;
       default:
+        print('Unknown role: $role, showing error');
         showSnackBar('Unknown user role: $role', context);
-        Navigator.pushReplacementNamed(context, AppRoutes.loginScreen);
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
         break;
     }
   }
@@ -327,7 +384,7 @@ class _SignInScreenState extends State<SignInScreen> {
       width: double.infinity,
       height: 50,
       child: ElevatedButton(
-        onPressed: loginUser,
+        onPressed: _loginUser,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF1B5E20), // Dark green
           shape: RoundedRectangleBorder(
@@ -420,31 +477,30 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   Widget _buildFooterText() {
-  return Center(
-    child: RichText(
-      text: TextSpan(
-        text: "Don't have an account? ",
-        style: const TextStyle(color: Colors.black, fontSize: 14),
-        children: [
-          TextSpan(
-            text: 'Sign Up',
-            style: const TextStyle(
-              color: Color(0xFF1B5E20),
-              fontWeight: FontWeight.bold,
-              decoration: TextDecoration.underline,
+    return Center(
+      child: RichText(
+        text: TextSpan(
+          text: "Don't have an account? ",
+          style: const TextStyle(color: Colors.black, fontSize: 14),
+          children: [
+            TextSpan(
+              text: 'Sign Up',
+              style: const TextStyle(
+                color: Color(0xFF1B5E20),
+                fontWeight: FontWeight.bold,
+                decoration: TextDecoration.underline,
+              ),
+              recognizer: TapGestureRecognizer()
+                ..onTap = () {
+                  Navigator.pushNamed(context, AppRoutes.signUpScreen);
+                },
             ),
-            recognizer: TapGestureRecognizer()
-              ..onTap = () {
-                Navigator.pushNamed(context, AppRoutes.signUpScreen);
-              },
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
   }
-
+}
 
 class DiagonalDividerPainter extends CustomPainter {
   @override
@@ -466,8 +522,3 @@ class DiagonalDividerPainter extends CustomPainter {
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
-
-
-
-
-

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 
 class TransformLatLngToAddress extends StatefulWidget {
+  const TransformLatLngToAddress({super.key});
+
   @override
   State<TransformLatLngToAddress> createState() =>
       _TransformLatLngToAddressState();

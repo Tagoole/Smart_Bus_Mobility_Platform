@@ -27,7 +27,7 @@ tarnsfer the latlng screen to an address
 */
 class _PassengerMapScreenState extends State<PassengerMapScreen> {
   final Completer<GoogleMapController> _controller = Completer();
-  static CameraPosition _initialPosition = CameraPosition(
+  static final CameraPosition _initialPosition = CameraPosition(
     target: LatLng(0.34540783865964797, 32.54297125499706),
     zoom: 14,
   );
@@ -415,6 +415,12 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   }
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
@@ -435,45 +441,133 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
               myLocationButtonEnabled: false,
             ),
 
-            // Top app bar with actions
+            // Top app bar with search functionality
             Positioned(
               top: 16,
               left: 16,
               right: 16,
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(25),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.location_on, color: Colors.blue),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Tap on map to add pickup location',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
+              child: Column(
+                children: [
+                  // Search bar
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(25),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 10,
+                          offset: Offset(0, 2),
                         ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.search, color: Colors.grey[600]),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: _searchController,
+                            decoration: InputDecoration(
+                              hintText: 'Search for a place...',
+                              border: InputBorder.none,
+                              hintStyle: TextStyle(color: Colors.grey[500]),
+                            ),
+                            onChanged: (value) {
+                              if (value.length > 2) {
+                                _searchPlaces(value);
+                              } else {
+                                setState(() {
+                                  _searchResults.clear();
+                                  _showSearchResults = false;
+                                });
+                              }
+                            },
+                            onSubmitted: (value) {
+                              if (value.trim().isNotEmpty) {
+                                _searchPlaces(value);
+                              }
+                            },
+                          ),
+                        ),
+                        if (_searchController.text.isNotEmpty)
+                          IconButton(
+                            icon: Icon(Icons.clear, color: Colors.grey[600]),
+                            onPressed: _clearSearch,
+                            tooltip: 'Clear search',
+                          ),
+                        if (_pickupLocation != null)
+                          IconButton(
+                            icon: Icon(Icons.clear, color: Colors.red),
+                            onPressed: _removePickupLocation,
+                            tooltip: 'Remove pickup location',
+                          ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Search results
+                  if (_showSearchResults && _searchResults.isNotEmpty)
+                    Container(
+                      margin: EdgeInsets.only(top: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 10,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          if (_isSearching)
+                            Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Row(
+                                children: [
+                                  SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.blue,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: 12),
+                                  Text(
+                                    'Searching...',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ..._searchResults.take(5).map((placemark) => 
+                            ListTile(
+                              leading: Icon(Icons.location_on, color: Colors.blue),
+                              title: Text(
+                                placemark.name ?? placemark.street ?? 'Unknown location',
+                                style: TextStyle(fontWeight: FontWeight.w500),
+                              ),
+                              subtitle: Text(
+                                '${placemark.locality ?? ''}, ${placemark.country ?? ''}'.trim(),
+                                style: TextStyle(fontSize: 12),
+                              ),
+                              onTap: () => _selectSearchResult(placemark),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    if (_pickupLocation != null)
-                      IconButton(
-                        icon: Icon(Icons.clear, color: Colors.red),
-                        onPressed: _removePickupLocation,
-                        tooltip: 'Remove pickup location',
-                      ),
-                  ],
-                ),
+                ],
               ),
             ),
 
@@ -522,6 +616,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
           _getCurrentLocation();
         },
         heroTag: "location",
+        tooltip: 'Get my location',
         child: _isLoadingLocation
             ? SizedBox(
                 width: 20,
@@ -532,7 +627,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                 ),
               )
             : Icon(Icons.my_location),
-        tooltip: 'Get my location',
       ),
     );
   }

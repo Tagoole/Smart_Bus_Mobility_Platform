@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class PaymentSuccess extends StatelessWidget {
-  const PaymentSuccess({Key? key}) : super(key: key);
+  const PaymentSuccess({super.key});
 
   @override
   Widget build(BuildContext context) {

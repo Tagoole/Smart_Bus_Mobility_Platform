@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 class BusTrackingScreen extends StatefulWidget {
+  const BusTrackingScreen({super.key});
+
   @override
   _BusTrackingScreenState createState() => _BusTrackingScreenState();
 }
