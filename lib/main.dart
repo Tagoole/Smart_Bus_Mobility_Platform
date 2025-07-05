@@ -5,6 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:smart_bus_mobility_platform1/routes/app_routes.dart';
 import 'package:smart_bus_mobility_platform1/screens/login_screen.dart';
+//import 'package:smart_bus_mobility_platform1/screens/signup_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/forgot_password_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/email_verification_screen.dart'; // Add this import
+
 import 'package:flutter/services.dart';
 
 void main() async {
@@ -52,7 +56,17 @@ class MyApp extends StatelessWidget {
         theme: ThemeData.light().copyWith(
           scaffoldBackgroundColor: Colors.blueGrey,
         ),
-        routes: AppRoutes.getRoutes(), // Spread your existing routes
+        //initialRoute: AppRoutes.mapScreen,
+        routes: {
+          ...AppRoutes.getRoutes(), // Spread your existing routes
+          '/signin': (context) => const SignInScreen(), // Add signin route
+          '/forgotpassword': (context) =>
+              const ForgotPasswordScreen(), // Forgot password route
+          '/emailverification': (context) =>
+              const EmailVerificationScreen(), // Email verification route
+        },
+        //initialRoute: AppRoutes.mapScreen,
+        //home: PaymentSuccess(), // Set the initial home screen
         //home: SplashScreen(),
         //initialRoute: AppRoutes.mapScreen,
         home: StreamBuilder(
@@ -60,6 +74,8 @@ class MyApp extends StatelessWidget {
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.active) {
               if (snapshot.hasData) {
+                // Return your main/home screen here, for example:
+                return Container(); // <-- Replace with your HomeScreen()
               } else if (snapshot.hasError) {
                 return Center(child: Text('${snapshot.error}'));
               }
@@ -71,10 +87,9 @@ class MyApp extends StatelessWidget {
             return SignInScreen();
           },
         ),
-
         //home: Scaffold(
         //  backgroundColor: Colors.blue,
-        //  body: Container(width: 200, height: 200, color: Colors.amberAccent),
+        //),
         //),
       ),
     );
