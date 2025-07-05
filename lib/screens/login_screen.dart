@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:smart_bus_mobility_platform1/resources/auth_service.dart';
+import 'package:smart_bus_mobility_platform1/routes/app_routes.dart';
+import 'package:smart_bus_mobility_platform1/utils/utils.dart';
+import 'package:flutter/gestures.dart';
 
+// work on remember me
 class SignInScreen extends StatefulWidget {
   const SignInScreen({Key? key}) : super(key: key);
 
@@ -12,6 +17,46 @@ class _SignInScreenState extends State<SignInScreen> {
   final TextEditingController _passwordController = TextEditingController();
   bool _rememberMe = false;
   bool _obscurePassword = true;
+  bool _isLoading = false;
+
+  void loginUser() async {
+    setState(() {
+      _isLoading = true;
+    });
+    Map<String, String> result = await AuthMethods().loginUser(
+      password: _passwordController.text,
+      email: _emailController.text,
+    );
+
+    if (result['status'] == 'Success') {
+      print('Logging in was a success');
+      String role = result['role'] ?? '';
+      _navigateBasedOnRole(role);
+    } else {
+      showSnackBar(result['status'] ?? 'Login failed', context);
+    }
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  // method to navigate user to appropriate page after login success
+  void _navigateBasedOnRole(String role) {
+    switch (role.toLowerCase()) {
+      case 'admin':
+        Navigator.pushReplacementNamed(context, AppRoutes.adminScreen);
+        break;
+      case 'user':
+        Navigator.pushReplacementNamed(context, AppRoutes.passengerHomeScreen);
+        break;
+      case 'driver':
+        Navigator.pushReplacementNamed(context, AppRoutes.busDriverHomeScreen);
+      default:
+        showSnackBar('Unknown user role: $role', context);
+        Navigator.pushReplacementNamed(context, AppRoutes.loginScreen);
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,13 +71,13 @@ class _SignInScreenState extends State<SignInScreen> {
             children: [
               // Background with luxury bus image
               _buildBackground(),
-              
+
               // Diagonal divider
               _buildDiagonalDivider(),
-              
+
               // Circular profile overlay
               _buildCircularOverlay(),
-              
+
               // Main content
               _buildMainContent(),
             ],
@@ -127,7 +172,7 @@ class _SignInScreenState extends State<SignInScreen> {
           children: [
             // Spacer to push content down
             SizedBox(height: MediaQuery.of(context).size.height * 0.45),
-            
+
             // Sign In Form
             Expanded(
               child: SingleChildScrollView(
@@ -144,7 +189,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       ),
                     ),
                     const SizedBox(height: 30),
-                    
+
                     // Email Input
                     _buildInputField(
                       controller: _emailController,
@@ -152,23 +197,23 @@ class _SignInScreenState extends State<SignInScreen> {
                       prefixIcon: Icons.email_outlined,
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Password Input
                     _buildPasswordField(),
                     const SizedBox(height: 20),
-                    
+
                     // Remember me & Forgot password row
                     _buildRememberMeRow(),
                     const SizedBox(height: 30),
-                    
+
                     // Sign In Button
                     _buildSignInButton(),
                     const SizedBox(height: 30),
-                    
+
                     // Divider and social login
                     _buildSocialLoginSection(),
                     const SizedBox(height: 30),
-                    
+
                     // Footer text
                     _buildFooterText(),
                     const SizedBox(height: 20),
@@ -206,10 +251,7 @@ class _SignInScreenState extends State<SignInScreen> {
             color: Color(0xFF1B5E20), // Dark green
             fontWeight: FontWeight.w500,
           ),
-          prefixIcon: Icon(
-            prefixIcon,
-            color: const Color(0xFF1B5E20),
-          ),
+          prefixIcon: Icon(prefixIcon, color: const Color(0xFF1B5E20)),
           suffixIcon: suffixIcon,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
@@ -259,10 +301,7 @@ class _SignInScreenState extends State<SignInScreen> {
             ),
             const Text(
               'Remember me',
-              style: TextStyle(
-                color: Color(0xFF1B5E20),
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Color(0xFF1B5E20), fontSize: 14),
             ),
           ],
         ),
@@ -288,9 +327,7 @@ class _SignInScreenState extends State<SignInScreen> {
       width: double.infinity,
       height: 50,
       child: ElevatedButton(
-        onPressed: () {
-          // Handle sign in
-        },
+        onPressed: loginUser,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF1B5E20), // Dark green
           shape: RoundedRectangleBorder(
@@ -298,14 +335,16 @@ class _SignInScreenState extends State<SignInScreen> {
           ),
           elevation: 8,
         ),
-        child: const Text(
-          'Sign In',
-          style: TextStyle(
-            color: Color(0xFF76FF03), // Neon green
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        child: _isLoading
+            ? CircularProgressIndicator(color: Colors.white)
+            : const Text(
+                'Sign In',
+                style: TextStyle(
+                  color: Color(0xFF76FF03), // Neon green
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
       ),
     );
   }
@@ -375,45 +414,44 @@ class _SignInScreenState extends State<SignInScreen> {
             ),
           ],
         ),
-        child: Icon(
-          icon,
-          color: color,
-          size: 24,
-        ),
+        child: Icon(icon, color: color, size: 24),
       ),
     );
   }
 
   Widget _buildFooterText() {
-    return Center(
-      child: RichText(
-        text: const TextSpan(
-          text: "Don't have an account? ",
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 14,
-          ),
-          children: [
-            TextSpan(
-              text: 'Sign Up',
-              style: TextStyle(
-                color: Color(0xFF1B5E20),
-                fontWeight: FontWeight.bold,
-                decoration: TextDecoration.underline,
-              ),
+  return Center(
+    child: RichText(
+      text: TextSpan(
+        text: "Don't have an account? ",
+        style: const TextStyle(color: Colors.black, fontSize: 14),
+        children: [
+          TextSpan(
+            text: 'Sign Up',
+            style: const TextStyle(
+              color: Color(0xFF1B5E20),
+              fontWeight: FontWeight.bold,
+              decoration: TextDecoration.underline,
             ),
-          ],
-        ),
+            recognizer: TapGestureRecognizer()
+              ..onTap = () {
+                Navigator.pushNamed(context, AppRoutes.signUpScreen);
+              },
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
 }
+  }
+
 
 class DiagonalDividerPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFFFFF59D) // Light yellow
+      ..color =
+          const Color(0xFFFFF59D) // Light yellow
       ..style = PaintingStyle.fill;
 
     final path = Path();
@@ -429,24 +467,7 @@ class DiagonalDividerPainter extends CustomPainter {
   bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
 
-// Main app to demonstrate the screen
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Transportation Sign In',
-      theme: ThemeData(
-        primarySwatch: Colors.green,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
-      home: const SignInScreen(),
-      debugShowCheckedModeBanner: false,
-    );
-  }
-}
 
-void main() {
-  runApp(const MyApp());
-}
+
+

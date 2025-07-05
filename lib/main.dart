@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -8,19 +9,16 @@ import 'package:smart_bus_mobility_platform1/screens/login_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/forgot_password_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/email_verification_screen.dart'; // Add this import
 
-//import 'firebase_options.dart';
-//import 'package:smart_bus_mobility_platform1/screens/map_screen.dart'
-//import 'package:smart_bus_mobility_platform1/screens/payment_screen.dart';
-//import 'package:smart_bus_mobility_platform1/screens/payment1_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/paymentsuccess_screen.dart';
-//import 'package:smart_bus_mobility_platform1/screens/map_screen.dart';
-//import 'package:smart_bus_mobility_platform1/screens/splash_screen.dart';
-//import 'package:smart_bus_mobility_platform1/screens/booking_screen.dart'; // Import your booking screen
-//import 'package:smart_bus_mobility_platform1/screens/AvailableBus_screen.dart'; // Import your available bus screen
-//import 'package:smart_bus_mobility_platform1/screens/selectseat_screen.dart'; // Import your seat selection screen
+import 'package:flutter/services.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-   
+
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
   if (kIsWeb) {
     await Firebase.initializeApp(
       options: FirebaseOptions(
@@ -42,13 +40,13 @@ void main() async {
       ),
     );
   }
-   
+
   runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-   
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -62,14 +60,33 @@ class MyApp extends StatelessWidget {
         routes: {
           ...AppRoutes.getRoutes(), // Spread your existing routes
           '/signin': (context) => const SignInScreen(), // Add signin route
-          '/forgotpassword': (context) => const ForgotPasswordScreen(), // Forgot password route
-          '/emailverification': (context) => const EmailVerificationScreen(), // Email verification route
+          '/forgotpassword': (context) =>
+              const ForgotPasswordScreen(), // Forgot password route
+          '/emailverification': (context) =>
+              const EmailVerificationScreen(), // Email verification route
         },
-                 
         //initialRoute: AppRoutes.mapScreen,
-  
-        home: PaymentSuccess(), // Set the initial home screen
-                 
+        //home: PaymentSuccess(), // Set the initial home screen
+        //home: SplashScreen(),
+        //initialRoute: AppRoutes.mapScreen,
+        home: StreamBuilder(
+          stream: FirebaseAuth.instance.authStateChanges(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.active) {
+              if (snapshot.hasData) {
+                // Return your main/home screen here, for example:
+                return Container(); // <-- Replace with your HomeScreen()
+              } else if (snapshot.hasError) {
+                return Center(child: Text('${snapshot.error}'));
+              }
+            } else if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              );
+            }
+            return SignInScreen();
+          },
+        ),
         //home: Scaffold(
         //  backgroundColor: Colors.blue,
         //),
