@@ -8,6 +8,13 @@ import 'package:smart_bus_mobility_platform1/screens/login_screen.dart';
 //import 'package:smart_bus_mobility_platform1/screens/signup_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/forgot_password_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/email_verification_screen.dart'; // Add this import
+import 'package:smart_bus_mobility_platform1/screens/passenger_map_screen.dart'; // Add this import
+import 'package:smart_bus_mobility_platform1/screens/login_screen_new.dart';
+import 'package:smart_bus_mobility_platform1/screens/signup_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/payment_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/admin_home_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/customer_home_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/bus_driver_home_screen.dart';
 
 import 'package:flutter/services.dart';
 
@@ -49,49 +56,55 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'Smart Bus Mobility',
-        theme: ThemeData.light().copyWith(
-          scaffoldBackgroundColor: Colors.blueGrey,
-        ),
-        //initialRoute: AppRoutes.mapScreen,
-        routes: {
-          ...AppRoutes.getRoutes(), // Spread your existing routes
-          '/signin': (context) => const SignInScreen(), // Add signin route
-          '/forgotpassword': (context) =>
-              const ForgotPasswordScreen(), // Forgot password route
-          '/emailverification': (context) =>
-              const EmailVerificationScreen(), // Email verification route
-        },
-        //initialRoute: AppRoutes.mapScreen,
-        //home: PaymentSuccess(), // Set the initial home screen
-        //home: SplashScreen(),
-        //initialRoute: AppRoutes.mapScreen,
-        home: StreamBuilder(
-          stream: FirebaseAuth.instance.authStateChanges(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.active) {
-              if (snapshot.hasData) {
-                // Return your main/home screen here, for example:
-                return Container(); // <-- Replace with your HomeScreen()
-              } else if (snapshot.hasError) {
-                return Center(child: Text('${snapshot.error}'));
-              }
-            } else if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(
-                child: CircularProgressIndicator(color: Colors.white),
-              );
-            }
-            return SignInScreen();
-          },
-        ),
-        //home: Scaffold(
-        //  backgroundColor: Colors.blue,
-        //),
-        //),
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Smart Bus Mobility',
+      theme: ThemeData.light().copyWith(
+        scaffoldBackgroundColor: Colors.blueGrey,
       ),
+      //initialRoute: AppRoutes.mapScreen,
+      routes: {
+        '/signin': (context) => const SignInScreen(), // Add signin route
+        '/forgotpassword': (context) =>
+            const ForgotPasswordScreen(), // Forgot password route
+        '/emailverification': (context) =>
+            const EmailVerificationScreen(), // Email verification route
+        '/passengerMap': (context) => PassengerMapScreen(),
+        '/login': (context) => SignInScreenNew(),
+        '/signup': (context) => SignUpScreen(),
+        '/payment': (context) => PaymentScreen(),
+        '/verifyEmail': (context) => EmailVerificationScreen(),
+        '/forgotPassword': (context) => ForgotPasswordScreen(),
+        '/admin': (context) => AdminDashboardScreen(),
+        '/passenger': (context) => BusTrackingScreen(),
+        '/busdriver': (context) => BusDriverHomeScreen(),
+      },
+      //initialRoute: AppRoutes.mapScreen,
+      //home: PaymentSuccess(), // Set the initial home screen
+      //home: SplashScreen(),
+      //initialRoute: AppRoutes.mapScreen,
+      home: StreamBuilder(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.active) {
+            if (snapshot.hasData) {
+              // Return your main/home screen here, for example:
+              return PassengerMapScreen(); // <-- Replace with your HomeScreen()
+            } else if (snapshot.hasError) {
+              return Center(child: Text('${snapshot.error}'));
+            }
+          } else if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            );
+          }
+          return SignInScreen();
+        },
+      ),
+      //home: Scaffold(
+      //  backgroundColor: Colors.blue,
+      //),
+      //),
     );
   }
 }
