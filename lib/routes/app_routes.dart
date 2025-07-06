@@ -10,6 +10,7 @@ import 'package:smart_bus_mobility_platform1/screens/payment_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/signup_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/passenger_map_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/splash_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/bus_management_screen.dart';
 
 class AppRoutes {
   static const String splashScreen = '/';
@@ -29,6 +30,7 @@ class AppRoutes {
   static const String forgotPasswordScreen = '/forgotPassword';
   static const String coordinatetoAddressScreen = '/coordinateToAddress';
   static const String mountExampleScreen = '/mount-example';
+  static const String busManagementScreen = '/busManagement';
   //static const String seatSelectionScreen = '/selectSeat';
 
   static Map<String, WidgetBuilder> getRoutes() {
@@ -47,6 +49,7 @@ class AppRoutes {
       busDriverHomeScreen: (context) => BusDriverHomeScreen(),
       //coordinatetoAddressScreen: (context) => TransformLatLngToAddress(),
       //mountExampleScreen: (context) => const MountExampleScreen(),
+      busManagementScreen: (context) => BusManagementScreen(),
     };
   }
 }

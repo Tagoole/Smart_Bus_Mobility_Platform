@@ -42,13 +42,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   bool _isLoadingLocation = false;
   final Set<Marker> _allMarkers = {};
 
-  // Variables for search functionality
-  final TextEditingController _searchController = TextEditingController();
-  List<Placemark> _searchResults = [];
-  bool _isSearching = false;
-  bool _showSearchResults = false;
-  Timer? _searchDebounce;
-
   // Load custom pickup marker icon
   Future<Uint8List> getImagesFromMarkers(String path, int width) async {
     ByteData data = await rootBundle.load(path);
@@ -326,187 +319,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     }
   }
 
-  // Search for places
-  Future<void> _searchPlaces(String query) async {
-    if (query.trim().isEmpty) {
-      setState(() {
-        _searchResults.clear();
-        _showSearchResults = false;
-        _isSearching = false;
-      });
-      return;
-    }
-
-    setState(() {
-      _isSearching = true;
-      _showSearchResults = true;
-    });
-
-    try {
-      print('Searching for: "$query"');
-
-      // Add a small delay to avoid too many rapid requests
-      await Future.delayed(Duration(milliseconds: 300));
-
-      List<Location> locations = await locationFromAddress(query);
-      print('Found ${locations.length} locations for query: "$query"');
-
-      if (locations.isNotEmpty) {
-        // Get placemarks for more detailed information
-        List<Placemark> placemarks = await placemarkFromCoordinates(
-          locations.first.latitude,
-          locations.first.longitude,
-        );
-
-        print(
-          'Found ${placemarks.length} placemarks for coordinates: ${locations.first.latitude}, ${locations.first.longitude}',
-        );
-
-        setState(() {
-          _searchResults = placemarks;
-          _isSearching = false;
-        });
-      } else {
-        // Try alternative search approaches
-        await _tryAlternativeSearch(query);
-      }
-    } catch (e) {
-      print('Error searching places: $e');
-      print('Error type: ${e.runtimeType}');
-
-      // Try alternative search approaches on error
-      await _tryAlternativeSearch(query);
-    }
-  }
-
-  // Try alternative search approaches
-  Future<void> _tryAlternativeSearch(String query) async {
-    try {
-      print('Trying alternative search for: "$query"');
-
-      // Try with different search variations
-      List<String> searchVariations = [
-        query,
-        '$query, Uganda', // Add country if not specified
-        query.replaceAll(' ', '+'), // Replace spaces with +
-      ];
-
-      for (String variation in searchVariations) {
-        try {
-          List<Location> locations = await locationFromAddress(variation);
-          if (locations.isNotEmpty) {
-            List<Placemark> placemarks = await placemarkFromCoordinates(
-              locations.first.latitude,
-              locations.first.longitude,
-            );
-
-            setState(() {
-              _searchResults = placemarks;
-              _isSearching = false;
-            });
-            return; // Success, exit the method
-          }
-        } catch (e) {
-          print('Alternative search failed for "$variation": $e');
-          continue; // Try next variation
-        }
-      }
-
-      // If all variations failed
-      setState(() {
-        _searchResults.clear();
-        _isSearching = false;
-      });
-
-      _showSnackBar(
-        'No places found for "$query". Try a more specific location or check your internet connection.',
-      );
-    } catch (e) {
-      print('All alternative searches failed: $e');
-      setState(() {
-        _isSearching = false;
-      });
-      _showSnackBar(
-        'Search service error. Please check your internet connection and try again.',
-      );
-    }
-  }
-
-  // Select a search result
-  void _selectSearchResult(Placemark placemark) async {
-    try {
-      print('Selecting placemark: ${placemark.name ?? placemark.street}');
-
-      // Build a search string for the selected place
-      String searchString = '';
-      if (placemark.name != null && placemark.name!.isNotEmpty) {
-        searchString = placemark.name!;
-      } else if (placemark.street != null && placemark.street!.isNotEmpty) {
-        searchString = placemark.street!;
-      } else if (placemark.locality != null && placemark.locality!.isNotEmpty) {
-        searchString = placemark.locality!;
-      } else {
-        searchString = '${placemark.locality ?? ''}, ${placemark.country ?? ''}'
-            .trim();
-      }
-
-      print('Search string for coordinates: "$searchString"');
-
-      // Get coordinates for the selected place
-      List<Location> locations = await locationFromAddress(searchString);
-
-      if (locations.isNotEmpty) {
-        final location = locations.first;
-        final latLng = LatLng(location.latitude, location.longitude);
-
-        print(
-          'Selected coordinates: ${location.latitude}, ${location.longitude}',
-        );
-
-        // Add as pickup location
-        await _addPickupLocation(latLng);
-
-        // Move camera to the selected location
-        if (_controller.isCompleted) {
-          GoogleMapController controller = await _controller.future;
-          controller.animateCamera(
-            CameraUpdate.newCameraPosition(
-              CameraPosition(target: latLng, zoom: 16),
-            ),
-          );
-        }
-
-        // Clear search
-        setState(() {
-          _searchController.clear();
-          _searchResults.clear();
-          _showSearchResults = false;
-        });
-
-        _showSnackBar(
-          'Pickup location added: ${placemark.name ?? placemark.street}',
-        );
-      } else {
-        _showSnackBar(
-          'Could not get coordinates for selected location. Please try again.',
-        );
-      }
-    } catch (e) {
-      print('Error selecting search result: $e');
-      print('Error type: ${e.runtimeType}');
-      _showSnackBar('Error adding location. Please try again.');
-    }
-  }
-
-  // Clear search
-  void _clearSearch() {
-    setState(() {
-      _searchController.clear();
-      _searchResults.clear();
-      _showSearchResults = false;
-    });
-  }
-
   // Navigate to booking screen
   void _navigateToBooking() {
     Navigator.push(
@@ -562,8 +374,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
 
   @override
   void dispose() {
-    _searchController.dispose();
-    _searchDebounce?.cancel();
     super.dispose();
   }
 
@@ -610,183 +420,34 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
               myLocationButtonEnabled: false,
             ),
 
-            // Top app bar with search functionality (only show if not in pickup selection mode)
+            // Book Bus Button (only show if not in pickup selection mode)
             if (!widget.isPickupSelection)
               Positioned(
                 top: 16,
                 left: 16,
                 right: 16,
-                child: Column(
-                  children: [
-                    // Search bar
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
+                child: Container(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _navigateToBooking,
+                    icon: Icon(Icons.directions_bus, color: Colors.white),
+                    label: Text(
+                      'Book Bus',
+                      style: TextStyle(
                         color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(25),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 10,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
                       ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.search, color: Color(0xFF757575)),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: TextField(
-                              controller: _searchController,
-                              decoration: InputDecoration(
-                                hintText: 'Search for a place...',
-                                border: InputBorder.none,
-                                hintStyle: TextStyle(color: Color(0xFF757575)),
-                              ),
-                              onChanged: (value) {
-                                // Cancel previous search
-                                _searchDebounce?.cancel();
-
-                                if (value.length > 2) {
-                                  // Debounce search requests
-                                  _searchDebounce = Timer(
-                                    Duration(milliseconds: 500),
-                                    () {
-                                      _searchPlaces(value);
-                                    },
-                                  );
-                                } else {
-                                  setState(() {
-                                    _searchResults.clear();
-                                    _showSearchResults = false;
-                                  });
-                                }
-                              },
-                              onSubmitted: (value) {
-                                if (value.trim().isNotEmpty) {
-                                  _searchPlaces(value);
-                                }
-                              },
-                            ),
-                          ),
-                          if (_searchController.text.isNotEmpty)
-                            IconButton(
-                              icon: Icon(Icons.clear, color: Color(0xFF757575)),
-                              onPressed: _clearSearch,
-                              tooltip: 'Clear search',
-                            ),
-                          if (_pickupLocation != null)
-                            IconButton(
-                              icon: Icon(Icons.clear, color: Colors.red),
-                              onPressed: _removePickupLocation,
-                              tooltip: 'Remove pickup location',
-                            ),
-                        ],
-                      ),
+                      elevation: 3,
                     ),
-
-                    // Book Bus Button
-                    Container(
-                      margin: EdgeInsets.only(top: 12),
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: _navigateToBooking,
-                        icon: Icon(Icons.directions_bus, color: Colors.white),
-                        label: Text(
-                          'Book Bus',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                          elevation: 3,
-                        ),
-                      ),
-                    ),
-
-                    // Search results
-                    if (_showSearchResults && _searchResults.isNotEmpty)
-                      Container(
-                        margin: EdgeInsets.only(top: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 10,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            if (_isSearching)
-                              Padding(
-                                padding: EdgeInsets.all(16),
-                                child: Row(
-                                  children: [
-                                    SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                              Colors.blue,
-                                            ),
-                                      ),
-                                    ),
-                                    SizedBox(width: 12),
-                                    Text(
-                                      'Searching...',
-                                      style: TextStyle(
-                                        color: Color(0xFF757575),
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ..._searchResults
-                                .take(5)
-                                .map(
-                                  (placemark) => ListTile(
-                                    leading: Icon(
-                                      Icons.location_on,
-                                      color: Colors.blue,
-                                    ),
-                                    title: Text(
-                                      placemark.name ??
-                                          placemark.street ??
-                                          'Unknown location',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    subtitle: Text(
-                                      '${placemark.locality ?? ''}, ${placemark.country ?? ''}'
-                                          .trim(),
-                                      style: TextStyle(fontSize: 12),
-                                    ),
-                                    onTap: () => _selectSearchResult(placemark),
-                                  ),
-                                ),
-                          ],
-                        ),
-                      ),
-                  ],
+                  ),
                 ),
               ),
 
