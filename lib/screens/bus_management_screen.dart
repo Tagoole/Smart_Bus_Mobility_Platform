@@ -21,20 +21,36 @@ class _BusManagementScreenState extends State<BusManagementScreen>
 
   // Data holders
   List<BusModel> buses = [];
+  List<Map<String, dynamic>> drivers = [];
   bool isLoading = true;
   bool isAddingBus = false;
 
   // Form controllers for adding new bus
   final _formKey = GlobalKey<FormState>();
   final _numberPlateController = TextEditingController();
-  final _vehicleModelController = TextEditingController();
-  final _driverIdController = TextEditingController();
-  final _routeIdController = TextEditingController();
   final _startPointController = TextEditingController();
   final _destinationController = TextEditingController();
-  final _seatCapacityController = TextEditingController();
   final _fareController = TextEditingController();
   final _departureTimeController = TextEditingController();
+
+  // Dropdown values
+  String? selectedDriverEmail;
+  String? selectedVehicleModel;
+
+  // Predefined vehicle models
+  final List<String> vehicleModels = [
+    'Mercedes-Benz Sprinter',
+    'Mercedes-Benz O500',
+    'BMW X5',
+    'Toyota Coaster',
+    'Toyota Hiace',
+    'Ford Transit',
+    'Volkswagen Crafter',
+    'Iveco Daily',
+  ];
+
+  // Constant seat capacity for all buses
+  static const int constantSeatCapacity = 30;
 
   @override
   void initState() {
@@ -46,7 +62,7 @@ class _BusManagementScreenState extends State<BusManagementScreen>
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
-    _loadBuses();
+    _loadData();
     _animationController.forward();
   }
 
@@ -54,15 +70,20 @@ class _BusManagementScreenState extends State<BusManagementScreen>
   void dispose() {
     _animationController.dispose();
     _numberPlateController.dispose();
-    _vehicleModelController.dispose();
-    _driverIdController.dispose();
-    _routeIdController.dispose();
     _startPointController.dispose();
     _destinationController.dispose();
-    _seatCapacityController.dispose();
     _fareController.dispose();
     _departureTimeController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      // Load buses and drivers in parallel
+      await Future.wait([_loadBuses(), _loadDrivers()]);
+    } catch (e) {
+      print('Error loading data: $e');
+    }
   }
 
   Future<void> _loadBuses() async {
@@ -73,10 +94,32 @@ class _BusManagementScreenState extends State<BusManagementScreen>
           final data = doc.data();
           return BusModel.fromJson(data, doc.id);
         }).toList();
-        isLoading = false;
       });
     } catch (e) {
       print('Error loading buses: $e');
+    }
+  }
+
+  Future<void> _loadDrivers() async {
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .where('role', isEqualTo: 'Driver')
+          .get();
+
+      setState(() {
+        drivers = snapshot.docs.map((doc) {
+          final data = doc.data();
+          return {
+            'uid': doc.id,
+            'email': data['email'] ?? '',
+            'name': data['name'] ?? data['email'] ?? 'Unknown Driver',
+          };
+        }).toList();
+        isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading drivers: $e');
       setState(() {
         isLoading = false;
       });
@@ -85,21 +128,44 @@ class _BusManagementScreenState extends State<BusManagementScreen>
 
   Future<void> _addBus() async {
     if (!_formKey.currentState!.validate()) return;
+    if (selectedDriverEmail == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a driver'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    if (selectedVehicleModel == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a vehicle model'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     setState(() {
       isAddingBus = true;
     });
 
     try {
+      // Find the driver UID from the selected email
+      final selectedDriver = drivers.firstWhere(
+        (driver) => driver['email'] == selectedDriverEmail,
+      );
+
       final busData = {
         'numberPlate': _numberPlateController.text.trim(),
-        'vehicleModel': _vehicleModelController.text.trim(),
-        'driverId': _driverIdController.text.trim(),
-        'routeId': _routeIdController.text.trim(),
+        'vehicleModel': selectedVehicleModel,
+        'driverId': selectedDriverEmail, // Use email as driver ID
+        'routeId': 'auto-generated', // Auto-generated route ID
         'startPoint': _startPointController.text.trim(),
         'destination': _destinationController.text.trim(),
-        'seatCapacity': int.parse(_seatCapacityController.text),
-        'availableSeats': int.parse(_seatCapacityController.text),
+        'seatCapacity': constantSeatCapacity,
+        'availableSeats': constantSeatCapacity,
         'fare': double.parse(_fareController.text),
         'isAvailable': true,
         'departureTime': _departureTimeController.text.isNotEmpty
@@ -115,14 +181,14 @@ class _BusManagementScreenState extends State<BusManagementScreen>
       // Clear form
       _formKey.currentState!.reset();
       _numberPlateController.clear();
-      _vehicleModelController.clear();
-      _driverIdController.clear();
-      _routeIdController.clear();
       _startPointController.clear();
       _destinationController.clear();
-      _seatCapacityController.clear();
       _fareController.clear();
       _departureTimeController.clear();
+      setState(() {
+        selectedDriverEmail = null;
+        selectedVehicleModel = null;
+      });
 
       // Reload buses
       await _loadBuses();
@@ -371,6 +437,12 @@ class _BusManagementScreenState extends State<BusManagementScreen>
   }
 
   Widget _buildBusCard(BusModel bus) {
+    // Find driver name from email
+    final driver = drivers.firstWhere(
+      (d) => d['email'] == bus.driverId,
+      orElse: () => {'name': 'Unknown Driver'},
+    );
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -486,6 +558,43 @@ class _BusManagementScreenState extends State<BusManagementScreen>
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.person, size: 16, color: const Color(0xFF6B7280)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Driver',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF6B7280),
+                          ),
+                        ),
+                        Text(
+                          driver['name'],
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF111827),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 16),
             Row(
               children: [
@@ -583,48 +692,45 @@ class _BusManagementScreenState extends State<BusManagementScreen>
                   },
                 ),
                 const SizedBox(height: 16),
-                _buildTextField(
-                  controller: _vehicleModelController,
-                  label: 'Vehicle Model',
-                  hint: 'Toyota Coaster',
+                _buildDropdownField(
+                  label: 'Driver',
+                  value: selectedDriverEmail,
+                  items: drivers.map((driver) {
+                    return DropdownMenuItem<String>(
+                      value: driver['email'] as String,
+                      child: Text(driver['name'] as String),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      selectedDriverEmail = value;
+                    });
+                  },
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter vehicle model';
+                    if (value == null) {
+                      return 'Please select a driver';
                     }
                     return null;
                   },
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildTextField(
-                        controller: _driverIdController,
-                        label: 'Driver ID',
-                        hint: 'DRV001',
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter driver ID';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildTextField(
-                        controller: _routeIdController,
-                        label: 'Route ID',
-                        hint: 'RT001',
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter route ID';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ],
+                _buildDropdownField(
+                  label: 'Vehicle Model',
+                  value: selectedVehicleModel,
+                  items: vehicleModels.map((model) {
+                    return DropdownMenuItem(value: model, child: Text(model));
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      selectedVehicleModel = value;
+                    });
+                  },
+                  validator: (value) {
+                    if (value == null) {
+                      return 'Please select a vehicle model';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -659,44 +765,48 @@ class _BusManagementScreenState extends State<BusManagementScreen>
                   ],
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildTextField(
-                        controller: _seatCapacityController,
-                        label: 'Seat Capacity',
-                        hint: '30',
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter capacity';
-                          }
-                          if (int.tryParse(value) == null) {
-                            return 'Please enter a valid number';
-                          }
-                          return null;
-                        },
+                _buildTextField(
+                  controller: _fareController,
+                  label: 'Fare (UGX)',
+                  hint: '15000',
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter fare';
+                    }
+                    if (double.tryParse(value) == null) {
+                      return 'Please enter a valid number';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        size: 16,
+                        color: const Color(0xFF6B7280),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildTextField(
-                        controller: _fareController,
-                        label: 'Fare (UGX)',
-                        hint: '15000',
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter fare';
-                          }
-                          if (double.tryParse(value) == null) {
-                            return 'Please enter a valid number';
-                          }
-                          return null;
-                        },
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Seat Capacity: $constantSeatCapacity seats (fixed for all buses)',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF6B7280),
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 16),
                 _buildTextField(
@@ -770,6 +880,53 @@ class _BusManagementScreenState extends State<BusManagementScreen>
           validator: validator,
           decoration: InputDecoration(
             hintText: hint,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFF576238)),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDropdownField({
+    required String label,
+    required String? value,
+    required List<DropdownMenuItem<String>> items,
+    required Function(String?) onChanged,
+    String? Function(String?)? validator,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF374151),
+          ),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: value,
+          items: items,
+          onChanged: onChanged,
+          validator: validator,
+          decoration: InputDecoration(
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
