@@ -15,10 +15,16 @@ import 'package:smart_bus_mobility_platform1/screens/payment_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/admin_home_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/customer_home_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/bus_driver_home_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:flutter/services.dart';
+/*
+and for things to look more organised, let me create an admin account and then be able to create instances of the bus model so that i can set the different properties which will make the displaying them easier
 
+*/
 void main() async {
+  BindingBase.debugZoneErrorsAreFatal = false;
+
   WidgetsFlutterBinding.ensureInitialized();
 
   SystemChrome.setPreferredOrientations([
@@ -88,8 +94,41 @@ class MyApp extends StatelessWidget {
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.active) {
             if (snapshot.hasData) {
-              // Return your main/home screen here, for example:
-              return PassengerMapScreen(); // <-- Replace with your HomeScreen()
+              // User is authenticated, get their role and route accordingly
+              return FutureBuilder<DocumentSnapshot>(
+                future: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(snapshot.data!.uid)
+                    .get(),
+                builder: (context, userSnapshot) {
+                  if (userSnapshot.connectionState == ConnectionState.waiting) {
+                    return Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    );
+                  }
+
+                  if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                    final userData =
+                        userSnapshot.data!.data() as Map<String, dynamic>;
+                    final role =
+                        userData['role']?.toString().toLowerCase() ?? '';
+
+                    // Route based on user role
+                    switch (role) {
+                      case 'admin':
+                        return AdminDashboardScreen();
+                      case 'driver':
+                        return BusDriverHomeScreen();
+                      case 'user':
+                      default:
+                        return PassengerMapScreen();
+                    }
+                  } else {
+                    // Fallback to passenger screen if role fetch fails
+                    return PassengerMapScreen();
+                  }
+                },
+              );
             } else if (snapshot.hasError) {
               return Center(child: Text('${snapshot.error}'));
             }
