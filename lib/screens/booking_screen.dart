@@ -65,8 +65,6 @@ class _FindBusScreenState extends State<FindBusScreen> {
   @override
   void initState() {
     super.initState();
-    // Create sample buses for testing
-    _createSampleBuses();
     // Check for active bookings
     _checkActiveBookings();
     // Load all active buses for dropdown
@@ -78,10 +76,6 @@ class _FindBusScreenState extends State<FindBusScreen> {
     _departureDateController.dispose();
     _returnDateController.dispose();
     super.dispose();
-  }
-
-  Future<void> _createSampleBuses() async {
-    await _busService.createSampleBuses();
   }
 
   // Load all active buses for the dropdown
@@ -584,25 +578,10 @@ class _FindBusScreenState extends State<FindBusScreen> {
               items: allActiveBuses.map((bus) {
                 return DropdownMenuItem<BusModel>(
                   value: bus,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '${bus.startPoint} → ${bus.destination}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                      Text(
-                        '${bus.vehicleModel} (${bus.numberPlate})',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF666666),
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    '${bus.startPoint} → ${bus.destination} (${bus.vehicleModel})',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 );
               }).toList(),

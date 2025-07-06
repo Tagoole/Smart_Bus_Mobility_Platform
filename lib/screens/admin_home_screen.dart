@@ -443,7 +443,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 400),
             curve: Curves.easeInOut,
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -465,6 +465,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               ],
             ),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Icon with glow
@@ -482,18 +483,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     ),
                     child: CircleAvatar(
                       backgroundColor: item['bgColor'].withOpacity(0.18),
-                      radius: 22,
-                      child: Icon(item['icon'], color: item['color'], size: 28),
+                      radius: 18,
+                      child: Icon(item['icon'], color: item['color'], size: 22),
                     ),
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 8),
                 // Value with playful font and color
                 Center(
                   child: Text(
                     item['value'],
                     style: TextStyle(
-                      fontSize: 28,
+                      fontSize: 24,
                       fontWeight: FontWeight.w900,
                       color: item['color'],
                       fontFamily: 'Poppins',
@@ -508,19 +509,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     ),
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 // Title
                 Center(
                   child: Text(
                     item['title'],
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 11,
                       color: Color(0xFF6B7280),
                       fontWeight: FontWeight.w600,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 6),
                 // Animated progress bar (for demo, random progress)
                 TweenAnimationBuilder<double>(
                   tween: Tween(
@@ -530,10 +532,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   duration: const Duration(milliseconds: 900),
                   builder: (context, progress, _) {
                     return ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(6),
                       child: LinearProgressIndicator(
                         value: progress,
-                        minHeight: 6,
+                        minHeight: 4,
                         backgroundColor: item['color'].withOpacity(0.10),
                         valueColor: AlwaysStoppedAnimation<Color>(
                           item['color'],
@@ -542,7 +544,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     );
                   },
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -551,21 +553,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                           ? Icons.trending_up
                           : Icons.trending_down,
                       color: item['isIncrease'] ? Colors.green : Colors.red,
-                      size: 14,
+                      size: 12,
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 2),
                     Text(
                       item['change'],
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 10,
                         fontWeight: FontWeight.w500,
                         color: item['isIncrease'] ? Colors.green : Colors.red,
                       ),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 2),
                     const Text(
                       'vs yesterday',
-                      style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)),
+                      style: TextStyle(fontSize: 8, color: Color(0xFF9CA3AF)),
                     ),
                   ],
                 ),
@@ -968,9 +970,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         // Navigate to bus management screen
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => const BusManagementScreen(),
-          ),
+          MaterialPageRoute(builder: (context) => const BusManagementScreen()),
         );
         break;
       case 'manage-drivers':

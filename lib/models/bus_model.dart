@@ -12,6 +12,7 @@ class BusModel {
   final double fare;
   final DateTime? departureTime;
   final DateTime? estimatedArrival;
+  final Map<String, dynamic>? bookedSeats; // Track booked seats: {seatNumber: userId}
 
   BusModel({
     required this.busId,
@@ -27,6 +28,7 @@ class BusModel {
     required this.fare,
     this.departureTime,
     this.estimatedArrival,
+    this.bookedSeats,
   });
 
   factory BusModel.fromJson(Map<String, dynamic> json, String docId) {
@@ -48,6 +50,7 @@ class BusModel {
       estimatedArrival: json['estimatedArrival'] != null
           ? DateTime.parse(json['estimatedArrival'])
           : null,
+      bookedSeats: json['bookedSeats'] ?? {},
     );
   }
 
@@ -65,6 +68,7 @@ class BusModel {
       'fare': fare,
       'departureTime': departureTime?.toIso8601String(),
       'estimatedArrival': estimatedArrival?.toIso8601String(),
+      'bookedSeats': bookedSeats ?? {},
     };
   }
 
@@ -83,6 +87,7 @@ class BusModel {
     double? fare,
     DateTime? departureTime,
     DateTime? estimatedArrival,
+    Map<String, dynamic>? bookedSeats,
   }) {
     return BusModel(
       busId: busId ?? this.busId,
@@ -98,6 +103,17 @@ class BusModel {
       fare: fare ?? this.fare,
       departureTime: departureTime ?? this.departureTime,
       estimatedArrival: estimatedArrival ?? this.estimatedArrival,
+      bookedSeats: bookedSeats ?? this.bookedSeats,
     );
+  }
+
+  // Helper method to check if a seat is booked
+  bool isSeatBooked(int seatNumber) {
+    return bookedSeats?.containsKey(seatNumber.toString()) ?? false;
+  }
+
+  // Helper method to get the user who booked a seat
+  String? getSeatBooker(int seatNumber) {
+    return bookedSeats?[seatNumber.toString()];
   }
 }

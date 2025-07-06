@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -42,26 +43,7 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
   // Seat management
   Map<int, SeatStatus> seatStatus = {};
   Set<int> selectedSeats = {};
-  final Set<int> reservedSeats = {
-    1,
-    3,
-    6,
-    7,
-    11,
-    12,
-    16,
-    18,
-    19,
-    20,
-    25,
-    26,
-    27,
-    31,
-    32,
-    36,
-    37,
-  };
-  final Set<int> initiallySelectedSeats = {5, 21, 28};
+  StreamSubscription<DocumentSnapshot>? _busSubscription;
 
   // Seat layout configuration
   final int totalSeats = 40;
@@ -76,6 +58,8 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
 
   // Booking state
   bool isBooking = false;
+  bool isLoading = true;
+  BusModel? currentBusData;
 
   @override
   void initState() {
@@ -85,19 +69,71 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
     fromPlace = 'Originating Place';
     toPlace = 'Destination Place';
     _initializeSeats();
+    _loadBusData();
+  }
+
+  @override
+  void dispose() {
+    _busSubscription?.cancel();
+    super.dispose();
   }
 
   void _initializeSeats() {
+    // Initialize all seats as available
     for (int i = 1; i <= totalSeats; i++) {
       seatStatus[i] = SeatStatus.available;
     }
-    for (int seat in reservedSeats) {
-      seatStatus[seat] = SeatStatus.reserved;
+  }
+
+  void _loadBusData() {
+    if (widget.busModel == null) {
+      setState(() {
+        isLoading = false;
+      });
+      return;
     }
-    for (int seat in initiallySelectedSeats) {
-      if (!reservedSeats.contains(seat)) {
+
+    // Listen to real-time updates from the bus document
+    _busSubscription = FirebaseFirestore.instance
+        .collection('buses')
+        .doc(widget.busModel!.busId)
+        .snapshots()
+        .listen((snapshot) {
+          if (snapshot.exists) {
+            final busData = BusModel.fromJson(snapshot.data()!, snapshot.id);
+            setState(() {
+              currentBusData = busData;
+              _updateSeatStatus(busData);
+              isLoading = false;
+            });
+          } else {
+            setState(() {
+              isLoading = false;
+            });
+          }
+        });
+  }
+
+  void _updateSeatStatus(BusModel busData) {
+    // Reset all seats to available
+    for (int i = 1; i <= totalSeats; i++) {
+      seatStatus[i] = SeatStatus.available;
+    }
+
+    // Mark booked seats as reserved
+    if (busData.bookedSeats != null) {
+      for (String seatNumber in busData.bookedSeats!.keys) {
+        final seatNum = int.tryParse(seatNumber);
+        if (seatNum != null && seatNum <= totalSeats) {
+          seatStatus[seatNum] = SeatStatus.reserved;
+        }
+      }
+    }
+
+    // Keep currently selected seats as selected (if they're not reserved)
+    for (int seat in selectedSeats) {
+      if (seatStatus[seat] == SeatStatus.available) {
         seatStatus[seat] = SeatStatus.selected;
-        selectedSeats.add(seat);
       }
     }
   }
@@ -221,15 +257,34 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
           .collection('bookings')
           .add(bookingData);
 
-      // Update bus available seats
-      await FirebaseFirestore.instance
+      // Update bus available seats and bookedSeats
+      final busRef = FirebaseFirestore.instance
           .collection('buses')
-          .doc(widget.busModel!.busId)
-          .update({
-            'availableSeats':
-                widget.busModel!.availableSeats - selectedSeats.length,
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
+          .doc(widget.busModel!.busId);
+
+      // Get the latest bookedSeats map
+      final busSnapshot = await busRef.get();
+      Map<String, dynamic> bookedSeats = {};
+      if (busSnapshot.exists &&
+          busSnapshot.data() != null &&
+          busSnapshot.data()!.containsKey('bookedSeats')) {
+        bookedSeats = Map<String, dynamic>.from(
+          busSnapshot.data()!['bookedSeats'] ?? {},
+        );
+      }
+      // Add the new bookings
+      for (int seat in selectedSeats) {
+        bookedSeats[seat.toString()] = user.uid;
+      }
+
+      await busRef.update({
+        'availableSeats':
+            (busSnapshot.data()?['availableSeats'] ??
+                widget.busModel!.seatCapacity) -
+            selectedSeats.length,
+        'bookedSeats': bookedSeats,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
 
       // Return booking result
       Navigator.pop(context, {
@@ -557,7 +612,9 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
                                 height: 16,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
                                 ),
                               ),
                               SizedBox(width: 8),
