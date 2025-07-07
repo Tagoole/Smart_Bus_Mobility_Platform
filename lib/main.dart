@@ -10,7 +10,8 @@ import 'package:smart_bus_mobility_platform1/screens/signup_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/forgot_password_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/email_verification_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/forgot_password_screen2.dart';
-import 'package:smart_bus_mobility_platform1/screens/profile_screen.dart' as profile;
+import 'package:smart_bus_mobility_platform1/screens/profile_screen.dart'
+    as profile;
 import 'package:smart_bus_mobility_platform1/screens/nav_bar_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/passenger_map_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/login_screen_new.dart';
@@ -71,9 +72,62 @@ class MyApp extends StatelessWidget {
       ),
       routes: {
         ...AppRoutes.getRoutes(), // Spread your existing routes
+        '/': (context) => StreamBuilder(
+          stream: FirebaseAuth.instance.authStateChanges(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.active) {
+              if (snapshot.hasData) {
+                // User is authenticated, get their role and route accordingly
+                return FutureBuilder<DocumentSnapshot>(
+                  future: FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(snapshot.data!.uid)
+                      .get(),
+                  builder: (context, userSnapshot) {
+                    if (userSnapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return Center(
+                        child: CircularProgressIndicator(color: Colors.white),
+                      );
+                    }
+
+                    if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                      final userData =
+                          userSnapshot.data!.data() as Map<String, dynamic>;
+                      final role =
+                          userData['role']?.toString().toLowerCase() ?? '';
+
+                      // Route based on user role
+                      switch (role) {
+                        case 'admin':
+                          return AdminDashboardScreen();
+                        case 'driver':
+                          return BusDriverHomeScreen();
+                        case 'user':
+                        default:
+                          return PassengerMapScreen();
+                      }
+                    } else {
+                      // Fallback to passenger screen if role fetch fails
+                      return PassengerMapScreen();
+                    }
+                  },
+                );
+              } else if (snapshot.hasError) {
+                return Center(child: Text('${snapshot.error}'));
+              }
+            } else if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              );
+            }
+            return SignInScreen();
+          },
+        ),
         '/signup': (context) => const SignUpScreen(), // Add signup route
         '/signin': (context) => const SignInScreen(), // Add signin route
-        '/forgotpassword': (context) => const ForgotPasswordScreen(), // Forgot password route
+        '/forgotpassword': (context) =>
+            const ForgotPasswordScreen(), // Forgot password route
         '/emailverification': (context) => const EmailVerificationScreen(),
         // '/emailverificationsuccess': (context) => const EmailVerificationSuccessScreenAnimated(),
         '/forgotpassword2': (context) => const ForgotPasswordScreen2(),
@@ -89,57 +143,6 @@ class MyApp extends StatelessWidget {
         '/passenger': (context) => BusTrackingScreen(),
         '/busdriver': (context) => BusDriverHomeScreen(),
       },
-      home: StreamBuilder(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.active) {
-            if (snapshot.hasData) {
-              // User is authenticated, get their role and route accordingly
-              return FutureBuilder<DocumentSnapshot>(
-                future: FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(snapshot.data!.uid)
-                    .get(),
-                builder: (context, userSnapshot) {
-                  if (userSnapshot.connectionState == ConnectionState.waiting) {
-                    return Center(
-                      child: CircularProgressIndicator(color: Colors.white),
-                    );
-                  }
-
-                  if (userSnapshot.hasData && userSnapshot.data!.exists) {
-                    final userData =
-                        userSnapshot.data!.data() as Map<String, dynamic>;
-                    final role =
-                        userData['role']?.toString().toLowerCase() ?? '';
-
-                    // Route based on user role
-                    switch (role) {
-                      case 'admin':
-                        return AdminDashboardScreen();
-                      case 'driver':
-                        return BusDriverHomeScreen();
-                      case 'user':
-                      default:
-                        return PassengerMapScreen();
-                    }
-                  } else {
-                    // Fallback to passenger screen if role fetch fails
-                    return PassengerMapScreen();
-                  }
-                },
-              );
-            } else if (snapshot.hasError) {
-              return Center(child: Text('${snapshot.error}'));
-            }
-          } else if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            );
-          }
-          return SignInScreen();
-        },
-      ),
     );
   }
 }

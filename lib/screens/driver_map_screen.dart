@@ -84,14 +84,14 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         'images/bus_icon.png',
         80, // Larger size for better visibility
       );
-      _driverMarkerIcon = BitmapDescriptor.fromBytes(driverIconData);
+      _driverMarkerIcon = BitmapDescriptor.bytes(driverIconData);
 
       // Load passenger marker icon - constant size
       final Uint8List passengerIconData = await getImagesFromMarkers(
         'images/passenger_icon.png',
         70, // Larger size for better visibility
       );
-      _passengerMarkerIcon = BitmapDescriptor.fromBytes(passengerIconData);
+      _passengerMarkerIcon = BitmapDescriptor.bytes(passengerIconData);
     } catch (e) {
       print('Error loading marker icons: $e');
       // Fallback to default markers if custom icons fail
