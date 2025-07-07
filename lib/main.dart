@@ -5,19 +5,26 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:smart_bus_mobility_platform1/routes/app_routes.dart';
 import 'package:smart_bus_mobility_platform1/screens/email_verification_success_screen_animated.dart';
 import 'package:smart_bus_mobility_platform1/screens/login_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/personal_data_screen.dart';
+
 import 'package:smart_bus_mobility_platform1/screens/signup_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/forgot_password_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/email_verification_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/forgot_password_screen2.dart';
-// Add this import
+import 'package:smart_bus_mobility_platform1/screens/profile_screen.dart' as profile;
+import 'package:smart_bus_mobility_platform1/screens/nav_bar_screen.dart';
 
+
+// Ensure this import is correct and the file contains the correct class name
+
+// Add this import
 //import 'firebase_options.dart';
 import 'package:smart_bus_mobility_platform1/screens/map_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-   
+  
   if (kIsWeb) {
     await Firebase.initializeApp(
       options: FirebaseOptions(
@@ -39,13 +46,13 @@ void main() async {
       ),
     );
   }
-   
+  
   runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-   
+  
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -62,13 +69,32 @@ class MyApp extends StatelessWidget {
           '/forgotpassword': (context) => const ForgotPasswordScreen(), // Forgot password route
           '/emailverification': (context) => const EmailVerificationScreen(),
           '/emailverificationsuccess': (context) => const EmailVerificationSuccessScreenAnimated(),
-          '/forgotpassword2':(context) => const ForgotPasswordScreen2(),// Email verification success route
-        
+          '/forgotpassword2': (context) => const ForgotPasswordScreen2(),
+          '/profilescreen': (context) => const profile.ProfileScreen(),
+          '/personaldata': (context) => const PersonalData(),
+          '/navbar':(context) => const NavBarScreen(),
+          
+          // Make sure the class name matches the one defined in select_seat_screen.dart
+          
+          
+          // Add PersonalData route
+          // Email verification success route
         },
-                 
-        //initialRoute: AppRoutes.mapScreen,
-        home:ForgotPasswordScreen2(),
-                 
+        
+        // You can set the initial route to PersonalData for testing
+        // initialRoute: '/personaldata',
+        
+        // Or keep your current home screen and navigate to PersonalData from there
+        home: const profile.ProfileScreen(), // Changed to PersonalData for testing
+        
+        // Alternative: You can also navigate with parameters like this:
+        // home: const PersonalData(
+        //   initialName: "John Doe",
+        //   initialEmail: "john@example.com",
+        //   initialPhone: "+1234567890",
+        //   initialAddress: "123 Main St, City, State",
+        // ),
+        
         //home: Scaffold(
         //  backgroundColor: Colors.blue,
         //  body: Container(width: 200, height: 200, color: Colors.amberAccent),

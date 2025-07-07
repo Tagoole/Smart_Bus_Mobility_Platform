@@ -50,6 +50,15 @@ dependencies:
 
   flutter_svg: ^2.0.10+1
 
+  # Image picker for camera and gallery
+  image_picker: ^1.0.7
+
+  # Shared preferences for settings storage
+  shared_preferences: ^2.2.2
+
+  # Path provider for file operations
+  path_provider: ^2.1.2
+
   # Dotenv
   flutter_dotenv: ^5.1.0
 

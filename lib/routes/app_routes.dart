@@ -14,6 +14,8 @@ class AppRoutes {
   static const String passengerScreen = '/passenger';
   static const String adminScreen = '/admin';
   static const String busDriverScreen = '/busdriver';
+  static const String availableBusScreen = '/availablebus';
+  static const String selectSeatScreen = '/selectseat';
 
   static Map<String, WidgetBuilder> getRoutes() {
     return {
