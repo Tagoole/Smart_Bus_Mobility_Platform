@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:smart_bus_mobility_platform1/routes/app_routes.dart';
 
 class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
   @override
   _SplashScreenState createState() => _SplashScreenState();
 }
@@ -13,23 +18,23 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _scaleController;
   late AnimationController _rotateController;
   late AnimationController _busController;
-  
+
   // Controllers for individual bus animations
   late AnimationController _bus1Controller;
   late AnimationController _bus2Controller;
   late AnimationController _bus3Controller;
-  
+
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _scaleAnimation;
   late Animation<double> _rotateAnimation;
   late Animation<double> _busAnimation;
-  
+
   // Individual bus animations
   late Animation<double> _bus1Scale;
   late Animation<double> _bus2Scale;
   late Animation<double> _bus3Scale;
-  
+
   // Track which bus is currently selected
   int _selectedBus = -1;
 
@@ -46,12 +51,12 @@ class _SplashScreenState extends State<SplashScreen>
       duration: Duration(milliseconds: 2000),
       vsync: this,
     );
-    
+
     _slideController = AnimationController(
       duration: Duration(milliseconds: 1500),
       vsync: this,
     );
-    
+
     _scaleController = AnimationController(
       duration: Duration(milliseconds: 1000),
       vsync: this,
@@ -72,12 +77,12 @@ class _SplashScreenState extends State<SplashScreen>
       duration: Duration(milliseconds: 300),
       vsync: this,
     );
-    
+
     _bus2Controller = AnimationController(
       duration: Duration(milliseconds: 300),
       vsync: this,
     );
-    
+
     _bus3Controller = AnimationController(
       duration: Duration(milliseconds: 300),
       vsync: this,
@@ -85,87 +90,119 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _setupAnimations() {
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeInOut,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
 
-    _slideAnimation = Tween<Offset>(
-      begin: Offset(-1.5, 0.0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.elasticOut,
-    ));
+    _slideAnimation = Tween<Offset>(begin: Offset(-1.5, 0.0), end: Offset.zero)
+        .animate(
+          CurvedAnimation(parent: _slideController, curve: Curves.elasticOut),
+        );
 
-    _scaleAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _scaleController,
-      curve: Curves.bounceOut,
-    ));
+    _scaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.bounceOut),
+    );
 
-    _rotateAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _rotateController,
-      curve: Curves.easeInOut,
-    ));
+    _rotateAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _rotateController, curve: Curves.easeInOut),
+    );
 
-    _busAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _busController,
-      curve: Curves.easeOutBack,
-    ));
+    _busAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _busController, curve: Curves.easeOutBack),
+    );
 
     // Individual bus scale animations
-    _bus1Scale = Tween<double>(
-      begin: 1.0,
-      end: 1.15,
-    ).animate(CurvedAnimation(
-      parent: _bus1Controller,
-      curve: Curves.elasticOut,
-    ));
-    
-    _bus2Scale = Tween<double>(
-      begin: 1.0,
-      end: 1.15,
-    ).animate(CurvedAnimation(
-      parent: _bus2Controller,
-      curve: Curves.elasticOut,
-    ));
-    
-    _bus3Scale = Tween<double>(
-      begin: 1.0,
-      end: 1.15,
-    ).animate(CurvedAnimation(
-      parent: _bus3Controller,
-      curve: Curves.elasticOut,
-    ));
+    _bus1Scale = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(parent: _bus1Controller, curve: Curves.elasticOut),
+    );
+
+    _bus2Scale = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(parent: _bus2Controller, curve: Curves.elasticOut),
+    );
+
+    _bus3Scale = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(parent: _bus3Controller, curve: Curves.elasticOut),
+    );
   }
 
   void _startAnimations() async {
     await Future.delayed(Duration(milliseconds: 300));
-    _fadeController.forward();
-    
+    if (mounted) _fadeController.forward();
+
     await Future.delayed(Duration(milliseconds: 400));
-    _slideController.forward();
-    
+    if (mounted) _slideController.forward();
+
     await Future.delayed(Duration(milliseconds: 600));
-    _scaleController.forward();
-    
+    if (mounted) _scaleController.forward();
+
     await Future.delayed(Duration(milliseconds: 200));
-    _rotateController.forward();
-    
+    if (mounted) _rotateController.forward();
+
     await Future.delayed(Duration(milliseconds: 500));
-    _busController.forward();
+    if (mounted) _busController.forward();
+
+    // Wait for animations to complete and then navigate
+    await Future.delayed(Duration(milliseconds: 2000));
+    if (mounted) {
+      _navigateToAppropriateScreen();
+    }
+  }
+
+  void _navigateToAppropriateScreen() async {
+    try {
+      // Check if user is already logged in
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user != null) {
+        // User is logged in, get user role from Firestore
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        if (mounted) {
+          if (userDoc.exists) {
+            final userData = userDoc.data() as Map<String, dynamic>;
+            final role = userData['role']?.toString().toLowerCase() ?? '';
+
+            switch (role) {
+              case 'admin':
+                Navigator.pushReplacementNamed(context, AppRoutes.adminScreen);
+                break;
+              case 'driver':
+                Navigator.pushReplacementNamed(
+                  context,
+                  AppRoutes.busDriverHomeScreen,
+                );
+                break;
+              case 'user':
+              default:
+                Navigator.pushReplacementNamed(
+                  context,
+                  AppRoutes.passengerHomeScreen,
+                );
+                break;
+            }
+          } else {
+            // Fallback to passenger screen if role fetch fails
+            Navigator.pushReplacementNamed(
+              context,
+              AppRoutes.passengerHomeScreen,
+            );
+          }
+        }
+      } else {
+        // User is not logged in, navigate to login screen
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, AppRoutes.loginScreen);
+        }
+      }
+    } catch (e) {
+      // Handle any errors gracefully
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, AppRoutes.loginScreen);
+      }
+    }
   }
 
   void _onBusPressed(int busIndex) {
@@ -222,38 +259,74 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    
+
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            stops: [0.0, 0.3, 0.7, 1.0],
-            colors: [
-              Color(0xFFFFF8DC), // Cream white
-              Color(0xFFFFF176), // Light yellow
-              Color(0xFFFFD54F), // Medium yellow
-              Color(0xFFFFA726), // Orange yellow
+      body: GestureDetector(
+        onTap: () {
+          // Allow users to skip splash screen by tapping
+          if (mounted) {
+            _navigateToAppropriateScreen();
+          }
+        },
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              stops: [0.0, 0.3, 0.7, 1.0],
+              colors: [
+                Color(0xFFFFF8DC), // Cream white
+                Color(0xFFFFF176), // Light yellow
+                Color(0xFFFFD54F), // Medium yellow
+                Color(0xFFFFA726), // Orange yellow
+              ],
+            ),
+          ),
+          child: Stack(
+            children: [
+              // Animated dotted path
+              _buildDottedPath(screenWidth, screenHeight),
+
+              // Main content
+              _buildMainContent(screenWidth, screenHeight),
+
+              // Interactive bus images
+              _buildInteractiveBusImages(screenWidth, screenHeight),
+
+              // Bottom text
+              _buildBottomText(screenWidth, screenHeight),
+
+              // Skip hint (optional)
+              _buildSkipHint(screenWidth, screenHeight),
             ],
           ),
         ),
-        child: Stack(
-          children: [
-            // Animated dotted path
-            _buildDottedPath(screenWidth, screenHeight),
-            
-            // Main content
-            _buildMainContent(screenWidth, screenHeight),
-            
-            // Interactive bus images
-            _buildInteractiveBusImages(screenWidth, screenHeight),
-            
-            // Bottom text
-            _buildBottomText(screenWidth, screenHeight),
-          ],
+      ),
+    );
+  }
+
+  Widget _buildSkipHint(double screenWidth, double screenHeight) {
+    return Positioned(
+      top: screenHeight * 0.05,
+      right: screenWidth * 0.05,
+      child: FadeTransition(
+        opacity: _fadeAnimation,
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            'Tap to skip',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ),
       ),
     );
@@ -280,11 +353,7 @@ class _SplashScreenState extends State<SplashScreen>
           left: screenWidth * 0.05,
           child: FadeTransition(
             opacity: _fadeAnimation,
-            child: Icon(
-              Icons.location_on,
-              size: 30,
-              color: Colors.black87,
-            ),
+            child: Icon(Icons.location_on, size: 30, color: Colors.black87),
           ),
         ),
 
@@ -336,13 +405,13 @@ class _SplashScreenState extends State<SplashScreen>
           top: screenHeight * 0.22,
           right: screenWidth * 0.08,
           child: SlideTransition(
-            position: Tween<Offset>(
-              begin: Offset(1.5, 0.0),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(
-              parent: _slideController,
-              curve: Curves.elasticOut,
-            )),
+            position: Tween<Offset>(begin: Offset(1.5, 0.0), end: Offset.zero)
+                .animate(
+                  CurvedAnimation(
+                    parent: _slideController,
+                    curve: Curves.elasticOut,
+                  ),
+                ),
             child: _buildModernStrokedText(
               'Bus',
               fontSize: screenWidth * 0.15,
@@ -364,22 +433,19 @@ class _SplashScreenState extends State<SplashScreen>
               animation: _scaleController,
               builder: (context, child) {
                 return Transform.translate(
-                  offset: Offset(0, math.sin(_scaleController.value * math.pi * 4) * 3),
+                  offset: Offset(
+                    0,
+                    math.sin(_scaleController.value * math.pi * 4) * 3,
+                  ),
                   child: Container(
                     width: 120,
                     height: 120,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: RadialGradient(
-                        colors: [
-                          Color(0xFFFFEB3B),
-                          Color(0xFFFFC107),
-                        ],
+                        colors: [Color(0xFFFFEB3B), Color(0xFFFFC107)],
                       ),
-                      border: Border.all(
-                        color: Colors.white,
-                        width: 3,
-                      ),
+                      border: Border.all(color: Colors.white, width: 3),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.2),
@@ -510,19 +576,18 @@ class _SplashScreenState extends State<SplashScreen>
     required int initialDelay,
   }) {
     return ScaleTransition(
-      scale: Tween<double>(
-        begin: 0.0,
-        end: 1.0,
-      ).animate(CurvedAnimation(
-        parent: _busController,
-        curve: Interval(initialDelay / 1000, 1.0, curve: Curves.easeOutBack),
-      )),
+      scale: Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(
+          parent: _busController,
+          curve: Interval(initialDelay / 1000, 1.0, curve: Curves.easeOutBack),
+        ),
+      ),
       child: AnimatedBuilder(
         animation: scaleAnimation,
         builder: (context, child) {
           bool isSelected = _selectedBus == busIndex;
           bool isOtherSelected = _selectedBus != -1 && _selectedBus != busIndex;
-          
+
           return AnimatedOpacity(
             duration: Duration(milliseconds: 300),
             opacity: isOtherSelected ? 0.6 : 1.0,
@@ -551,7 +616,9 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(isSelected ? 0.25 : 0.15),
+                        color: Colors.black.withOpacity(
+                          isSelected ? 0.25 : 0.15,
+                        ),
                         blurRadius: isSelected ? 30 : 20,
                         offset: Offset(0, isSelected ? 15 : 10),
                       ),
@@ -666,7 +733,7 @@ class DottedPathPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     final path = Path();
-    
+
     // Create curved dotted path
     final startX = size.width * 0.1;
     final startY = size.height * 0.2;
@@ -684,12 +751,14 @@ class DottedPathPainter extends CustomPainter {
       final pathMetric = pathMetrics.first;
       final totalLength = pathMetric.length;
       final animatedLength = totalLength * animationValue;
-      
+
       for (double distance = 0; distance < animatedLength; distance += 15) {
         if ((distance / 15) % 2 == 0) {
           final pos1 = pathMetric.getTangentForOffset(distance);
-          final pos2 = pathMetric.getTangentForOffset(math.min(distance + 8, animatedLength));
-          
+          final pos2 = pathMetric.getTangentForOffset(
+            math.min(distance + 8, animatedLength),
+          );
+
           if (pos1 != null && pos2 != null) {
             canvas.drawLine(pos1.position, pos2.position, paint);
           }

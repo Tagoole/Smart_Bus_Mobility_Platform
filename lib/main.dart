@@ -1,30 +1,38 @@
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:smart_bus_mobility_platform1/routes/app_routes.dart';
-import 'package:smart_bus_mobility_platform1/screens/email_verification_success_screen_animated.dart';
 import 'package:smart_bus_mobility_platform1/screens/login_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/personal_data_screen.dart';
-
 import 'package:smart_bus_mobility_platform1/screens/signup_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/forgot_password_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/email_verification_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/forgot_password_screen2.dart';
 import 'package:smart_bus_mobility_platform1/screens/profile_screen.dart' as profile;
 import 'package:smart_bus_mobility_platform1/screens/nav_bar_screen.dart';
-
-
-// Ensure this import is correct and the file contains the correct class name
-
-// Add this import
-//import 'firebase_options.dart';
+import 'package:smart_bus_mobility_platform1/screens/passenger_map_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/login_screen_new.dart';
+import 'package:smart_bus_mobility_platform1/screens/payment_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/admin_home_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/customer_home_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/bus_driver_home_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
 import 'package:smart_bus_mobility_platform1/screens/map_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/splash_screen.dart';
 
 void main() async {
+  BindingBase.debugZoneErrorsAreFatal = false;
+
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
   if (kIsWeb) {
     await Firebase.initializeApp(
       options: FirebaseOptions(
@@ -46,59 +54,91 @@ void main() async {
       ),
     );
   }
-  
+
   runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-  
+
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'Smart Bus Mobility',
-        theme: ThemeData.light().copyWith(
-          scaffoldBackgroundColor: Colors.blueGrey,
-        ),
-        routes: {
-          ...AppRoutes.getRoutes(), // Spread your existing routes
-          '/signup': (context) => const SignUpScreen(), // Add signup route
-          '/signin': (context) => const SignInScreen(), // Add signin route
-          '/forgotpassword': (context) => const ForgotPasswordScreen(), // Forgot password route
-          '/emailverification': (context) => const EmailVerificationScreen(),
-          '/emailverificationsuccess': (context) => const EmailVerificationSuccessScreenAnimated(),
-          '/forgotpassword2': (context) => const ForgotPasswordScreen2(),
-          '/profilescreen': (context) => const profile.ProfileScreen(),
-          '/personaldata': (context) => const PersonalData(),
-          '/navbar':(context) => const NavBarScreen(),
-          
-          // Make sure the class name matches the one defined in select_seat_screen.dart
-          
-          
-          // Add PersonalData route
-          // Email verification success route
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Smart Bus Mobility',
+      theme: ThemeData.light().copyWith(
+        scaffoldBackgroundColor: Colors.blueGrey,
+      ),
+      routes: {
+        ...AppRoutes.getRoutes(), // Spread your existing routes
+        '/signup': (context) => const SignUpScreen(), // Add signup route
+        '/signin': (context) => const SignInScreen(), // Add signin route
+        '/forgotpassword': (context) => const ForgotPasswordScreen(), // Forgot password route
+        '/emailverification': (context) => const EmailVerificationScreen(),
+        '/emailverificationsuccess': (context) => const EmailVerificationSuccessScreenAnimated(),
+        '/forgotpassword2': (context) => const ForgotPasswordScreen2(),
+        '/profilescreen': (context) => const profile.ProfileScreen(),
+        '/personaldata': (context) => const PersonalData(),
+        '/navbar': (context) => const NavBarScreen(),
+        '/passengerMap': (context) => PassengerMapScreen(),
+        '/login': (context) => SignInScreenNew(),
+        '/payment': (context) => PaymentScreen(),
+        '/verifyEmail': (context) => EmailVerificationScreen(),
+        '/forgotPassword': (context) => ForgotPasswordScreen(),
+        '/admin': (context) => AdminDashboardScreen(),
+        '/passenger': (context) => BusTrackingScreen(),
+        '/busdriver': (context) => BusDriverHomeScreen(),
+      },
+      home: StreamBuilder(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.active) {
+            if (snapshot.hasData) {
+              // User is authenticated, get their role and route accordingly
+              return FutureBuilder<DocumentSnapshot>(
+                future: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(snapshot.data!.uid)
+                    .get(),
+                builder: (context, userSnapshot) {
+                  if (userSnapshot.connectionState == ConnectionState.waiting) {
+                    return Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    );
+                  }
+
+                  if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                    final userData =
+                        userSnapshot.data!.data() as Map<String, dynamic>;
+                    final role =
+                        userData['role']?.toString().toLowerCase() ?? '';
+
+                    // Route based on user role
+                    switch (role) {
+                      case 'admin':
+                        return AdminDashboardScreen();
+                      case 'driver':
+                        return BusDriverHomeScreen();
+                      case 'user':
+                      default:
+                        return PassengerMapScreen();
+                    }
+                  } else {
+                    // Fallback to passenger screen if role fetch fails
+                    return PassengerMapScreen();
+                  }
+                },
+              );
+            } else if (snapshot.hasError) {
+              return Center(child: Text('${snapshot.error}'));
+            }
+          } else if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            );
+          }
+          return SignInScreen();
         },
-        
-        // You can set the initial route to PersonalData for testing
-        // initialRoute: '/personaldata',
-        
-        // Or keep your current home screen and navigate to PersonalData from there
-        home: const profile.ProfileScreen(), // Changed to PersonalData for testing
-        
-        // Alternative: You can also navigate with parameters like this:
-        // home: const PersonalData(
-        //   initialName: "John Doe",
-        //   initialEmail: "john@example.com",
-        //   initialPhone: "+1234567890",
-        //   initialAddress: "123 Main St, City, State",
-        // ),
-        
-        //home: Scaffold(
-        //  backgroundColor: Colors.blue,
-        //  body: Container(width: 200, height: 200, color: Colors.amberAccent),
-        //),
       ),
     );
   }

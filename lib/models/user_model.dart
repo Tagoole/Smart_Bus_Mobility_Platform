@@ -3,15 +3,25 @@ import 'dart:typed_data';
 class UserModel {
   final String username;
   final String email;
-  final String phoneNumber;
+  final String contact;
+  final String uid;
   final String role;
   Uint8List? profilePicture;
 
   UserModel({
     required this.username,
+    required this.uid,
     required this.email,
-    required this.phoneNumber,
+    required this.contact,
     required this.role,
     this.profilePicture,
   });
+
+  Map<String, dynamic> toJson() => {
+    'username': username, 
+    'uid': uid,
+    'email':email,
+    'contact':contact,
+    'role':role,
+    };
 }
