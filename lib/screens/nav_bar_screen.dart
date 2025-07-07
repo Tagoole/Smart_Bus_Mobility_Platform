@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'live_location_screen.dart';
+
 import 'personal_data_screen.dart';
-import 'home_screen.dart';
 import 'ticket_screen.dart';
 import 'settings_screen.dart';
 import 'profile_screen.dart';
+import 'passenger_map_screen.dart';
+import 'customer_home_screen.dart';
 
 class NavBarScreen extends StatefulWidget {
   const NavBarScreen({super.key});
@@ -18,9 +19,9 @@ class _NavBarScreenState extends State<NavBarScreen> {
 
   // List of screens for each navigation item
   final List<Widget> _screens = [
-    const HomeScreen(),
+    const BusTrackingScreen(),
     const TicketScreen(),
-    const LiveLocationScreen(),
+    const PassengerMapScreen(),
     const SettingsScreen(),
     const ProfileScreen(),
   ];
@@ -61,7 +62,7 @@ class _NavBarScreenState extends State<NavBarScreen> {
             _buildNavItem(
               icon: Icons.location_on,
               index: 2,
-              label: "Live Location",
+              label: "Passenger Map",
             ),
             _buildNavItem(icon: Icons.settings, index: 3, label: "Settings"),
             _buildNavItem(icon: Icons.person, index: 4, label: "Profile"),
