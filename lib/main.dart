@@ -105,11 +105,11 @@ class MyApp extends StatelessWidget {
                           return BusDriverHomeScreen();
                         case 'user':
                         default:
-                          return PassengerMapScreen();
+                          return BusTrackingScreen();
                       }
                     } else {
                       // Fallback to passenger screen if role fetch fails
-                      return PassengerMapScreen();
+                      return SignInScreen();
                     }
                   },
                 );
