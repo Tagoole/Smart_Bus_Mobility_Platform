@@ -55,7 +55,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   bool _hasActiveBooking = false;
   Timer? _busTrackingTimer;
 
-  // Load custom marker icons
+  // Load custom marker icons with constant size
   Future<Uint8List> getImagesFromMarkers(String path, int width) async {
     ByteData data = await rootBundle.load(path);
     ui.Codec codec = await ui.instantiateImageCodec(
@@ -71,19 +71,19 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   // Load custom marker icons
   Future<void> _loadMarkerIcons() async {
     try {
-      // Load pickup marker icon
+      // Load pickup marker icon - constant size
       final Uint8List pickupIconData = await getImagesFromMarkers(
         'images/passenger_icon.png',
-        40,
+        70, // Larger size for better visibility
       );
-      _pickupMarkerIcon = BitmapDescriptor.bytes(pickupIconData);
+      _pickupMarkerIcon = BitmapDescriptor.fromBytes(pickupIconData);
 
-      // Load bus marker icon
+      // Load bus marker icon - constant size
       final Uint8List busIconData = await getImagesFromMarkers(
         'images/bus_icon.png',
-        50,
+        80, // Larger size for better visibility
       );
-      _busMarkerIcon = BitmapDescriptor.bytes(busIconData);
+      _busMarkerIcon = BitmapDescriptor.fromBytes(busIconData);
     } catch (e) {
       print('Error loading marker icons: $e');
       _pickupMarkerIcon = BitmapDescriptor.defaultMarkerWithHue(
@@ -251,7 +251,8 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
 
   // Add this function to fetch the route polyline from Google Directions API
   Future<List<LatLng>> getRoutePolyline(LatLng start, LatLng end) async {
-    final apiKey = 'AIzaSyC2n6urW_4DUphPLUDaNGAW_VN53j0RP4s'; // Replace with your real key
+    final apiKey =
+        'AIzaSyC2n6urW_4DUphPLUDaNGAW_VN53j0RP4s'; // Replace with your real key
     final url =
         'https://maps.googleapis.com/maps/api/directions/json?origin=${start.latitude},${start.longitude}&destination=${end.latitude},${end.longitude}&key=$apiKey';
 
@@ -499,6 +500,8 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
           icon: BitmapDescriptor.defaultMarkerWithHue(
             BitmapDescriptor.hueGreen,
           ),
+          anchor: Offset(0.5, 0.5), // Center the marker
+          flat: true, // Keep marker flat (not tilted)
           infoWindow: InfoWindow(
             title: 'Your Location',
             snippet: 'Current position',
@@ -514,6 +517,8 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
           markerId: MarkerId('pickup_location'),
           position: _pickupLocation!,
           icon: _pickupMarkerIcon!,
+          anchor: Offset(0.5, 0.5), // Center the marker
+          flat: true, // Keep marker flat (not tilted)
           infoWindow: InfoWindow(
             title: 'Pickup Location',
             snippet: widget.isPickupSelection
@@ -532,6 +537,8 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
           markerId: MarkerId('bus_location'),
           position: _busLocation!,
           icon: _busMarkerIcon!,
+          anchor: Offset(0.5, 0.5), // Center the marker
+          flat: true, // Keep marker flat (not tilted)
           infoWindow: InfoWindow(
             title: 'Your Bus',
             snippet: '${_bookedBus!.numberPlate} • ETA: $_estimatedArrival',

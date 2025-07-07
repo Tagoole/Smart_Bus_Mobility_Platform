@@ -64,7 +64,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   List<som.BusStop> _optimizedRouteStops = [];
   bool _showRouteSummary = false;
 
-  // Load custom marker icons
+  // Load custom marker icons with constant size
   Future<Uint8List> getImagesFromMarkers(String path, int width) async {
     ByteData data = await rootBundle.load(path);
     ui.Codec codec = await ui.instantiateImageCodec(
@@ -79,17 +79,17 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
   Future<void> _loadMarkerIcons() async {
     try {
-      // Load driver marker icon (bus icon)
+      // Load driver marker icon (bus icon) - constant size
       final Uint8List driverIconData = await getImagesFromMarkers(
         'images/bus_icon.png',
-        60,
+        80, // Larger size for better visibility
       );
       _driverMarkerIcon = BitmapDescriptor.fromBytes(driverIconData);
 
-      // Load passenger marker icon
+      // Load passenger marker icon - constant size
       final Uint8List passengerIconData = await getImagesFromMarkers(
         'images/passenger_icon.png',
-        50,
+        70, // Larger size for better visibility
       );
       _passengerMarkerIcon = BitmapDescriptor.fromBytes(passengerIconData);
     } catch (e) {
@@ -265,33 +265,118 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         return;
       }
 
-      // Get current position
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: Duration(seconds: 15),
-      );
+      // Try to get current position with different strategies
+      Position? position;
 
-      setState(() {
-        _driverLocation = LatLng(position.latitude, position.longitude);
-        _isLoadingLocation = false;
-      });
-
-      // Update camera to driver location
-      if (_controller.isCompleted) {
-        GoogleMapController controller = await _controller.future;
-        controller.animateCamera(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(target: _driverLocation!, zoom: 15),
-          ),
+      try {
+        // First try: High accuracy with timeout
+        position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
         );
+      } catch (e) {
+        print('High accuracy location failed, trying medium accuracy: $e');
+
+        try {
+          // Second try: Medium accuracy with longer timeout
+          position = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.medium,
+            timeLimit: Duration(seconds: 15),
+          );
+        } catch (e) {
+          print('Medium accuracy location failed, trying low accuracy: $e');
+
+          try {
+            // Third try: Low accuracy with longest timeout
+            position = await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.low,
+              timeLimit: Duration(seconds: 20),
+            );
+          } catch (e) {
+            print('All location attempts failed: $e');
+
+            // Fallback: Use last known position if available
+            try {
+              position = await Geolocator.getLastKnownPosition();
+              if (position != null) {
+                print('Using last known position as fallback');
+              } else {
+                throw Exception('No last known position available');
+              }
+            } catch (e) {
+              print('Last known position also failed: $e');
+
+              // Final fallback: Use default location (Kampala)
+              print('Using default location as fallback');
+              setState(() {
+                _driverLocation = LatLng(
+                  0.34540783865964797,
+                  32.54297125499706,
+                );
+                _isLoadingLocation = false;
+              });
+
+              // Update camera to default location
+              if (_controller.isCompleted) {
+                GoogleMapController controller = await _controller.future;
+                controller.animateCamera(
+                  CameraUpdate.newCameraPosition(
+                    CameraPosition(
+                      target: LatLng(0.34540783865964797, 32.54297125499706),
+                      zoom: 15,
+                    ),
+                  ),
+                );
+              }
+
+              _updateMarkers();
+              _updateDriverLocationInFirestore();
+              await _drawOptimalRouteSOM();
+              return; // Exit the function early
+            }
+          }
+        }
       }
 
-      _updateMarkers();
-      _updateDriverLocationInFirestore();
-      await _drawOptimalRouteSOM();
+      if (position != null) {
+        setState(() {
+          _driverLocation = LatLng(position!.latitude, position!.longitude);
+          _isLoadingLocation = false;
+        });
+
+        // Update camera to driver location
+        if (_controller.isCompleted) {
+          GoogleMapController controller = await _controller.future;
+          controller.animateCamera(
+            CameraUpdate.newCameraPosition(
+              CameraPosition(target: _driverLocation!, zoom: 15),
+            ),
+          );
+        }
+
+        _updateMarkers();
+        _updateDriverLocationInFirestore();
+        await _drawOptimalRouteSOM();
+
+        print(
+          'Location updated successfully: ${position?.latitude}, ${position?.longitude}',
+        );
+      }
     } catch (e) {
       print('Error getting location: $e');
-      _showSnackBar('Error getting your location. Please try again.');
+
+      // Show appropriate error message
+      String errorMessage = 'Error getting your location. ';
+      if (e.toString().contains('Position update is unavailable')) {
+        errorMessage +=
+            'Please check your browser location settings and try again.';
+      } else if (e.toString().contains('timeout')) {
+        errorMessage += 'Location request timed out. Please try again.';
+      } else {
+        errorMessage += 'Please try again.';
+      }
+
+      _showSnackBar(errorMessage);
       setState(() {
         _isLoadingLocation = false;
       });
@@ -340,6 +425,8 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
           markerId: MarkerId('driver_location'),
           position: _driverLocation!,
           icon: _driverMarkerIcon!,
+          anchor: Offset(0.5, 0.5), // Center the marker
+          flat: true, // Keep marker flat (not tilted)
           infoWindow: InfoWindow(
             title: 'Your Location (START)',
             snippet: 'Driver: $_driverName',
@@ -360,6 +447,8 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
             markerId: MarkerId('passenger_${passenger['userId']}'),
             position: latLng,
             icon: _passengerMarkerIcon!,
+            anchor: Offset(0.5, 0.5), // Center the marker
+            flat: true, // Keep marker flat (not tilted)
             infoWindow: InfoWindow(
               title: 'Passenger ${i + 1}: ${passenger['userName']}',
               snippet:
@@ -663,6 +752,8 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
           markerId: MarkerId('driver_location'),
           position: _driverLocation!,
           icon: _driverMarkerIcon!,
+          anchor: Offset(0.5, 0.5), // Center the marker
+          flat: true, // Keep marker flat (not tilted)
           infoWindow: InfoWindow(
             title: 'Your Location (START)',
             snippet: 'Driver: $_driverName',
@@ -692,6 +783,8 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
               markerId: MarkerId('passenger_${passenger['userId']}'),
               position: latLng,
               icon: _passengerMarkerIcon!,
+              anchor: Offset(0.5, 0.5), // Center the marker
+              flat: true, // Keep marker flat (not tilted)
               infoWindow: InfoWindow(
                 title: 'Stop ${i}: ${passenger['userName']}',
                 snippet:
@@ -949,115 +1042,231 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                               top: 16,
                               right: 16,
                               child: Container(
-                                width: 280,
+                                width: 320,
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [Colors.white, Colors.grey.shade50],
+                                  ),
+                                  borderRadius: BorderRadius.circular(20),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.2),
-                                      blurRadius: 8,
-                                      offset: Offset(0, 4),
+                                      color: Colors.black.withOpacity(0.15),
+                                      blurRadius: 20,
+                                      offset: Offset(0, 8),
+                                      spreadRadius: 2,
+                                    ),
+                                    BoxShadow(
+                                      color: Colors.deepPurple.withOpacity(0.1),
+                                      blurRadius: 30,
+                                      offset: Offset(0, 15),
+                                      spreadRadius: 5,
                                     ),
                                   ],
+                                  border: Border.all(
+                                    color: Colors.deepPurple.withOpacity(0.2),
+                                    width: 1,
+                                  ),
                                 ),
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    // Header
+                                    // Header with gradient
                                     Container(
-                                      padding: EdgeInsets.all(12),
+                                      padding: EdgeInsets.all(16),
                                       decoration: BoxDecoration(
-                                        color: Colors.deepPurple,
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [
+                                            Colors.deepPurple.shade600,
+                                            Colors.deepPurple.shade800,
+                                          ],
+                                        ),
                                         borderRadius: BorderRadius.only(
-                                          topLeft: Radius.circular(12),
-                                          topRight: Radius.circular(12),
+                                          topLeft: Radius.circular(20),
+                                          topRight: Radius.circular(20),
                                         ),
                                       ),
                                       child: Row(
                                         children: [
-                                          Icon(
-                                            Icons.route,
-                                            color: Colors.white,
-                                            size: 20,
-                                          ),
-                                          SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              'Optimized Route',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16,
+                                          Container(
+                                            padding: EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(
+                                                0.2,
                                               ),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            child: Icon(
+                                              Icons.alt_route_rounded,
+                                              color: Colors.white,
+                                              size: 24,
                                             ),
                                           ),
-                                          IconButton(
-                                            icon: Icon(
-                                              Icons.close,
-                                              color: Colors.white,
-                                              size: 20,
+                                          SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'OPTIMIZED ROUTE',
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.w800,
+                                                    fontSize: 14,
+                                                    letterSpacing: 1.2,
+                                                  ),
+                                                ),
+                                                SizedBox(height: 2),
+                                                Text(
+                                                  'Follow this order for efficiency',
+                                                  style: TextStyle(
+                                                    color: Colors.white
+                                                        .withOpacity(0.9),
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
-                                            onPressed: () {
+                                          ),
+                                          GestureDetector(
+                                            onTap: () {
                                               setState(() {
                                                 _showRouteSummary = false;
                                               });
                                             },
-                                            padding: EdgeInsets.zero,
-                                            constraints: BoxConstraints(
-                                              minWidth: 24,
-                                              minHeight: 24,
+                                            child: Container(
+                                              padding: EdgeInsets.all(6),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white.withOpacity(
+                                                  0.2,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              child: Icon(
+                                                Icons.close_rounded,
+                                                color: Colors.white,
+                                                size: 18,
+                                              ),
                                             ),
                                           ),
                                         ],
                                       ),
                                     ),
 
-                                    // Content
+                                    // Distance Card
                                     Container(
-                                      padding: EdgeInsets.all(12),
+                                      margin: EdgeInsets.all(16),
+                                      padding: EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [
+                                            Colors.green.shade50,
+                                            Colors.green.shade100,
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: Colors.green.withOpacity(0.3),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            padding: EdgeInsets.all(10),
+                                            decoration: BoxDecoration(
+                                              color: Colors.green.shade600,
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            child: Icon(
+                                              Icons.speed_rounded,
+                                              color: Colors.white,
+                                              size: 20,
+                                            ),
+                                          ),
+                                          SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'TOTAL DISTANCE',
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w600,
+                                                    color:
+                                                        Colors.green.shade700,
+                                                    letterSpacing: 0.5,
+                                                  ),
+                                                ),
+                                                SizedBox(height: 2),
+                                                Text(
+                                                  '${_totalRouteDistance.toStringAsFixed(1)} km',
+                                                  style: TextStyle(
+                                                    fontSize: 20,
+                                                    fontWeight: FontWeight.w800,
+                                                    color:
+                                                        Colors.green.shade800,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                    // Route Stops
+                                    Container(
+                                      margin: EdgeInsets.fromLTRB(
+                                        16,
+                                        0,
+                                        16,
+                                        16,
+                                      ),
                                       child: Column(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          // Total Distance
                                           Row(
                                             children: [
                                               Icon(
-                                                Icons.straighten,
+                                                Icons
+                                                    .format_list_numbered_rounded,
                                                 size: 16,
-                                                color: Colors.deepPurple,
+                                                color:
+                                                    Colors.deepPurple.shade600,
                                               ),
                                               SizedBox(width: 8),
                                               Text(
-                                                'Total Distance: ${_totalRouteDistance.toStringAsFixed(2)} km',
+                                                'STOPS ORDER',
                                                 style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 14,
-                                                  color: Colors.deepPurple,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Colors
+                                                      .deepPurple
+                                                      .shade600,
+                                                  letterSpacing: 0.5,
                                                 ),
                                               ),
                                             ],
                                           ),
-
                                           SizedBox(height: 12),
 
-                                          // Route Order
-                                          Text(
-                                            'Route Order:',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                              color: Colors.grey[700],
-                                            ),
-                                          ),
-
-                                          SizedBox(height: 8),
-
-                                          // Stops List
                                           Container(
                                             constraints: BoxConstraints(
-                                              maxHeight: 200,
+                                              maxHeight: 180,
                                             ),
                                             child: SingleChildScrollView(
                                               child: Column(
@@ -1066,78 +1275,172 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                                                 ) {
                                                   final index = entry.key;
                                                   final stop = entry.value;
+                                                  final isStart = index == 0;
+
                                                   return Container(
                                                     margin: EdgeInsets.only(
-                                                      bottom: 4,
-                                                    ),
-                                                    padding:
-                                                        EdgeInsets.symmetric(
-                                                          horizontal: 8,
-                                                          vertical: 4,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: index == 0
-                                                          ? Colors.blue
-                                                                .withOpacity(
-                                                                  0.1,
-                                                                )
-                                                          : Colors.grey
-                                                                .withOpacity(
-                                                                  0.1,
-                                                                ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            6,
-                                                          ),
-                                                      border: Border.all(
-                                                        color: index == 0
-                                                            ? Colors.blue
-                                                            : Colors.grey,
-                                                        width: 1,
-                                                      ),
+                                                      bottom: 8,
                                                     ),
                                                     child: Row(
                                                       children: [
+                                                        // Stop number indicator
                                                         Container(
-                                                          width: 20,
-                                                          height: 20,
-                                                          decoration:
-                                                              BoxDecoration(
-                                                                color:
-                                                                    index == 0
-                                                                    ? Colors
+                                                          width: 32,
+                                                          height: 32,
+                                                          decoration: BoxDecoration(
+                                                            gradient: LinearGradient(
+                                                              begin: Alignment
+                                                                  .topLeft,
+                                                              end: Alignment
+                                                                  .bottomRight,
+                                                              colors: isStart
+                                                                  ? [
+                                                                      Colors
                                                                           .blue
-                                                                    : Colors
-                                                                          .grey,
-                                                                shape: BoxShape
-                                                                    .circle,
+                                                                          .shade500,
+                                                                      Colors
+                                                                          .blue
+                                                                          .shade700,
+                                                                    ]
+                                                                  : [
+                                                                      Colors
+                                                                          .deepPurple
+                                                                          .shade400,
+                                                                      Colors
+                                                                          .deepPurple
+                                                                          .shade600,
+                                                                    ],
+                                                            ),
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  16,
+                                                                ),
+                                                            boxShadow: [
+                                                              BoxShadow(
+                                                                color:
+                                                                    (isStart
+                                                                            ? Colors.blue
+                                                                            : Colors.deepPurple)
+                                                                        .withOpacity(
+                                                                          0.3,
+                                                                        ),
+                                                                blurRadius: 8,
+                                                                offset: Offset(
+                                                                  0,
+                                                                  4,
+                                                                ),
                                                               ),
+                                                            ],
+                                                          ),
                                                           child: Center(
                                                             child: Text(
                                                               '${index + 1}',
                                                               style: TextStyle(
                                                                 color: Colors
                                                                     .white,
-                                                                fontSize: 12,
+                                                                fontSize: 14,
                                                                 fontWeight:
                                                                     FontWeight
-                                                                        .bold,
+                                                                        .w800,
                                                               ),
                                                             ),
                                                           ),
                                                         ),
-                                                        SizedBox(width: 8),
+
+                                                        SizedBox(width: 12),
+
+                                                        // Stop details
                                                         Expanded(
-                                                          child: Text(
-                                                            stop.name,
-                                                            style: TextStyle(
-                                                              fontSize: 12,
-                                                              fontWeight:
-                                                                  index == 0
-                                                                  ? FontWeight
-                                                                        .bold
-                                                                  : FontWeight
-                                                                        .normal,
+                                                          child: Container(
+                                                            padding:
+                                                                EdgeInsets.all(
+                                                                  12,
+                                                                ),
+                                                            decoration: BoxDecoration(
+                                                              color: isStart
+                                                                  ? Colors.blue
+                                                                        .withOpacity(
+                                                                          0.1,
+                                                                        )
+                                                                  : Colors
+                                                                        .white,
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    12,
+                                                                  ),
+                                                              border: Border.all(
+                                                                color: isStart
+                                                                    ? Colors
+                                                                          .blue
+                                                                          .withOpacity(
+                                                                            0.3,
+                                                                          )
+                                                                    : Colors
+                                                                          .grey
+                                                                          .withOpacity(
+                                                                            0.2,
+                                                                          ),
+                                                                width: 1,
+                                                              ),
+                                                            ),
+                                                            child: Column(
+                                                              crossAxisAlignment:
+                                                                  CrossAxisAlignment
+                                                                      .start,
+                                                              children: [
+                                                                Row(
+                                                                  children: [
+                                                                    Icon(
+                                                                      isStart
+                                                                          ? Icons.directions_bus_rounded
+                                                                          : Icons.person_rounded,
+                                                                      size: 14,
+                                                                      color:
+                                                                          isStart
+                                                                          ? Colors.blue.shade600
+                                                                          : Colors.deepPurple.shade600,
+                                                                    ),
+                                                                    SizedBox(
+                                                                      width: 6,
+                                                                    ),
+                                                                    Expanded(
+                                                                      child: Text(
+                                                                        stop.name,
+                                                                        style: TextStyle(
+                                                                          fontSize:
+                                                                              13,
+                                                                          fontWeight:
+                                                                              FontWeight.w600,
+                                                                          color:
+                                                                              isStart
+                                                                              ? Colors.blue.shade700
+                                                                              : Colors.grey.shade800,
+                                                                        ),
+                                                                      ),
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                                if (isStart) ...[
+                                                                  SizedBox(
+                                                                    height: 4,
+                                                                  ),
+                                                                  Text(
+                                                                    'STARTING POINT',
+                                                                    style: TextStyle(
+                                                                      fontSize:
+                                                                          10,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .w600,
+                                                                      color: Colors
+                                                                          .blue
+                                                                          .shade600,
+                                                                      letterSpacing:
+                                                                          0.5,
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ],
                                                             ),
                                                           ),
                                                         ),
