@@ -105,14 +105,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.3.4+2"
-  cross_file:
-    dependency: transitive
-    description:
-      name: cross_file
-      sha256: "7caf6a750a0c04effbb52a676dce9a4a592e10ad35c34d6d2d0e4811160d5670"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.3.4+2"
   crypto:
     dependency: transitive
     description:
@@ -261,10 +253,10 @@ packages:
     dependency: transitive
     description:
       name: firebase_core_platform_interface
-      sha256: d7253d255ff10f85cfd2adaba9ac17bae878fa3ba577462451163bd9f1d1f0bf
+      sha256: "8bcfad6d7033f5ea951d15b867622a824b13812178bfec0c779b9d81de011bbb"
       url: "https://pub.dev"
     source: hosted
-    version: "5.4.0"
+    version: "5.4.2"
   firebase_core_web:
     dependency: transitive
     description:
@@ -556,10 +548,10 @@ packages:
     dependency: transitive
     description:
       name: google_maps_flutter_android
-      sha256: ab83128296fbeaa52e8f2b3bf53bcd895e64778edddcdc07bc8f33f4ea78076c
+      sha256: "356ee9c65f38a104f7c4988e6952e52addb3b6cb1601839dd2010d7a502afcf0"
       url: "https://pub.dev"
     source: hosted
-    version: "2.16.1"
+    version: "2.16.2"
   google_maps_flutter_ios:
     dependency: transitive
     description:

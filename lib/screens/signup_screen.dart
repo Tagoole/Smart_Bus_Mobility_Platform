@@ -20,6 +20,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _isConfirmPasswordVisible = false;
   String? _selectedRole;
   bool _isFormValid = false;
+  bool _isLoading = false;
   final List<String> _roles = ['User', 'Driver', 'Admin']; // Added Admin role back
 
   @override

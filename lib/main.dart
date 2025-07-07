@@ -75,7 +75,7 @@ class MyApp extends StatelessWidget {
         '/signin': (context) => const SignInScreen(), // Add signin route
         '/forgotpassword': (context) => const ForgotPasswordScreen(), // Forgot password route
         '/emailverification': (context) => const EmailVerificationScreen(),
-        '/emailverificationsuccess': (context) => const EmailVerificationSuccessScreenAnimated(),
+        // '/emailverificationsuccess': (context) => const EmailVerificationSuccessScreenAnimated(),
         '/forgotpassword2': (context) => const ForgotPasswordScreen2(),
         '/profilescreen': (context) => const profile.ProfileScreen(),
         '/personaldata': (context) => const PersonalData(),

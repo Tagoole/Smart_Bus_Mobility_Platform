@@ -11,6 +11,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
+import 'package:smart_bus_mobility_platform1/resources/bus_service.dart';
 
 class DriverMapScreen extends StatefulWidget {
   const DriverMapScreen({super.key});
@@ -28,6 +29,9 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     ), // Kampala coordinates
     zoom: 14,
   );
+
+  // Services
+  final BusService _busService = BusService();
 
   // Driver data
   String? _driverId;
@@ -286,6 +290,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     if (_driverLocation == null || _driverId == null) return;
 
     try {
+      // Update driver location in drivers collection
       await FirebaseFirestore.instance.collection('drivers').doc(_driverId).set(
         {
           'currentLocation': {
@@ -297,8 +302,17 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         },
         SetOptions(merge: true),
       );
+
+      // Also update bus location if driver has an assigned bus
+      if (_driverBus != null) {
+        await _busService.updateBusLocation(
+          _driverBus!.busId,
+          _driverLocation!.latitude,
+          _driverLocation!.longitude,
+        );
+      }
     } catch (e) {
-      print('Error updating driver location: $e');
+      print('Error updating driver/bus location: $e');
     }
   }
 
@@ -449,10 +463,16 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     _loadDriverData();
     _getCurrentLocation();
 
-    // Set up periodic refresh
+    // Set up periodic refresh for passengers
     Timer.periodic(Duration(minutes: 2), (timer) {
       if (mounted) {
         _loadPassengers();
+      }
+    });
+
+    // Set up frequent location updates for real-time tracking
+    Timer.periodic(Duration(seconds: 30), (timer) {
+      if (mounted && _isOnline) {
         _getCurrentLocation();
       }
     });
@@ -664,44 +684,70 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                 // Bottom Action Bar
                 Container(
                   margin: EdgeInsets.all(16),
-                  child: Row(
+                  child: Column(
                     children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: _isLoadingLocation
-                              ? null
-                              : _getCurrentLocation,
-                          icon: _isLoadingLocation
-                              ? SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white,
-                                    ),
-                                  ),
-                                )
-                              : Icon(Icons.my_location),
-                          label: Text('My Location'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF576238),
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: _isLoadingLocation
+                                  ? null
+                                  : _getCurrentLocation,
+                              icon: _isLoadingLocation
+                                  ? SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
+                                      ),
+                                    )
+                                  : Icon(Icons.my_location),
+                              label: Text('My Location'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF576238),
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: _refreshData,
+                              icon: Icon(Icons.refresh),
+                              label: Text('Refresh'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      SizedBox(width: 12),
-                      Expanded(
+                      SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: _refreshData,
-                          icon: Icon(Icons.refresh),
-                          label: Text('Refresh'),
+                          onPressed: _toggleOnlineStatus,
+                          icon: Icon(
+                            _isOnline ? Icons.visibility_off : Icons.visibility,
+                          ),
+                          label: Text(_isOnline ? 'Go Offline' : 'Go Online'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
+                            backgroundColor: _isOnline
+                                ? Colors.red
+                                : Colors.green,
                             foregroundColor: Colors.white,
                             padding: EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
