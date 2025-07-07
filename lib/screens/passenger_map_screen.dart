@@ -165,16 +165,18 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     if (_bookedBus == null || _pickupLocation == null) return;
 
     try {
-      // Get driver's current location from Firestore
-      final driverDoc = await FirebaseFirestore.instance
-          .collection('drivers')
-          .doc(_bookedBus!.driverId)
+      // Get bus's current location from Firestore
+      final busDoc = await FirebaseFirestore.instance
+          .collection('buses')
+          .doc(_bookedBus!.busId)
           .get();
 
-      if (driverDoc.exists) {
-        final driverData = driverDoc.data()!;
-        if (driverData['currentLocation'] != null) {
-          final location = driverData['currentLocation'];
+      if (busDoc.exists) {
+        final busData = busDoc.data()!;
+        
+        // Check if bus has current location data
+        if (busData['currentLocation'] != null) {
+          final location = busData['currentLocation'];
           final newBusLocation = LatLng(
             location['latitude'],
             location['longitude'],
@@ -187,10 +189,19 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
           // Calculate ETA and route
           await _calculateETAAndRoute();
           _updateMarkers();
+        } else {
+          // If no current location, use a default location or show message
+          print('Bus location not available yet');
+          setState(() {
+            _estimatedArrival = 'Location unavailable';
+          });
         }
       }
     } catch (e) {
       print('Error updating bus location: $e');
+      setState(() {
+        _estimatedArrival = 'Error updating location';
+      });
     }
   }
 
@@ -389,6 +400,18 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
         return;
       }
 
+      // First, deactivate all existing pickup locations for this user
+      final existingLocations = await FirebaseFirestore.instance
+          .collection('pickup_locations')
+          .where('userId', isEqualTo: userId)
+          .where('isActive', isEqualTo: true)
+          .get();
+
+      // Deactivate old locations
+      for (var doc in existingLocations.docs) {
+        await doc.reference.update({'isActive': false});
+      }
+
       // Create location model
       final locationModel = LocationModel.createPickupLocation(
         userId: userId,
@@ -467,11 +490,31 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   }
 
   // Remove pickup location
-  void _removePickupLocation() {
+  void _removePickupLocation() async {
     setState(() {
       _pickupLocation = null;
     });
     _updateMarkers();
+
+    // Deactivate pickup location in Firestore
+    try {
+      final userId = _getCurrentUserId();
+      if (userId != null) {
+        final existingLocations = await FirebaseFirestore.instance
+            .collection('pickup_locations')
+            .where('userId', isEqualTo: userId)
+            .where('isActive', isEqualTo: true)
+            .get();
+
+        // Deactivate all active pickup locations
+        for (var doc in existingLocations.docs) {
+          await doc.reference.update({'isActive': false});
+        }
+      }
+    } catch (e) {
+      print('Error removing pickup location: $e');
+    }
+
     _showSnackBar('Pickup location removed');
   }
 
@@ -488,35 +531,31 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
 
   // Load saved pickup locations
   Future<void> _loadSavedPickupLocations() async {
-    // Don't load saved locations if in pickup selection mode
-    if (widget.isPickupSelection) return;
-
     try {
       final userId = _getCurrentUserId();
       if (userId == null) return;
 
+      // Load the most recent active pickup location
       final snapshot = await FirebaseFirestore.instance
           .collection('pickup_locations')
           .where('userId', isEqualTo: userId)
-          .where('locationType', isEqualTo: 'pickup')
           .where('isActive', isEqualTo: true)
           .orderBy('createdAt', descending: true)
-          .limit(1) // Get the most recent pickup location
+          .limit(1)
           .get();
 
       if (snapshot.docs.isNotEmpty) {
-        final doc = snapshot.docs.first;
-        final locationData = doc.data();
-        final locationModel = LocationModel.fromJson(locationData, doc.id);
+        final locationData = snapshot.docs.first.data();
+        final latitude = locationData['latitude'] as double;
+        final longitude = locationData['longitude'] as double;
+        final locationName = locationData['locationName'] as String? ?? 'Saved Pickup Location';
 
         setState(() {
-          _pickupLocation = LatLng(
-            locationModel.latitude,
-            locationModel.longitude,
-          );
+          _pickupLocation = LatLng(latitude, longitude);
         });
+
         _updateMarkers();
-        print('Loaded saved pickup location: ${locationModel.locationName}');
+        print('Loaded saved pickup location: $locationName at ($latitude, $longitude)');
       }
     } catch (e) {
       print('Error loading saved pickup locations: $e');
@@ -573,8 +612,22 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     super.initState();
     _loadMarkerIcons();
     _getCurrentLocation();
-    _loadSavedPickupLocations();
     _checkActiveBooking();
+    _loadSavedPickupLocations();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh data when screen becomes active (e.g., when returning from seat selection)
+    _refreshScreenData();
+  }
+
+  // Refresh all screen data
+  Future<void> _refreshScreenData() async {
+    await _checkActiveBooking();
+    await _loadSavedPickupLocations();
+    _updateMarkers();
   }
 
   @override
@@ -609,177 +662,224 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
             ),
         ],
       ),
-      body: Column(
-        children: [
-          // Bus tracking info card (only show if has active booking)
-          if (_hasActiveBooking && _bookedBus != null)
-            Container(
-              margin: EdgeInsets.all(16),
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF576238),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          Icons.directions_bus,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Your Bus is on the way!',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF111827),
-                              ),
-                            ),
-                            Text(
-                              _bookedBus!.numberPlate,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF6B7280),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Text(
-                          'ETA: $_estimatedArrival',
-                          style: TextStyle(
+      body: RefreshIndicator(
+        onRefresh: _refreshScreenData,
+        child: Column(
+          children: [
+            // Bus tracking info card (only show if has active booking)
+            if (_hasActiveBooking && _bookedBus != null)
+              Container(
+                margin: EdgeInsets.all(16),
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF576238),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.directions_bus,
                             color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                            size: 24,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Icon(Icons.route, size: 16, color: Color(0xFF6B7280)),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          '${_bookedBus!.startPoint} → ${_bookedBus!.destination}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF6B7280),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Your Bus is on the way!',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF111827),
+                                ),
+                              ),
+                              Text(
+                                _bookedBus!.numberPlate,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF6B7280),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-          // Map
-          Expanded(
-            child: Container(
-              margin: EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: GoogleMap(
-                  onMapCreated: (GoogleMapController controller) {
-                    _controller.complete(controller);
-                  },
-                  initialCameraPosition: _initialPosition,
-                  markers: _allMarkers,
-                  polylines: _allPolylines,
-                  myLocationEnabled: true,
-                  myLocationButtonEnabled: false,
-                  zoomControlsEnabled: false,
-                  mapToolbarEnabled: false,
-                  onTap: widget.isPickupSelection ? _addPickupLocation : null,
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            'ETA: $_estimatedArrival',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Icon(Icons.route, size: 16, color: Color(0xFF6B7280)),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${_bookedBus!.startPoint} → ${_bookedBus!.destination}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF6B7280),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ),
 
-          // Bottom action bar
-          Container(
-            margin: EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _isLoadingLocation ? null : _getCurrentLocation,
-                    icon: _isLoadingLocation
-                        ? SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
-                              ),
-                            ),
-                          )
-                        : Icon(Icons.my_location),
-                    label: Text('My Location'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF576238),
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
+            // Pickup location info card (only show if has saved pickup location and no active booking)
+            if (!_hasActiveBooking && _pickupLocation != null && !widget.isPickupSelection)
+              Container(
+                margin: EdgeInsets.all(16),
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.orange,
                         borderRadius: BorderRadius.circular(8),
                       ),
+                      child: Icon(
+                        Icons.location_on,
+                        color: Colors.white,
+                        size: 24,
+                      ),
                     ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Saved Pickup Location',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF111827),
+                            ),
+                          ),
+                          Text(
+                            'Your previously saved pickup point',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF6B7280),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _removePickupLocation,
+                      icon: Icon(Icons.close, color: Colors.red),
+                      tooltip: 'Remove pickup location',
+                    ),
+                  ],
+                ),
+              ),
+
+            // Map
+            Expanded(
+              child: Container(
+                margin: EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: GoogleMap(
+                    onMapCreated: (GoogleMapController controller) {
+                      _controller.complete(controller);
+                    },
+                    initialCameraPosition: _initialPosition,
+                    markers: _allMarkers,
+                    polylines: _allPolylines,
+                    myLocationEnabled: true,
+                    myLocationButtonEnabled: false,
+                    zoomControlsEnabled: false,
+                    mapToolbarEnabled: false,
+                    onTap: widget.isPickupSelection ? _addPickupLocation : null,
                   ),
                 ),
-                if (!widget.isPickupSelection) ...[
-                  SizedBox(width: 12),
+              ),
+            ),
+
+            // Bottom action bar
+            Container(
+              margin: EdgeInsets.all(16),
+              child: Row(
+                children: [
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: _navigateToBooking,
-                      icon: Icon(Icons.directions_bus),
-                      label: Text('Book Bus'),
+                      onPressed: _isLoadingLocation ? null : _getCurrentLocation,
+                      icon: _isLoadingLocation
+                          ? SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                          : Icon(Icons.my_location),
+                      label: Text('My Location'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
+                        backgroundColor: const Color(0xFF576238),
                         foregroundColor: Colors.white,
                         padding: EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
@@ -788,11 +888,29 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                       ),
                     ),
                   ),
+                  if (!widget.isPickupSelection) ...[
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _navigateToBooking,
+                        icon: Icon(Icons.directions_bus),
+                        label: Text('Book Bus'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

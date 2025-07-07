@@ -170,4 +170,40 @@ class BusService {
       return false;
     }
   }
+
+  // Update bus current location
+  Future<bool> updateBusLocation(
+    String busId,
+    double latitude,
+    double longitude,
+  ) async {
+    try {
+      await _firestore.collection('buses').doc(busId).update({
+        'currentLocation': {
+          'latitude': latitude,
+          'longitude': longitude,
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+      });
+      return true;
+    } catch (e) {
+      print('Error updating bus location: $e');
+      return false;
+    }
+  }
+
+  // Get bus current location
+  Future<Map<String, dynamic>?> getBusLocation(String busId) async {
+    try {
+      final doc = await _firestore.collection('buses').doc(busId).get();
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        return data['currentLocation'];
+      }
+      return null;
+    } catch (e) {
+      print('Error getting bus location: $e');
+      return null;
+    }
+  }
 }

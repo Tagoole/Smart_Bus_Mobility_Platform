@@ -1,3 +1,5 @@
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+
 class BusModel {
   final String busId;
   final String numberPlate;
@@ -13,6 +15,7 @@ class BusModel {
   final DateTime? departureTime;
   final DateTime? estimatedArrival;
   final Map<String, dynamic>? bookedSeats; // Track booked seats: {seatNumber: userId}
+  final Map<String, dynamic>? currentLocation; // Track current bus location: {latitude, longitude}
 
   BusModel({
     required this.busId,
@@ -29,6 +32,7 @@ class BusModel {
     this.departureTime,
     this.estimatedArrival,
     this.bookedSeats,
+    this.currentLocation,
   });
 
   factory BusModel.fromJson(Map<String, dynamic> json, String docId) {
@@ -51,6 +55,7 @@ class BusModel {
           ? DateTime.parse(json['estimatedArrival'])
           : null,
       bookedSeats: json['bookedSeats'] ?? {},
+      currentLocation: json['currentLocation'],
     );
   }
 
@@ -69,6 +74,7 @@ class BusModel {
       'departureTime': departureTime?.toIso8601String(),
       'estimatedArrival': estimatedArrival?.toIso8601String(),
       'bookedSeats': bookedSeats ?? {},
+      'currentLocation': currentLocation,
     };
   }
 
@@ -88,6 +94,7 @@ class BusModel {
     DateTime? departureTime,
     DateTime? estimatedArrival,
     Map<String, dynamic>? bookedSeats,
+    Map<String, dynamic>? currentLocation,
   }) {
     return BusModel(
       busId: busId ?? this.busId,
@@ -104,6 +111,7 @@ class BusModel {
       departureTime: departureTime ?? this.departureTime,
       estimatedArrival: estimatedArrival ?? this.estimatedArrival,
       bookedSeats: bookedSeats ?? this.bookedSeats,
+      currentLocation: currentLocation ?? this.currentLocation,
     );
   }
 
@@ -115,5 +123,18 @@ class BusModel {
   // Helper method to get the user who booked a seat
   String? getSeatBooker(int seatNumber) {
     return bookedSeats?[seatNumber.toString()];
+  }
+
+  // Helper method to get current location as LatLng
+  LatLng? getCurrentLocationLatLng() {
+    if (currentLocation != null && 
+        currentLocation!['latitude'] != null && 
+        currentLocation!['longitude'] != null) {
+      return LatLng(
+        currentLocation!['latitude'],
+        currentLocation!['longitude'],
+      );
+    }
+    return null;
   }
 }
