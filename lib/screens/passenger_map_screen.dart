@@ -221,7 +221,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
       });
 
       // Generate route polyline (simplified for demo)
-      _generateRoutePolyline();
+      await _generateRoutePolyline();
     } catch (e) {
       print('Error calculating ETA: $e');
       setState(() {
@@ -249,24 +249,76 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     return earthRadius * c;
   }
 
-  // Generate route polyline (simplified)
-  void _generateRoutePolyline() {
+  // Add this function to fetch the route polyline from Google Directions API
+  Future<List<LatLng>> getRoutePolyline(LatLng start, LatLng end) async {
+    final apiKey = 'AIzaSyC2n6urW_4DUphPLUDaNGAW_VN53j0RP4s'; // Replace with your real key
+    final url =
+        'https://maps.googleapis.com/maps/api/directions/json?origin=${start.latitude},${start.longitude}&destination=${end.latitude},${end.longitude}&key=$apiKey';
+
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final points = data['routes'][0]['overview_polyline']['points'];
+      return decodePolyline(points);
+    } else {
+      throw Exception('Failed to fetch directions');
+    }
+  }
+
+  List<LatLng> decodePolyline(String encoded) {
+    List<LatLng> polyline = [];
+    int index = 0, len = encoded.length;
+    int lat = 0, lng = 0;
+
+    while (index < len) {
+      int b, shift = 0, result = 0;
+      do {
+        b = encoded.codeUnitAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+      lat += dlat;
+
+      shift = 0;
+      result = 0;
+      do {
+        b = encoded.codeUnitAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+      lng += dlng;
+
+      polyline.add(LatLng(lat / 1E5, lng / 1E5));
+    }
+    return polyline;
+  }
+
+  // Update _generateRoutePolyline to use the Directions API
+  Future<void> _generateRoutePolyline() async {
     if (_busLocation == null || _pickupLocation == null) return;
 
-    // Create a simple straight line for demo
-    // In production, you would use Google Directions API to get the actual route
-    final List<LatLng> routePoints = [_busLocation!, _pickupLocation!];
-
-    _allPolylines.clear();
-    _allPolylines.add(
-      Polyline(
-        polylineId: PolylineId('bus_route'),
-        points: routePoints,
-        color: Colors.blue,
-        width: 4,
-        geodesic: true,
-      ),
-    );
+    try {
+      final routePoints = await getRoutePolyline(
+        _busLocation!,
+        _pickupLocation!,
+      );
+      setState(() {
+        _allPolylines.clear();
+        _allPolylines.add(
+          Polyline(
+            polylineId: PolylineId('bus_route'),
+            points: routePoints,
+            color: Colors.blue,
+            width: 4,
+            geodesic: true,
+          ),
+        );
+      });
+    } catch (e) {
+      print('Error fetching route polyline: $e');
+    }
   }
 
   // Get user's current location

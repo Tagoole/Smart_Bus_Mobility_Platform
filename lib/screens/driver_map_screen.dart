@@ -14,6 +14,7 @@ import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
 import 'package:smart_bus_mobility_platform1/resources/bus_service.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:smart_bus_mobility_platform1/resources/map_service.dart' as som;
 
 class DriverMapScreen extends StatefulWidget {
   const DriverMapScreen({super.key});
@@ -71,28 +72,40 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   }
 
   Future<void> _loadMarkerIcons() async {
-    try {
-      // Load driver marker icon
-      final Uint8List driverIconData = await getImagesFromMarkers(
-        'images/bus_icon.png',
-        60,
-      );
-      _driverMarkerIcon = BitmapDescriptor.fromBytes(driverIconData);
-
-      // Load passenger marker icon
-      final Uint8List passengerIconData = await getImagesFromMarkers(
-        'images/passenger_icon.png',
-        50,
-      );
-      _passengerMarkerIcon = BitmapDescriptor.fromBytes(passengerIconData);
-    } catch (e) {
-      print('Error loading marker icons: $e');
+    if (kIsWeb) {
+      // Web: Use default markers since custom icons are not supported
+      print('Running on web - using default markers');
       _driverMarkerIcon = BitmapDescriptor.defaultMarkerWithHue(
         BitmapDescriptor.hueBlue,
       );
       _passengerMarkerIcon = BitmapDescriptor.defaultMarkerWithHue(
         BitmapDescriptor.hueRed,
       );
+    } else {
+      // Mobile: Use custom icons
+      try {
+        // Load driver marker icon
+        final Uint8List driverIconData = await getImagesFromMarkers(
+          'images/bus_icon.png',
+          60,
+        );
+        _driverMarkerIcon = BitmapDescriptor.bytes(driverIconData);
+
+        // Load passenger marker icon
+        final Uint8List passengerIconData = await getImagesFromMarkers(
+          'images/passenger_icon.png',
+          50,
+        );
+        _passengerMarkerIcon = BitmapDescriptor.bytes(passengerIconData);
+      } catch (e) {
+        print('Error loading marker icons: $e');
+        _driverMarkerIcon = BitmapDescriptor.defaultMarkerWithHue(
+          BitmapDescriptor.hueBlue,
+        );
+        _passengerMarkerIcon = BitmapDescriptor.defaultMarkerWithHue(
+          BitmapDescriptor.hueRed,
+        );
+      }
     }
   }
 
@@ -207,7 +220,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       });
 
       _updateMarkers();
-      await _drawAllPassengerPolylines();
+      await _drawOptimalRouteSOM();
     } catch (e) {
       print('Error loading passengers: $e');
       setState(() {
@@ -280,7 +293,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
       _updateMarkers();
       _updateDriverLocationInFirestore();
-      await _drawAllPassengerPolylines();
+      await _drawOptimalRouteSOM();
     } catch (e) {
       print('Error getting location: $e');
       _showSnackBar('Error getting your location. Please try again.');
@@ -414,17 +427,36 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
   // Add this function to fetch route polyline from Google Directions API
   Future<List<LatLng>> _getRoutePolyline(LatLng start, LatLng end) async {
-    final apiKey = 'AIzaSyC2n6urW_4DUphPLUDaNGAW_VN53j0RP4s'; // <-- Replace with your API key
-    final url =
-        'https://maps.googleapis.com/maps/api/directions/json?origin=${start.latitude},${start.longitude}&destination=${end.latitude},${end.longitude}&key=$apiKey';
-
-    final response = await http.get(Uri.parse(url));
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final points = data['routes'][0]['overview_polyline']['points'];
-      return _decodePolyline(points);
+    if (kIsWeb) {
+      // Web: Use straight line as fallback due to CORS restrictions
+      print('Running on web - using straight line polyline');
+      return [start, end];
     } else {
-      throw Exception('Failed to fetch directions');
+      // Mobile: Use Google Directions API
+      final apiKey =
+          'AIzaSyC2n6urW_4DUphPLUDaNGAW_VN53j0RP4s'; // <-- Replace with your API key
+      final url =
+          'https://maps.googleapis.com/maps/api/directions/json?origin=${start.latitude},${start.longitude}&destination=${end.latitude},${end.longitude}&key=$apiKey';
+
+      try {
+        final response = await http.get(Uri.parse(url));
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          if (data['routes'] != null && data['routes'].isNotEmpty) {
+            final points = data['routes'][0]['overview_polyline']['points'];
+            return _decodePolyline(points);
+          } else {
+            // Fallback to straight line if no route found
+            return [start, end];
+          }
+        } else {
+          print('Directions API error: ${response.statusCode}');
+          return [start, end];
+        }
+      } catch (e) {
+        print('Error fetching directions: $e');
+        return [start, end];
+      }
     }
   }
 
@@ -546,6 +578,54 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         behavior: SnackBarBehavior.floating,
       ),
     );
+  }
+
+  // Add this function to compute and draw the SOM optimal route
+  Future<void> _drawOptimalRouteSOM() async {
+    if (_driverLocation == null || _passengers.isEmpty) return;
+
+    // Gather all stops: bus (driver) first, then all passengers
+    List<som.BusStop> stops = [
+      som.BusStop(
+        id: 'bus',
+        location: som.LatLng(
+          _driverLocation!.latitude,
+          _driverLocation!.longitude,
+        ),
+        name: 'Bus',
+      ),
+      ..._passengers.map(
+        (p) => som.BusStop(
+          id: p['userId'],
+          location: som.LatLng(
+            p['pickupLocation']['latitude'],
+            p['pickupLocation']['longitude'],
+          ),
+          name: p['userName'],
+        ),
+      ),
+    ];
+
+    final somRoute = som.BusRouteSOM(
+      coordinates: stops.map((s) => s.location).toList(),
+    );
+    final optimizedRoute = await somRoute.optimizeRoute(stops);
+    // Convert som.LatLng to google_maps_flutter LatLng for map display
+    final List<LatLng> routeCoords = optimizedRoute.routeCoordinates
+        .map((c) => LatLng(c.latitude, c.longitude))
+        .toList();
+
+    setState(() {
+      _allPolylines.clear();
+      _allPolylines.add(
+        Polyline(
+          polylineId: PolylineId('optimal_som_route'),
+          points: routeCoords,
+          color: Colors.deepPurple,
+          width: 5,
+        ),
+      );
+    });
   }
 
   @override
