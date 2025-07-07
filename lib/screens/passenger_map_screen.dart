@@ -74,16 +74,16 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
       // Load pickup marker icon
       final Uint8List pickupIconData = await getImagesFromMarkers(
         'images/passenger_icon.png',
-        60,
+        40,
       );
-      _pickupMarkerIcon = BitmapDescriptor.fromBytes(pickupIconData);
+      _pickupMarkerIcon = BitmapDescriptor.bytes(pickupIconData);
 
       // Load bus marker icon
       final Uint8List busIconData = await getImagesFromMarkers(
         'images/bus_icon.png',
-        70,
+        50,
       );
-      _busMarkerIcon = BitmapDescriptor.fromBytes(busIconData);
+      _busMarkerIcon = BitmapDescriptor.bytes(busIconData);
     } catch (e) {
       print('Error loading marker icons: $e');
       _pickupMarkerIcon = BitmapDescriptor.defaultMarkerWithHue(
@@ -595,7 +595,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     }
 
     try {
-      // Get address for the selected location
       List<Placemark> placemarks = await placemarkFromCoordinates(
         _pickupLocation!.latitude,
         _pickupLocation!.longitude,
@@ -604,19 +603,22 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
       String address = 'Selected Location';
       if (placemarks.isNotEmpty) {
         final placemark = placemarks.first;
-        address =
-            '${placemark.name ?? placemark.street ?? placemark.locality ?? ''}, ${placemark.country ?? ''}'
-                .trim();
-        if (address.endsWith(',')) {
-          address = address.substring(0, address.length - 1);
-        }
+        final name = placemark.name ?? '';
+        final street = placemark.street ?? '';
+        final locality = placemark.locality ?? '';
+        final country = placemark.country ?? '';
+        address = [
+          name,
+          street,
+          locality,
+          country,
+        ].where((part) => part.isNotEmpty).join(', ');
+        if (address.isEmpty) address = 'Selected Location';
       }
 
-      // Return the selected location to the booking screen
       Navigator.pop(context, {'location': _pickupLocation, 'address': address});
     } catch (e) {
       print('Error getting address: $e');
-      // Return with just coordinates if address lookup fails
       Navigator.pop(context, {
         'location': _pickupLocation,
         'address': 'Selected Location',

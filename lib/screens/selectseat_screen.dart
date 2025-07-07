@@ -484,8 +484,10 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 16,
+                        runSpacing: 8,
                         children: [
                           _buildLegendItem(
                             color: Colors.green[900]!,

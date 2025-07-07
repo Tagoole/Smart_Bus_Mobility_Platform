@@ -12,6 +12,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
 import 'package:smart_bus_mobility_platform1/resources/bus_service.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class DriverMapScreen extends StatefulWidget {
   const DriverMapScreen({super.key});
@@ -49,6 +51,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   // Passengers data
   List<Map<String, dynamic>> _passengers = [];
   final Set<Marker> _allMarkers = {};
+  final Set<Polyline> _allPolylines = {};
 
   // UI state
   bool _isLoading = true;
@@ -204,6 +207,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       });
 
       _updateMarkers();
+      await _drawAllPassengerPolylines();
     } catch (e) {
       print('Error loading passengers: $e');
       setState(() {
@@ -276,6 +280,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
       _updateMarkers();
       _updateDriverLocationInFirestore();
+      await _drawAllPassengerPolylines();
     } catch (e) {
       print('Error getting location: $e');
       _showSnackBar('Error getting your location. Please try again.');
@@ -407,17 +412,104 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     );
   }
 
-  // Navigate to passenger location
-  void _navigateToPassenger(Map<String, dynamic> passenger) {
-    if (passenger['pickupLocation'] != null) {
-      final location = passenger['pickupLocation'];
-      final latLng = LatLng(location['latitude'], location['longitude']);
+  // Add this function to fetch route polyline from Google Directions API
+  Future<List<LatLng>> _getRoutePolyline(LatLng start, LatLng end) async {
+    final apiKey = 'AIzaSyC2n6urW_4DUphPLUDaNGAW_VN53j0RP4s'; // <-- Replace with your API key
+    final url =
+        'https://maps.googleapis.com/maps/api/directions/json?origin=${start.latitude},${start.longitude}&destination=${end.latitude},${end.longitude}&key=$apiKey';
 
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final points = data['routes'][0]['overview_polyline']['points'];
+      return _decodePolyline(points);
+    } else {
+      throw Exception('Failed to fetch directions');
+    }
+  }
+
+  // Polyline decoder
+  List<LatLng> _decodePolyline(String encoded) {
+    List<LatLng> polyline = [];
+    int index = 0, len = encoded.length;
+    int lat = 0, lng = 0;
+
+    while (index < len) {
+      int b, shift = 0, result = 0;
+      do {
+        b = encoded.codeUnitAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+      lat += dlat;
+
+      shift = 0;
+      result = 0;
+      do {
+        b = encoded.codeUnitAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+      lng += dlng;
+
+      polyline.add(LatLng(lat / 1E5, lng / 1E5));
+    }
+    return polyline;
+  }
+
+  // Add this function to draw all polylines automatically
+  Future<void> _drawAllPassengerPolylines() async {
+    if (_driverLocation == null) return;
+    Set<Polyline> polylines = {};
+    int polylineId = 0;
+    for (final passenger in _passengers) {
+      if (passenger['pickupLocation'] != null) {
+        final location = passenger['pickupLocation'];
+        final LatLng passengerLatLng = LatLng(
+          location['latitude'],
+          location['longitude'],
+        );
+        try {
+          final polylinePoints = await _getRoutePolyline(
+            _driverLocation!,
+            passengerLatLng,
+          );
+          polylines.add(
+            Polyline(
+              polylineId: PolylineId('route_to_passenger_${polylineId++}'),
+              points: polylinePoints,
+              color: Colors.blue,
+              width: 5,
+            ),
+          );
+        } catch (e) {
+          print('Error fetching polyline for passenger: $e');
+        }
+      }
+    }
+    setState(() {
+      _allPolylines.clear();
+      _allPolylines.addAll(polylines);
+    });
+  }
+
+  // Update _navigateToPassenger to draw the polyline
+  void _navigateToPassenger(Map<String, dynamic> passenger) async {
+    if (passenger['pickupLocation'] != null && _driverLocation != null) {
+      final location = passenger['pickupLocation'];
+      final LatLng passengerLatLng = LatLng(
+        location['latitude'],
+        location['longitude'],
+      );
+
+      // Move camera
       if (_controller.isCompleted) {
         _controller.future.then((controller) {
           controller.animateCamera(
             CameraUpdate.newCameraPosition(
-              CameraPosition(target: latLng, zoom: 16),
+              CameraPosition(target: passengerLatLng, zoom: 16),
             ),
           );
         });
@@ -669,6 +761,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                         },
                         initialCameraPosition: _initialPosition,
                         markers: _allMarkers,
+                        polylines: _allPolylines,
                         myLocationEnabled: true,
                         myLocationButtonEnabled: false,
                         zoomControlsEnabled: false,
