@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -58,6 +59,11 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   bool _isLoading = true;
   String _statusMessage = 'Loading...';
 
+  // Route summary data
+  double _totalRouteDistance = 0.0;
+  List<som.BusStop> _optimizedRouteStops = [];
+  bool _showRouteSummary = false;
+
   // Load custom marker icons
   Future<Uint8List> getImagesFromMarkers(String path, int width) async {
     ByteData data = await rootBundle.load(path);
@@ -72,40 +78,29 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   }
 
   Future<void> _loadMarkerIcons() async {
-    if (kIsWeb) {
-      // Web: Use default markers since custom icons are not supported
-      print('Running on web - using default markers');
+    try {
+      // Load driver marker icon (bus icon)
+      final Uint8List driverIconData = await getImagesFromMarkers(
+        'images/bus_icon.png',
+        60,
+      );
+      _driverMarkerIcon = BitmapDescriptor.fromBytes(driverIconData);
+
+      // Load passenger marker icon
+      final Uint8List passengerIconData = await getImagesFromMarkers(
+        'images/passenger_icon.png',
+        50,
+      );
+      _passengerMarkerIcon = BitmapDescriptor.fromBytes(passengerIconData);
+    } catch (e) {
+      print('Error loading marker icons: $e');
+      // Fallback to default markers if custom icons fail
       _driverMarkerIcon = BitmapDescriptor.defaultMarkerWithHue(
         BitmapDescriptor.hueBlue,
       );
       _passengerMarkerIcon = BitmapDescriptor.defaultMarkerWithHue(
         BitmapDescriptor.hueRed,
       );
-    } else {
-      // Mobile: Use custom icons
-      try {
-        // Load driver marker icon
-        final Uint8List driverIconData = await getImagesFromMarkers(
-          'images/bus_icon.png',
-          60,
-        );
-        _driverMarkerIcon = BitmapDescriptor.bytes(driverIconData);
-
-        // Load passenger marker icon
-        final Uint8List passengerIconData = await getImagesFromMarkers(
-          'images/passenger_icon.png',
-          50,
-        );
-        _passengerMarkerIcon = BitmapDescriptor.bytes(passengerIconData);
-      } catch (e) {
-        print('Error loading marker icons: $e');
-        _driverMarkerIcon = BitmapDescriptor.defaultMarkerWithHue(
-          BitmapDescriptor.hueBlue,
-        );
-        _passengerMarkerIcon = BitmapDescriptor.defaultMarkerWithHue(
-          BitmapDescriptor.hueRed,
-        );
-      }
     }
   }
 
@@ -346,7 +341,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
           position: _driverLocation!,
           icon: _driverMarkerIcon!,
           infoWindow: InfoWindow(
-            title: 'Your Location',
+            title: 'Your Location (START)',
             snippet: 'Driver: $_driverName',
           ),
         ),
@@ -366,7 +361,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
             position: latLng,
             icon: _passengerMarkerIcon!,
             infoWindow: InfoWindow(
-              title: passenger['userName'],
+              title: 'Passenger ${i + 1}: ${passenger['userName']}',
               snippet:
                   '${passenger['selectedSeats'].length} seats • ${passenger['pickupAddress']}',
             ),
@@ -610,10 +605,20 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       coordinates: stops.map((s) => s.location).toList(),
     );
     final optimizedRoute = await somRoute.optimizeRoute(stops);
+
     // Convert som.LatLng to google_maps_flutter LatLng for map display
     final List<LatLng> routeCoords = optimizedRoute.routeCoordinates
         .map((c) => LatLng(c.latitude, c.longitude))
         .toList();
+
+    // Calculate total distance
+    double totalDistance = 0.0;
+    for (int i = 0; i < routeCoords.length - 1; i++) {
+      totalDistance += _calculateDistance(routeCoords[i], routeCoords[i + 1]);
+    }
+
+    // Update markers with route order labels
+    _updateMarkersWithRouteOrder(optimizedRoute.orderedStops);
 
     setState(() {
       _allPolylines.clear();
@@ -625,6 +630,90 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
           width: 5,
         ),
       );
+    });
+
+    // Show route summary
+    _displayRouteSummary(totalDistance, optimizedRoute.orderedStops);
+  }
+
+  // Calculate distance between two points in kilometers
+  double _calculateDistance(LatLng start, LatLng end) {
+    const double earthRadius = 6371; // Earth's radius in kilometers
+    final double lat1 = start.latitude * (pi / 180);
+    final double lat2 = end.latitude * (pi / 180);
+    final double deltaLat = (end.latitude - start.latitude) * (pi / 180);
+    final double deltaLng = (end.longitude - start.longitude) * (pi / 180);
+
+    final double a =
+        sin(deltaLat / 2) * sin(deltaLat / 2) +
+        cos(lat1) * cos(lat2) * sin(deltaLng / 2) * sin(deltaLng / 2);
+    final double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+
+    return earthRadius * c;
+  }
+
+  // Update markers with route order labels
+  void _updateMarkersWithRouteOrder(List<som.BusStop> routeStops) {
+    _allMarkers.clear();
+
+    // Add driver location marker
+    if (_driverLocation != null && _driverMarkerIcon != null) {
+      _allMarkers.add(
+        Marker(
+          markerId: MarkerId('driver_location'),
+          position: _driverLocation!,
+          icon: _driverMarkerIcon!,
+          infoWindow: InfoWindow(
+            title: 'Your Location (START)',
+            snippet: 'Driver: $_driverName',
+          ),
+        ),
+      );
+    }
+
+    // Add passenger markers with route order
+    for (int i = 0; i < routeStops.length; i++) {
+      final stop = routeStops[i];
+      if (stop.id != 'bus') {
+        // Find the passenger data
+        final passenger = _passengers.firstWhere(
+          (p) => p['userId'] == stop.id,
+          orElse: () => <String, dynamic>{},
+        );
+
+        if (passenger.isNotEmpty &&
+            passenger['pickupLocation'] != null &&
+            _passengerMarkerIcon != null) {
+          final location = passenger['pickupLocation'];
+          final latLng = LatLng(location['latitude'], location['longitude']);
+
+          _allMarkers.add(
+            Marker(
+              markerId: MarkerId('passenger_${passenger['userId']}'),
+              position: latLng,
+              icon: _passengerMarkerIcon!,
+              infoWindow: InfoWindow(
+                title: 'Stop ${i}: ${passenger['userName']}',
+                snippet:
+                    '${passenger['selectedSeats'].length} seats • ${passenger['pickupAddress']}',
+              ),
+              onTap: () => _showPassengerDetails(passenger),
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  // Show route summary in a card on screen
+  void _displayRouteSummary(
+    double totalDistance,
+    List<som.BusStop> routeStops,
+  ) {
+    setState(() {
+      _totalRouteDistance = totalDistance;
+      _optimizedRouteStops = routeStops;
+      _showRouteSummary = true;
     });
   }
 
@@ -835,20 +924,238 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: GoogleMap(
-                        onMapCreated: (GoogleMapController controller) {
-                          _controller.complete(controller);
-                        },
-                        initialCameraPosition: _initialPosition,
-                        markers: _allMarkers,
-                        polylines: _allPolylines,
-                        myLocationEnabled: true,
-                        myLocationButtonEnabled: false,
-                        zoomControlsEnabled: false,
-                        mapToolbarEnabled: false,
-                        onTap: (LatLng location) {
-                          // Handle map tap if needed
-                        },
+                      child: Stack(
+                        children: [
+                          GoogleMap(
+                            onMapCreated: (GoogleMapController controller) {
+                              _controller.complete(controller);
+                            },
+                            initialCameraPosition: _initialPosition,
+                            markers: _allMarkers,
+                            polylines: _allPolylines,
+                            myLocationEnabled: true,
+                            myLocationButtonEnabled: false,
+                            zoomControlsEnabled: false,
+                            mapToolbarEnabled: false,
+                            onTap: (LatLng location) {
+                              // Handle map tap if needed
+                            },
+                          ),
+
+                          // Route Summary Card
+                          if (_showRouteSummary &&
+                              _optimizedRouteStops.isNotEmpty)
+                            Positioned(
+                              top: 16,
+                              right: 16,
+                              child: Container(
+                                width: 280,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: 8,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    // Header
+                                    Container(
+                                      padding: EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.deepPurple,
+                                        borderRadius: BorderRadius.only(
+                                          topLeft: Radius.circular(12),
+                                          topRight: Radius.circular(12),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.route,
+                                            color: Colors.white,
+                                            size: 20,
+                                          ),
+                                          SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              'Optimized Route',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                          ),
+                                          IconButton(
+                                            icon: Icon(
+                                              Icons.close,
+                                              color: Colors.white,
+                                              size: 20,
+                                            ),
+                                            onPressed: () {
+                                              setState(() {
+                                                _showRouteSummary = false;
+                                              });
+                                            },
+                                            padding: EdgeInsets.zero,
+                                            constraints: BoxConstraints(
+                                              minWidth: 24,
+                                              minHeight: 24,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                    // Content
+                                    Container(
+                                      padding: EdgeInsets.all(12),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          // Total Distance
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.straighten,
+                                                size: 16,
+                                                color: Colors.deepPurple,
+                                              ),
+                                              SizedBox(width: 8),
+                                              Text(
+                                                'Total Distance: ${_totalRouteDistance.toStringAsFixed(2)} km',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 14,
+                                                  color: Colors.deepPurple,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+
+                                          SizedBox(height: 12),
+
+                                          // Route Order
+                                          Text(
+                                            'Route Order:',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                              color: Colors.grey[700],
+                                            ),
+                                          ),
+
+                                          SizedBox(height: 8),
+
+                                          // Stops List
+                                          Container(
+                                            constraints: BoxConstraints(
+                                              maxHeight: 200,
+                                            ),
+                                            child: SingleChildScrollView(
+                                              child: Column(
+                                                children: _optimizedRouteStops.asMap().entries.map((
+                                                  entry,
+                                                ) {
+                                                  final index = entry.key;
+                                                  final stop = entry.value;
+                                                  return Container(
+                                                    margin: EdgeInsets.only(
+                                                      bottom: 4,
+                                                    ),
+                                                    padding:
+                                                        EdgeInsets.symmetric(
+                                                          horizontal: 8,
+                                                          vertical: 4,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: index == 0
+                                                          ? Colors.blue
+                                                                .withOpacity(
+                                                                  0.1,
+                                                                )
+                                                          : Colors.grey
+                                                                .withOpacity(
+                                                                  0.1,
+                                                                ),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            6,
+                                                          ),
+                                                      border: Border.all(
+                                                        color: index == 0
+                                                            ? Colors.blue
+                                                            : Colors.grey,
+                                                        width: 1,
+                                                      ),
+                                                    ),
+                                                    child: Row(
+                                                      children: [
+                                                        Container(
+                                                          width: 20,
+                                                          height: 20,
+                                                          decoration:
+                                                              BoxDecoration(
+                                                                color:
+                                                                    index == 0
+                                                                    ? Colors
+                                                                          .blue
+                                                                    : Colors
+                                                                          .grey,
+                                                                shape: BoxShape
+                                                                    .circle,
+                                                              ),
+                                                          child: Center(
+                                                            child: Text(
+                                                              '${index + 1}',
+                                                              style: TextStyle(
+                                                                color: Colors
+                                                                    .white,
+                                                                fontSize: 12,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        SizedBox(width: 8),
+                                                        Expanded(
+                                                          child: Text(
+                                                            stop.name,
+                                                            style: TextStyle(
+                                                              fontSize: 12,
+                                                              fontWeight:
+                                                                  index == 0
+                                                                  ? FontWeight
+                                                                        .bold
+                                                                  : FontWeight
+                                                                        .normal,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  );
+                                                }).toList(),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ),
