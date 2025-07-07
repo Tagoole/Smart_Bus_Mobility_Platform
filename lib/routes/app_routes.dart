@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:smart_bus_mobility_platform1/screens/driver_map_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/AvailableBus_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/admin_home_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/bus_driver_home_screen.dart';
@@ -34,6 +35,7 @@ class AppRoutes {
   static const String coordinatetoAddressScreen = '/coordinateToAddress';
   static const String mountExampleScreen = '/mount-example';
   static const String busManagementScreen = '/busManagement';
+  static const String driverMapScreen = '/driverMap';
   //static const String seatSelectionScreen = '/selectSeat';
 
   static Map<String, WidgetBuilder> getRoutes() {
@@ -53,6 +55,7 @@ class AppRoutes {
       //coordinatetoAddressScreen: (context) => TransformLatLngToAddress(),
       //mountExampleScreen: (context) => const MountExampleScreen(),
       busManagementScreen: (context) => BusManagementScreen(),
+      driverMapScreen: (context) => DriverMapScreen(),
     };
   }
 }

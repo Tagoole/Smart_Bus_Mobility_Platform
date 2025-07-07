@@ -18,7 +18,6 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
 
   // Driver state
   bool _isOnline = false;
-  bool _isOnTrip = false;
   String _currentRoute = 'No route assigned';
   String _driverName = 'Driver';
   String _busNumber = 'N/A';
@@ -26,10 +25,6 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
   // Location tracking
   LatLng? _currentLocation;
   GoogleMapController? _mapController;
-
-  // Trip data
-  Map<String, dynamic>? _currentTrip;
-  List<Map<String, dynamic>> _upcomingTrips = [];
 
   @override
   void initState() {
@@ -83,8 +78,6 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
     setState(() {
       _isOnline = !_isOnline;
     });
-
-    // Update driver status in Firestore
     _updateDriverStatus();
   }
 
@@ -94,7 +87,6 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
       if (user != null) {
         await _firestore.collection('drivers').doc(user.uid).set({
           'isOnline': _isOnline,
-          'isOnTrip': _isOnTrip,
           'currentLocation': _currentLocation != null
               ? {
                   'latitude': _currentLocation!.latitude,
@@ -109,62 +101,6 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
     }
   }
 
-  void _startTrip() {
-    setState(() {
-      _isOnTrip = true;
-    });
-    _updateDriverStatus();
-    _showSnackBar('Trip started!');
-  }
-
-  void _endTrip() {
-    setState(() {
-      _isOnTrip = false;
-      _currentTrip = null;
-    });
-    _updateDriverStatus();
-    _showSnackBar('Trip ended!');
-  }
-
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), duration: Duration(seconds: 2)),
-    );
-  }
-
-  // Method to create a test driver account (for development purposes)
-  Future<void> _createTestDriverAccount() async {
-    try {
-      // This is for testing purposes only
-      // In production, drivers should be created through proper admin interface
-      final user = _auth.currentUser;
-      if (user != null) {
-        await _firestore.collection('users').doc(user.uid).update({
-          'role': 'Driver',
-          'username': 'Test Driver',
-          'contact': '1234567890',
-        });
-
-        // Also create driver-specific data
-        await _firestore.collection('drivers').doc(user.uid).set({
-          'driverId': user.uid,
-          'name': 'Test Driver',
-          'isOnline': false,
-          'isOnTrip': false,
-          'busNumber': 'BUS-001',
-          'currentRoute': 'Route A',
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-
-        _showSnackBar('Test driver account created!');
-        _loadDriverData(); // Reload data
-      }
-    } catch (e) {
-      print('Error creating test driver account: $e');
-      _showSnackBar('Error creating test account');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -173,12 +109,6 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
         backgroundColor: Colors.blue[800],
         foregroundColor: Colors.white,
         actions: [
-          // Test button for development (remove in production)
-          IconButton(
-            icon: Icon(Icons.build),
-            onPressed: _createTestDriverAccount,
-            tooltip: 'Create Test Driver Account',
-          ),
           IconButton(
             icon: Icon(Icons.logout),
             onPressed: () async {
@@ -257,11 +187,6 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                       _isOnline ? Colors.green : Colors.grey,
                       Icons.circle,
                     ),
-                    _buildStatusChip(
-                      'On Trip',
-                      _isOnTrip ? Colors.orange : Colors.grey,
-                      Icons.directions_bus,
-                    ),
                   ],
                 ),
               ],
@@ -313,40 +238,6 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                       )
                     : Center(child: CircularProgressIndicator()),
               ),
-            ),
-          ),
-
-          // Trip Controls
-          Container(
-            margin: EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _isOnline && !_isOnTrip ? _startTrip : null,
-                    icon: Icon(Icons.play_arrow),
-                    label: Text('Start Trip'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _isOnTrip ? _endTrip : null,
-                    icon: Icon(Icons.stop),
-                    label: Text('End Trip'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-              ],
             ),
           ),
 
@@ -447,6 +338,12 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
           textAlign: TextAlign.center,
         ),
       ],
+    );
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: Duration(seconds: 2)),
     );
   }
 }

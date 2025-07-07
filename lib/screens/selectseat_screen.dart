@@ -4,6 +4,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
+import 'package:smart_bus_mobility_platform1/models/location_model.dart';
 
 enum SeatStatus { available, selected, reserved }
 
@@ -287,6 +288,30 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
       });
 
       // Return booking result
+      // After booking is successful, also save the pickup location as active
+      if (widget.pickupLocation != null && user != null) {
+        // Deactivate old locations
+        final existingLocations = await FirebaseFirestore.instance
+            .collection('pickup_locations')
+            .where('userId', isEqualTo: user.uid)
+            .where('isActive', isEqualTo: true)
+            .get();
+        for (var doc in existingLocations.docs) {
+          await doc.reference.update({'isActive': false});
+        }
+        // Save new active pickup location
+        final locationModel = LocationModel.createPickupLocation(
+          userId: user.uid,
+          latitude: widget.pickupLocation!.latitude,
+          longitude: widget.pickupLocation!.longitude,
+          locationName: 'Pickup Location',
+          notes: 'Added on ${DateTime.now().toString()}',
+        );
+        await FirebaseFirestore.instance
+            .collection('pickup_locations')
+            .add(locationModel.toJson());
+      }
+
       Navigator.pop(context, {
         'bookingId': docRef.id,
         'selectedSeats': selectedSeats.toList(),

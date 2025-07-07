@@ -173,7 +173,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
 
       if (busDoc.exists) {
         final busData = busDoc.data()!;
-        
+
         // Check if bus has current location data
         if (busData['currentLocation'] != null) {
           final location = busData['currentLocation'];
@@ -535,7 +535,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
       final userId = _getCurrentUserId();
       if (userId == null) return;
 
-      // Load the most recent active pickup location
+      // Try to load the most recent active pickup location
       final snapshot = await FirebaseFirestore.instance
           .collection('pickup_locations')
           .where('userId', isEqualTo: userId)
@@ -548,14 +548,31 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
         final locationData = snapshot.docs.first.data();
         final latitude = locationData['latitude'] as double;
         final longitude = locationData['longitude'] as double;
-        final locationName = locationData['locationName'] as String? ?? 'Saved Pickup Location';
-
         setState(() {
           _pickupLocation = LatLng(latitude, longitude);
         });
-
         _updateMarkers();
-        print('Loaded saved pickup location: $locationName at ($latitude, $longitude)');
+        print('Loaded saved pickup location from pickup_locations');
+      } else {
+        // Fallback: Try to load from the latest booking
+        final bookingSnapshot = await FirebaseFirestore.instance
+            .collection('bookings')
+            .where('userId', isEqualTo: userId)
+            .where('status', isEqualTo: 'confirmed')
+            .orderBy('departureDate', descending: true)
+            .limit(1)
+            .get();
+        if (bookingSnapshot.docs.isNotEmpty) {
+          final bookingData = bookingSnapshot.docs.first.data();
+          if (bookingData['pickupLocation'] != null) {
+            final pickup = bookingData['pickupLocation'];
+            setState(() {
+              _pickupLocation = LatLng(pickup['latitude'], pickup['longitude']);
+            });
+            _updateMarkers();
+            print('Loaded pickup location from latest booking');
+          }
+        }
       }
     } catch (e) {
       print('Error loading saved pickup locations: $e');
@@ -763,7 +780,9 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
               ),
 
             // Pickup location info card (only show if has saved pickup location and no active booking)
-            if (!_hasActiveBooking && _pickupLocation != null && !widget.isPickupSelection)
+            if (!_hasActiveBooking &&
+                _pickupLocation != null &&
+                !widget.isPickupSelection)
               Container(
                 margin: EdgeInsets.all(16),
                 padding: EdgeInsets.all(16),
@@ -864,7 +883,9 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: _isLoadingLocation ? null : _getCurrentLocation,
+                      onPressed: _isLoadingLocation
+                          ? null
+                          : _getCurrentLocation,
                       icon: _isLoadingLocation
                           ? SizedBox(
                               width: 16,

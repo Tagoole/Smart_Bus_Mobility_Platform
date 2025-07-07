@@ -81,7 +81,7 @@ class _SignInScreenState extends State<SignInScreen> {
       break;
     case 'driver':
       print('Navigating to bus driver screen');
-      targetRoute = AppRoutes.busDriverHomeScreen;
+      targetRoute = AppRoutes.driverMapScreen;
       break;
     default:
       print('Unknown role: $role, showing error');
