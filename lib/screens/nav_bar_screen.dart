@@ -1,14 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-import 'personal_data_screen.dart';
+// Import all the screens
 import 'ticket_screen.dart';
 import 'settings_screen.dart';
 import 'profile_screen.dart';
 import 'passenger_map_screen.dart';
 import 'customer_home_screen.dart';
+import 'bus_driver_home_screen.dart';
+import 'driver_map_screen.dart';
+import 'admin_home_screen.dart';
+
+// Navigation item model
+class NavBarItem {
+  final IconData icon;
+  final String label;
+  final Widget screen;
+
+  NavBarItem({required this.icon, required this.label, required this.screen});
+}
 
 class NavBarScreen extends StatefulWidget {
-  const NavBarScreen({super.key});
+  final String userRole;
+
+  const NavBarScreen({super.key, required this.userRole});
 
   @override
   State<NavBarScreen> createState() => _NavBarScreenState();
@@ -16,15 +32,106 @@ class NavBarScreen extends StatefulWidget {
 
 class _NavBarScreenState extends State<NavBarScreen> {
   int _selectedIndex = 0;
+  late List<NavBarItem> _navigationItems;
 
-  // List of screens for each navigation item
-  final List<Widget> _screens = [
-    const BusTrackingScreen(),
-    const TicketScreen(),
-    const PassengerMapScreen(),
-    const SettingsScreen(),
-    const ProfileScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _initializeNavigationItems();
+  }
+
+  void _initializeNavigationItems() {
+    switch (widget.userRole.toLowerCase()) {
+      case 'user':
+      case 'passenger':
+        _navigationItems = _getPassengerNavigationItems();
+        break;
+      case 'driver':
+        _navigationItems = _getDriverNavigationItems();
+        break;
+      case 'admin':
+        _navigationItems = _getAdminNavigationItems();
+        break;
+      default:
+        _navigationItems =
+            _getPassengerNavigationItems(); // Default to passenger
+    }
+  }
+
+  List<NavBarItem> _getPassengerNavigationItems() {
+    return [
+      NavBarItem(
+        icon: Icons.dashboard,
+        label: "Dashboard",
+        screen: const BusTrackingScreen(),
+      ),
+      NavBarItem(
+        icon: Icons.location_on,
+        label: "Map",
+        screen: const PassengerMapScreen(),
+      ),
+      NavBarItem(
+        icon: Icons.confirmation_number,
+        label: "Tickets",
+        screen: const TicketScreen(),
+      ),
+      NavBarItem(
+        icon: Icons.settings,
+        label: "Settings",
+        screen: const SettingsScreen(),
+      ),
+      NavBarItem(
+        icon: Icons.person,
+        label: "Profile",
+        screen: const ProfileScreen(),
+      ),
+    ];
+  }
+
+  List<NavBarItem> _getDriverNavigationItems() {
+    return [
+      NavBarItem(
+        icon: Icons.home,
+        label: "Home",
+        screen: const BusDriverHomeScreen(),
+      ),
+      NavBarItem(
+        icon: Icons.map,
+        label: "Map",
+        screen: const DriverMapScreen(),
+      ),
+      NavBarItem(
+        icon: Icons.settings,
+        label: "Settings",
+        screen: const SettingsScreen(),
+      ),
+      NavBarItem(
+        icon: Icons.person,
+        label: "Profile",
+        screen: const ProfileScreen(),
+      ),
+    ];
+  }
+
+  List<NavBarItem> _getAdminNavigationItems() {
+    return [
+      NavBarItem(
+        icon: Icons.admin_panel_settings,
+        label: "Admin",
+        screen: const AdminDashboardScreen(),
+      ),
+      NavBarItem(
+        icon: Icons.settings,
+        label: "Settings",
+        screen: const SettingsScreen(),
+      ),
+      NavBarItem(
+        icon: Icons.person,
+        label: "Profile",
+        screen: const ProfileScreen(),
+      ),
+    ];
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -35,16 +142,19 @@ class _NavBarScreenState extends State<NavBarScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _screens[_selectedIndex],
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _navigationItems.map((item) => item.screen).toList(),
+      ),
       bottomNavigationBar: Container(
         margin: const EdgeInsets.all(16),
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
         decoration: BoxDecoration(
-          color: Colors.green.withOpacity(0.8),
+          color: Colors.green.withValues(alpha: 0.8),
           borderRadius: BorderRadius.circular(30),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.15),
+              color: Colors.black.withValues(alpha: 0.15),
               blurRadius: 15,
               offset: const Offset(0, -3),
             ),
@@ -52,21 +162,15 @@ class _NavBarScreenState extends State<NavBarScreen> {
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildNavItem(icon: Icons.home, index: 0, label: "Home"),
-            _buildNavItem(
-              icon: Icons.confirmation_number,
-              index: 1,
-              label: "Tickets",
-            ),
-            _buildNavItem(
-              icon: Icons.location_on,
-              index: 2,
-              label: "Passenger Map",
-            ),
-            _buildNavItem(icon: Icons.settings, index: 3, label: "Settings"),
-            _buildNavItem(icon: Icons.person, index: 4, label: "Profile"),
-          ],
+          children: _navigationItems.asMap().entries.map((entry) {
+            final index = entry.key;
+            final item = entry.value;
+            return _buildNavItem(
+              icon: item.icon,
+              index: index,
+              label: item.label,
+            );
+          }).toList(),
         ),
       ),
     );
@@ -90,14 +194,14 @@ class _NavBarScreenState extends State<NavBarScreen> {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: Colors.yellow.withOpacity(0.4),
+                    color: Colors.yellow.withValues(alpha: 0.4),
                     blurRadius: 10,
                     spreadRadius: 3,
                   ),
                 ]
               : [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 5,
                     spreadRadius: 1,
                   ),
@@ -110,6 +214,35 @@ class _NavBarScreenState extends State<NavBarScreen> {
         ),
       ),
     );
+  }
+}
+
+// Helper function to get NavBarScreen with appropriate role
+class NavBarHelper {
+  static Widget getNavBarForUser(String userRole) {
+    return NavBarScreen(userRole: userRole);
+  }
+
+  static Widget getNavBarForCurrentUser() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      // Get user role from Firestore
+      return FutureBuilder<DocumentSnapshot>(
+        future: FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get(),
+        builder: (context, snapshot) {
+          if (snapshot.hasData && snapshot.data!.exists) {
+            final userData = snapshot.data!.data() as Map<String, dynamic>;
+            final role = userData['role']?.toString().toLowerCase() ?? 'user';
+            return NavBarScreen(userRole: role);
+          }
+          return NavBarScreen(userRole: 'user'); // Default fallback
+        },
+      );
+    }
+    return NavBarScreen(userRole: 'user'); // Default fallback
   }
 }
 

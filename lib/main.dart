@@ -21,8 +21,6 @@ import 'package:smart_bus_mobility_platform1/screens/customer_home_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/bus_driver_home_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
-import 'package:smart_bus_mobility_platform1/screens/map_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/splash_screen.dart';
 
 void main() async {
   BindingBase.debugZoneErrorsAreFatal = false;
@@ -102,10 +100,9 @@ class MyApp extends StatelessWidget {
                         case 'admin':
                           return AdminDashboardScreen();
                         case 'driver':
-                          return BusDriverHomeScreen();
                         case 'user':
                         default:
-                          return BusTrackingScreen();
+                          return NavBarScreen(userRole: role);
                       }
                     } else {
                       // Fallback to passenger screen if role fetch fails
@@ -133,7 +130,7 @@ class MyApp extends StatelessWidget {
         '/forgotpassword2': (context) => const ForgotPasswordScreen2(),
         '/profilescreen': (context) => const profile.ProfileScreen(),
         '/personaldata': (context) => const PersonalData(),
-        '/navbar': (context) => const NavBarScreen(),
+        '/navbar': (context) => NavBarHelper.getNavBarForCurrentUser(),
         '/passengerMap': (context) => PassengerMapScreen(),
         '/login': (context) => SignInScreenNew(),
         '/payment': (context) => PaymentScreen(),

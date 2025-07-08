@@ -223,10 +223,10 @@ class _PersonalDataState extends State<PersonalData> {
   void _onItemTapped(int index) {
     if (index != 4) {
       // If not profile tab, navigate to NavBarScreen
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const NavBarScreen()),
-      );
+Navigator.pushReplacement(
+  context,
+  MaterialPageRoute(builder: (context) => NavBarHelper.getNavBarForCurrentUser()),
+);
     }
     // If profile tab (index 4), stay on current screen
   }
