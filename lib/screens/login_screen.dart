@@ -96,7 +96,7 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   // Perform navigation if we have a valid route
-  if (targetRoute != null && mounted) {
+  if (mounted) {
     try {
       Navigator.pushReplacementNamed(context, targetRoute);
     } catch (e) {

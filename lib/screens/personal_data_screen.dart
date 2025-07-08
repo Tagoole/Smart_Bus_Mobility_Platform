@@ -26,7 +26,7 @@ class PersonalData extends StatefulWidget {
 
 class _PersonalDataState extends State<PersonalData> {
   final _formKey = GlobalKey<FormState>();
-  int _selectedIndex = 4; // Set to Profile index since this is profile data
+  final int _selectedIndex = 4; // Set to Profile index since this is profile data
 
   // Controllers for text fields
   final TextEditingController _nameController = TextEditingController();

@@ -217,7 +217,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
           .round(); // Assuming 30 km/h average speed
 
       setState(() {
-        _estimatedArrival = '${estimatedMinutes} min';
+        _estimatedArrival = '$estimatedMinutes min';
       });
 
       // Generate route polyline (simplified for demo)

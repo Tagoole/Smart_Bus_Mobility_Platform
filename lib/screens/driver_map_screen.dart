@@ -338,31 +338,29 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         }
       }
 
-      if (position != null) {
-        setState(() {
-          _driverLocation = LatLng(position!.latitude, position!.longitude);
-          _isLoadingLocation = false;
-        });
+      setState(() {
+        _driverLocation = LatLng(position!.latitude, position!.longitude);
+        _isLoadingLocation = false;
+      });
 
-        // Update camera to driver location
-        if (_controller.isCompleted) {
-          GoogleMapController controller = await _controller.future;
-          controller.animateCamera(
-            CameraUpdate.newCameraPosition(
-              CameraPosition(target: _driverLocation!, zoom: 15),
-            ),
-          );
-        }
-
-        _updateMarkers();
-        _updateDriverLocationInFirestore();
-        await _drawOptimalRouteSOM();
-
-        print(
-          'Location updated successfully: ${position?.latitude}, ${position?.longitude}',
+      // Update camera to driver location
+      if (_controller.isCompleted) {
+        GoogleMapController controller = await _controller.future;
+        controller.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(target: _driverLocation!, zoom: 15),
+          ),
         );
       }
-    } catch (e) {
+
+      _updateMarkers();
+      _updateDriverLocationInFirestore();
+      await _drawOptimalRouteSOM();
+
+      print(
+        'Location updated successfully: ${position?.latitude}, ${position?.longitude}',
+      );
+        } catch (e) {
       print('Error getting location: $e');
 
       // Show appropriate error message
@@ -786,7 +784,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
               anchor: Offset(0.5, 0.5), // Center the marker
               flat: true, // Keep marker flat (not tilted)
               infoWindow: InfoWindow(
-                title: 'Stop ${i}: ${passenger['userName']}',
+                title: 'Stop $i: ${passenger['userName']}',
                 snippet:
                     '${passenger['selectedSeats'].length} seats • ${passenger['pickupAddress']}',
               ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:smart_bus_mobility_platform1/resources/bus_service.dart';
 import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
+import 'package:smart_bus_mobility_platform1/models/admin_route_point.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'passenger_map_screen.dart';
@@ -55,6 +56,11 @@ class _FindBusScreenState extends State<FindBusScreen> {
 
   // Selected bus for booking
   BusModel? selectedBus;
+
+  // Fetch route points for the selected bus
+  AdminRoutePoint? _startRoutePoint;
+  AdminRoutePoint? _destinationRoutePoint;
+  bool _isLoadingRoutePoints = false;
 
   final TextEditingController _departureDateController =
       TextEditingController();
@@ -360,6 +366,42 @@ class _FindBusScreenState extends State<FindBusScreen> {
     }
   }
 
+  // Fetch route points for the selected bus
+  Future<void> _fetchRoutePointsForBus(BusModel? bus) async {
+    if (bus == null) {
+      setState(() {
+        _startRoutePoint = null;
+        _destinationRoutePoint = null;
+      });
+      return;
+    }
+    setState(() {
+      _isLoadingRoutePoints = true;
+    });
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('admin_route_points')
+          .where('busId', isEqualTo: bus.busId)
+          .get();
+      AdminRoutePoint? start;
+      AdminRoutePoint? dest;
+      for (var doc in snapshot.docs) {
+        final point = AdminRoutePoint.fromJson(doc.data(), doc.id);
+        if (point.type == 'start') start = point;
+        if (point.type == 'destination') dest = point;
+      }
+      setState(() {
+        _startRoutePoint = start;
+        _destinationRoutePoint = dest;
+        _isLoadingRoutePoints = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingRoutePoints = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -532,6 +574,92 @@ class _FindBusScreenState extends State<FindBusScreen> {
     );
   }
 
+  Widget _buildRouteMapSection() {
+    if (_isLoadingRoutePoints) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+    LatLng? start;
+    LatLng? end;
+    String? startLabel;
+    String? endLabel;
+    if (_startRoutePoint != null && _destinationRoutePoint != null) {
+      start = LatLng(_startRoutePoint!.latitude, _startRoutePoint!.longitude);
+      end = LatLng(
+        _destinationRoutePoint!.latitude,
+        _destinationRoutePoint!.longitude,
+      );
+      startLabel = 'Start: ${_startRoutePoint!.address}';
+      endLabel = 'Destination: ${_destinationRoutePoint!.address}';
+    } else if (selectedBus != null &&
+        selectedBus!.startLat != null &&
+        selectedBus!.startLng != null &&
+        selectedBus!.destinationLat != null &&
+        selectedBus!.destinationLng != null) {
+      start = LatLng(selectedBus!.startLat!, selectedBus!.startLng!);
+      end = LatLng(selectedBus!.destinationLat!, selectedBus!.destinationLng!);
+      startLabel = 'Start';
+      endLabel = 'Destination';
+    }
+    if (start == null || end == null) {
+      return SizedBox.shrink();
+    }
+    return Container(
+      height: 220,
+      margin: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: GoogleMap(
+          initialCameraPosition: CameraPosition(target: start, zoom: 12),
+          polylines: {
+            Polyline(
+              polylineId: PolylineId('route'),
+              points: [start, end],
+              color: Colors.blue,
+              width: 5,
+            ),
+          },
+          markers: {
+            Marker(
+              markerId: MarkerId('start'),
+              position: start,
+              infoWindow: InfoWindow(title: startLabel),
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueGreen,
+              ),
+            ),
+            Marker(
+              markerId: MarkerId('end'),
+              position: end,
+              infoWindow: InfoWindow(title: endLabel),
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueRed,
+              ),
+            ),
+          },
+          myLocationEnabled: false,
+          myLocationButtonEnabled: false,
+          zoomControlsEnabled: false,
+          mapToolbarEnabled: false,
+        ),
+      ),
+    );
+  }
+
   Widget _buildSearchSection() {
     return Container(
       padding: const EdgeInsets.all(16.0),
@@ -589,10 +717,12 @@ class _FindBusScreenState extends State<FindBusScreen> {
                 setState(() {
                   selectedBus = value;
                 });
+                _fetchRoutePointsForBus(value);
               },
             ),
           ),
-
+          // Show the route map if a bus is selected
+          _buildRouteMapSection(),
           const SizedBox(height: 20),
 
           // Trip Type Selection
@@ -912,7 +1042,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      bus.startPoint + ' → ' + bus.destination,
+                      '${bus.startPoint} → ${bus.destination}',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 12,

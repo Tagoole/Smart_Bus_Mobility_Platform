@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'driver_map_screen.dart';
+import 'dart:async';
 
 class BusDriverHomeScreen extends StatefulWidget {
   const BusDriverHomeScreen({super.key});
@@ -18,19 +19,50 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
 
   // Driver state
   bool _isOnline = false;
-  String _currentRoute = 'No route assigned';
+  final String _currentRoute = 'No route assigned';
   String _driverName = 'Driver';
-  String _busNumber = 'N/A';
+  final String _busNumber = 'N/A';
 
   // Location tracking
   LatLng? _currentLocation;
   GoogleMapController? _mapController;
+  Timer? _locationUpdateTimer;
+  String? _busId; // Set this to the current bus's Firestore document ID
 
   @override
   void initState() {
     super.initState();
     _loadDriverData();
     _getCurrentLocation();
+    // Optionally, set _busId here or after driver assignment
+  }
+
+  @override
+  void dispose() {
+    _locationUpdateTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startLocationUpdates() {
+    _locationUpdateTimer?.cancel();
+    _locationUpdateTimer = Timer.periodic(Duration(seconds: 10), (timer) {
+      _updateBusLocationInFirestore();
+    });
+  }
+
+  void _stopLocationUpdates() {
+    _locationUpdateTimer?.cancel();
+  }
+
+  Future<void> _updateBusLocationInFirestore() async {
+    if (_busId == null || _currentLocation == null) return;
+    await _firestore.collection('buses').doc(_busId).update({
+      'currentLocation': {
+        'latitude': _currentLocation!.latitude,
+        'longitude': _currentLocation!.longitude,
+      },
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
   }
 
   Future<void> _loadDriverData() async {
@@ -79,6 +111,11 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
       _isOnline = !_isOnline;
     });
     _updateDriverStatus();
+    if (_isOnline) {
+      _startLocationUpdates();
+    } else {
+      _stopLocationUpdates();
+    }
   }
 
   Future<void> _updateDriverStatus() async {
@@ -281,9 +318,9 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _getCurrentLocation,
-        child: Icon(Icons.my_location),
         backgroundColor: Colors.blue[800],
         foregroundColor: Colors.white,
+        child: Icon(Icons.my_location),
       ),
     );
   }
