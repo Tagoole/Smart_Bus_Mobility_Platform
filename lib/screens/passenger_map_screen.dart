@@ -16,6 +16,7 @@ import 'package:smart_bus_mobility_platform1/screens/booking_screen.dart';
 import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:intl/intl.dart';
 
 // return user info so tha checking role is ok
 
@@ -46,7 +47,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   BitmapDescriptor? _busMarkerIcon;
   bool _isLoadingLocation = false;
   final Set<Marker> _allMarkers = {};
-  final Set<Polyline> _allPolylines = {};
 
   // Bus tracking variables
   BusModel? _bookedBus;
@@ -221,7 +221,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
       });
 
       // Generate route polyline (simplified for demo)
-      await _generateRoutePolyline();
+      // await _generateRoutePolyline(); // This line is removed
     } catch (e) {
       print('Error calculating ETA: $e');
       setState(() {
@@ -247,79 +247,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     final double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
 
     return earthRadius * c;
-  }
-
-  // Add this function to fetch the route polyline from Google Directions API
-  Future<List<LatLng>> getRoutePolyline(LatLng start, LatLng end) async {
-    final apiKey =
-        'AIzaSyC2n6urW_4DUphPLUDaNGAW_VN53j0RP4s'; // Replace with your real key
-    final url =
-        'https://maps.googleapis.com/maps/api/directions/json?origin=${start.latitude},${start.longitude}&destination=${end.latitude},${end.longitude}&key=$apiKey';
-
-    final response = await http.get(Uri.parse(url));
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final points = data['routes'][0]['overview_polyline']['points'];
-      return decodePolyline(points);
-    } else {
-      throw Exception('Failed to fetch directions');
-    }
-  }
-
-  List<LatLng> decodePolyline(String encoded) {
-    List<LatLng> polyline = [];
-    int index = 0, len = encoded.length;
-    int lat = 0, lng = 0;
-
-    while (index < len) {
-      int b, shift = 0, result = 0;
-      do {
-        b = encoded.codeUnitAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-      lat += dlat;
-
-      shift = 0;
-      result = 0;
-      do {
-        b = encoded.codeUnitAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-      lng += dlng;
-
-      polyline.add(LatLng(lat / 1E5, lng / 1E5));
-    }
-    return polyline;
-  }
-
-  // Update _generateRoutePolyline to use the Directions API
-  Future<void> _generateRoutePolyline() async {
-    if (_busLocation == null || _pickupLocation == null) return;
-
-    try {
-      final routePoints = await getRoutePolyline(
-        _busLocation!,
-        _pickupLocation!,
-      );
-      setState(() {
-        _allPolylines.clear();
-        _allPolylines.add(
-          Polyline(
-            polylineId: PolylineId('bus_route'),
-            points: routePoints,
-            color: Colors.blue,
-            width: 4,
-            geodesic: true,
-          ),
-        );
-      });
-    } catch (e) {
-      print('Error fetching route polyline: $e');
-    }
   }
 
   // Get user's current location
@@ -471,7 +398,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
         latitude: location.latitude,
         longitude: location.longitude,
         locationName: 'Pickup Location',
-        notes: 'Added on ${DateTime.now().toString()}',
+        notes: 'Added on ${formatDate(DateTime.now())}',
       );
 
       // Save to Firestore
@@ -682,6 +609,31 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
         'location': _pickupLocation,
         'address': 'Selected Location',
       });
+    }
+  }
+
+  String formatDate(DateTime date) {
+    final daySuffix = _getDayOfMonthSuffix(date.day);
+    final formatted =
+        DateFormat('EEEE d').format(date) +
+        daySuffix +
+        DateFormat(' MMMM, yyyy').format(date);
+    return formatted;
+  }
+
+  String _getDayOfMonthSuffix(int day) {
+    if (day >= 11 && day <= 13) {
+      return 'th';
+    }
+    switch (day % 10) {
+      case 1:
+        return 'st';
+      case 2:
+        return 'nd';
+      case 3:
+        return 'rd';
+      default:
+        return 'th';
     }
   }
 
@@ -926,7 +878,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                     },
                     initialCameraPosition: _initialPosition,
                     markers: _allMarkers,
-                    polylines: _allPolylines,
                     myLocationEnabled: true,
                     myLocationButtonEnabled: false,
                     zoomControlsEnabled: false,

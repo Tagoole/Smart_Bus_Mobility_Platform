@@ -126,6 +126,31 @@ class _TicketScreenState extends State<TicketScreen> {
     return 'Active';
   }
 
+  String formatDate(DateTime date) {
+    final daySuffix = _getDayOfMonthSuffix(date.day);
+    final formatted =
+        DateFormat('EEEE d').format(date) +
+        daySuffix +
+        DateFormat(' MMMM, yyyy').format(date);
+    return formatted;
+  }
+
+  String _getDayOfMonthSuffix(int day) {
+    if (day >= 11 && day <= 13) {
+      return 'th';
+    }
+    switch (day % 10) {
+      case 1:
+        return 'st';
+      case 2:
+        return 'nd';
+      case 3:
+        return 'rd';
+      default:
+        return 'th';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -409,7 +434,7 @@ class _TicketScreenState extends State<TicketScreen> {
                         ),
                       ),
                       Text(
-                        'Booked on ${DateFormat('MMM dd, yyyy').format(bookingTime)}',
+                        'Booked on ${formatDate(bookingTime)}',
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ],
@@ -526,9 +551,7 @@ class _TicketScreenState extends State<TicketScreen> {
                               ),
                             ),
                             Text(
-                              DateFormat(
-                                'MMM dd, yyyy - HH:mm',
-                              ).format(departureDate),
+                              formatDate(departureDate),
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,

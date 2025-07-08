@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 
 class PaymentSuccess extends StatelessWidget {
   const PaymentSuccess({super.key});
@@ -38,7 +39,7 @@ class PaymentSuccess extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  
+
                   // Success Text
                   Text(
                     "Payment Successful!",
@@ -49,10 +50,13 @@ class PaymentSuccess extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 40),
-                  
+
                   // Payment Details Header
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.green[800],
                       borderRadius: BorderRadius.circular(30),
@@ -77,7 +81,7 @@ class PaymentSuccess extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 30),
-                  
+
                   // Payment Details Card
                   Container(
                     width: 300,
@@ -91,7 +95,7 @@ class PaymentSuccess extends StatelessWidget {
                         // Transaction Details Rows
                         _buildDetailRow("Transaction ID", "4233456786844"),
                         const SizedBox(height: 15),
-                        _buildDetailRow("Date", "12th June, 2025"),
+                        _buildDetailRow("Date", formatDate(DateTime.now())),
                         const SizedBox(height: 15),
                         _buildDetailRow("Type of transaction", "Credit card"),
                         const SizedBox(height: 15),
@@ -99,18 +103,14 @@ class PaymentSuccess extends StatelessWidget {
                         const SizedBox(height: 15),
                         _buildDetailRow("Status", "Success", isStatus: true),
                         const SizedBox(height: 30),
-                        
+
                         // QR Code Icon
-                        Icon(
-                          Icons.qr_code_2,
-                          size: 50,
-                          color: Colors.black,
-                        ),
+                        Icon(Icons.qr_code_2, size: 50, color: Colors.black),
                       ],
                     ),
                   ),
                   const SizedBox(height: 30),
-                  
+
                   // Tagline
                   Text(
                     "Efficient *Real-time *Smart",
@@ -120,16 +120,7 @@ class PaymentSuccess extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 40),
-                  
-                 
-                    
-                  
-                
-              
-            
-          
-        
-  
+
                   // You can add more widgets here if needed
                 ],
               ),
@@ -164,7 +155,30 @@ class PaymentSuccess extends StatelessWidget {
     );
   }
 
+  String formatDate(DateTime date) {
+    final daySuffix = _getDayOfMonthSuffix(date.day);
+    final formatted =
+        DateFormat('EEEE d').format(date) +
+        daySuffix +
+        DateFormat(' MMMM, yyyy').format(date);
+    return formatted;
+  }
 
+  String _getDayOfMonthSuffix(int day) {
+    if (day >= 11 && day <= 13) {
+      return 'th';
+    }
+    switch (day % 10) {
+      case 1:
+        return 'st';
+      case 2:
+        return 'nd';
+      case 3:
+        return 'rd';
+      default:
+        return 'th';
+    }
+  }
 
   Widget _buildNavIcon(IconData icon, bool isEmphasized) {
     return Container(
@@ -178,11 +192,7 @@ class PaymentSuccess extends StatelessWidget {
         onPressed: () {
           // Add navigation logic here
         },
-        icon: Icon(
-          icon,
-          color: Colors.black,
-          size: 20,
-        ),
+        icon: Icon(icon, color: Colors.black, size: 20),
         padding: EdgeInsets.zero,
       ),
     );

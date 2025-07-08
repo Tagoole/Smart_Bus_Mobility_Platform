@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'passenger_map_screen.dart';
 import 'selectseat_screen.dart';
+import 'package:intl/intl.dart';
 
 void main() {
   runApp(const BusBooking());
@@ -152,7 +153,28 @@ class _FindBusScreenState extends State<FindBusScreen> {
   }
 
   String formatDate(DateTime date) {
-    return "${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}/${date.year.toString().substring(2)}";
+    final daySuffix = _getDayOfMonthSuffix(date.day);
+    final formatted =
+        DateFormat('EEEE d').format(date) +
+        daySuffix +
+        DateFormat(' MMMM, yyyy').format(date);
+    return formatted;
+  }
+
+  String _getDayOfMonthSuffix(int day) {
+    if (day >= 11 && day <= 13) {
+      return 'th';
+    }
+    switch (day % 10) {
+      case 1:
+        return 'st';
+      case 2:
+        return 'nd';
+      case 3:
+        return 'rd';
+      default:
+        return 'th';
+    }
   }
 
   void _selectPickupLocation() async {
