@@ -8,7 +8,8 @@ import 'package:smart_bus_mobility_platform1/screens/login_screen.dart';
 //import 'package:smart_bus_mobility_platform1/screens/signup_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/forgot_password_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/email_verification_screen.dart'; // Add this import
-
+import 'package:smart_bus_mobility_platform1/screens/bus_dashboard_screen.dart';
+// Ensure that the file 'bus_driver_home_screen.dart' contains a class named 'BusDriverHomeScreen'
 import 'package:flutter/services.dart';
 
 void main() async {
@@ -56,41 +57,14 @@ class MyApp extends StatelessWidget {
         theme: ThemeData.light().copyWith(
           scaffoldBackgroundColor: Colors.blueGrey,
         ),
-        //initialRoute: AppRoutes.mapScreen,
         routes: {
-          ...AppRoutes.getRoutes(), // Spread your existing routes
-          '/signin': (context) => const SignInScreen(), // Add signin route
-          '/forgotpassword': (context) =>
-              const ForgotPasswordScreen(), // Forgot password route
-          '/emailverification': (context) =>
-              const EmailVerificationScreen(), // Email verification route
+          ...AppRoutes.getRoutes(),
+          '/signin': (context) => const SignInScreen(),
+          '/forgotpassword': (context) => const ForgotPasswordScreen(),
+          '/emailverification': (context) => const EmailVerificationScreen(),
+          '/driverhome': (context) => const DashboardScreen() , // <-- FIXED
         },
-        //initialRoute: AppRoutes.mapScreen,
-        //home: PaymentSuccess(), // Set the initial home screen
-        //home: SplashScreen(),
-        //initialRoute: AppRoutes.mapScreen,
-        home: StreamBuilder(
-          stream: FirebaseAuth.instance.authStateChanges(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.active) {
-              if (snapshot.hasData) {
-                // Return your main/home screen here, for example:
-                return Container(); // <-- Replace with your HomeScreen()
-              } else if (snapshot.hasError) {
-                return Center(child: Text('${snapshot.error}'));
-              }
-            } else if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(
-                child: CircularProgressIndicator(color: Colors.white),
-              );
-            }
-            return SignInScreen();
-          },
-        ),
-        //home: Scaffold(
-        //  backgroundColor: Colors.blue,
-        //),
-        //),
+        home: DashboardScreen() , // <-- FIXED
       ),
     );
   }
