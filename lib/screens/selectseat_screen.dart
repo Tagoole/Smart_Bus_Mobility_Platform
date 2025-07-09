@@ -287,6 +287,26 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
+      // --- Create a ticket in the tickets collection ---
+      await FirebaseFirestore.instance.collection('tickets').add({
+        'userId': user.uid,
+        'busId': widget.busModel!.busId,
+        'routeId': widget.busModel!.routeId ?? '',
+        'dateTime': widget.departureDate ?? DateTime.now(),
+        'price': totalFare,
+        'isPaid': true,
+        'busName': widget.busModel!.vehicleModel,
+        'routeName':
+            widget.busModel!.startPoint + ' → ' + widget.busModel!.destination,
+        'seatNumber': selectedSeats.isNotEmpty
+            ? selectedSeats.first.toString()
+            : '',
+        'amount': totalFare,
+        'purchaseTime': FieldValue.serverTimestamp(),
+        'status': 'active',
+      });
+      // --- End ticket creation ---
+
       // Return booking result
       // After booking is successful, also save the pickup location as active
       if (widget.pickupLocation != null && user != null) {

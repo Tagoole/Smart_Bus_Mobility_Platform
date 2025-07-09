@@ -58,59 +58,59 @@ class _SignInScreenState extends State<SignInScreen> {
         break;
     }
   }
-  */ 
+  */
   void _navigateBasedOnRole(String role) {
-  print('Navigating based on role: $role');
-  
-  // Check if widget is still mounted before navigation
-  if (!mounted) {
-    print('Widget unmounted, cannot navigate');
-    return;
-  }
+    print('Navigating based on role: $role');
 
-  String? targetRoute;
-  
-  switch (role.toLowerCase()) {
-    case 'admin':
-      print('Navigating to admin screen');
-      targetRoute = AppRoutes.busManagementScreen;
-      break;
-    case 'user':
-      print('Navigating to passenger map screen');
-      targetRoute = AppRoutes.passengerHomeScreen;
-      break;
-    case 'driver':
-      print('Navigating to bus driver screen');
-      targetRoute = AppRoutes.driverMapScreen;
-      break;
-    default:
-      print('Unknown role: $role, showing error');
-      if (mounted) {
-        showSnackBar('Unknown user role: $role', context);
-        // Reset loading state since we're not navigating
-        setState(() {
-          _isLoading = false;
-        });
-      }
+    // Check if widget is still mounted before navigation
+    if (!mounted) {
+      print('Widget unmounted, cannot navigate');
       return;
-  }
+    }
 
-  // Perform navigation if we have a valid route
-  if (targetRoute != null && mounted) {
-    try {
-      Navigator.pushReplacementNamed(context, targetRoute);
-    } catch (e) {
-      print('Navigation error: $e');
-      // Handle navigation error
-      if (mounted) {
-        showSnackBar('Navigation failed. Please try again.', context);
-        setState(() {
-          _isLoading = false;
-        });
+    String? targetRoute;
+
+    switch (role.toLowerCase()) {
+      case 'admin':
+        print('Navigating to admin screen');
+        targetRoute = AppRoutes.busManagementScreen;
+        break;
+      case 'user':
+        print('Navigating to passenger map screen');
+        targetRoute = AppRoutes.passengerHomeScreen;
+        break;
+      case 'driver':
+        print('Navigating to bus driver screen');
+        targetRoute = AppRoutes.driverMapScreen;
+        break;
+      default:
+        print('Unknown role: $role, showing error');
+        if (mounted) {
+          showSnackBar('Unknown user role: $role', context);
+          // Reset loading state since we're not navigating
+          setState(() {
+            _isLoading = false;
+          });
+        }
+        return;
+    }
+
+    // Perform navigation if we have a valid route
+    if (targetRoute != null && mounted) {
+      try {
+        Navigator.pushReplacementNamed(context, targetRoute);
+      } catch (e) {
+        print('Navigation error: $e');
+        // Handle navigation error
+        if (mounted) {
+          showSnackBar('Navigation failed. Please try again.', context);
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     }
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -361,7 +361,7 @@ class _SignInScreenState extends State<SignInScreen> {
         ),
         TextButton(
           onPressed: () {
-            // Handle forgot password
+            Navigator.pushNamed(context, AppRoutes.forgotPasswordScreen);
           },
           child: const Text(
             'Forgot Password?',
@@ -474,31 +474,30 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   Widget _buildFooterText() {
-  return Center(
-    child: RichText(
-      text: TextSpan(
-        text: "Don't have an account? ",
-        style: const TextStyle(color: Colors.black, fontSize: 14),
-        children: [
-          TextSpan(
-            text: 'Sign Up',
-            style: const TextStyle(
-              color: Color(0xFF1B5E20),
-              fontWeight: FontWeight.bold,
-              decoration: TextDecoration.underline,
+    return Center(
+      child: RichText(
+        text: TextSpan(
+          text: "Don't have an account? ",
+          style: const TextStyle(color: Colors.black, fontSize: 14),
+          children: [
+            TextSpan(
+              text: 'Sign Up',
+              style: const TextStyle(
+                color: Color(0xFF1B5E20),
+                fontWeight: FontWeight.bold,
+                decoration: TextDecoration.underline,
+              ),
+              recognizer: TapGestureRecognizer()
+                ..onTap = () {
+                  Navigator.pushNamed(context, AppRoutes.signUpScreen);
+                },
             ),
-            recognizer: TapGestureRecognizer()
-              ..onTap = () {
-                Navigator.pushNamed(context, AppRoutes.signUpScreen);
-              },
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
   }
-
+}
 
 class DiagonalDividerPainter extends CustomPainter {
   @override
@@ -520,8 +519,3 @@ class DiagonalDividerPainter extends CustomPainter {
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
-
-
-
-
-
