@@ -94,7 +94,7 @@ class _NavBarScreenState extends State<NavBarScreen> {
       NavBarItem(
         icon: Icons.home,
         label: "Home",
-        screen: const BusDriverHomeScreen(),
+        screen: BusDriverHomeScreen(),
       ),
       NavBarItem(
         icon: Icons.map,
@@ -106,11 +106,7 @@ class _NavBarScreenState extends State<NavBarScreen> {
         label: "Settings",
         screen: const SettingsScreen(),
       ),
-      NavBarItem(
-        icon: Icons.person,
-        label: "Profile",
-        screen: const ProfileScreen(),
-      ),
+    
     ];
   }
 

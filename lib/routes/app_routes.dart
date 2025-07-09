@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:smart_bus_mobility_platform1/screens/bus_driver_home_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/driver_map_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/admin_home_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/bus_driver_home_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/customer_home_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/email_verification_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/forgot_password_screen.dart';
@@ -50,6 +50,11 @@ class AppRoutes {
       forgotPasswordScreen: (context) => ForgotPasswordScreen(),
       adminScreen: (context) => AdminDashboardScreen(),
       passengerHomeScreen: (context) => BusTrackingScreen(),
+      
+
+
+
+
       busDriverHomeScreen: (context) => BusDriverHomeScreen(),
       //coordinatetoAddressScreen: (context) => TransformLatLngToAddress(),
       //mountExampleScreen: (context) => const MountExampleScreen(),

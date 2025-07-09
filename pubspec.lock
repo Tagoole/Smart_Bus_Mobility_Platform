@@ -665,6 +665,15 @@ packages:
     source: hosted
     version: "0.2.1+1"
   intl:
+<<<<<<< HEAD
+    dependency: "direct dev"
+    description:
+      name: intl
+      sha256: "3bc132a9dbce73a7e4a21a17d06e1878839ffbf975568bc875c60537824b0c4d"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.18.1"
+=======
     dependency: "direct main"
     description:
       name: intl
@@ -672,6 +681,7 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.19.0"
+>>>>>>> eebab18b29ce6a4631c6bef856aa47072a57036a
   js:
     dependency: transitive
     description:
