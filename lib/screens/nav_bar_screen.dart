@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 // Import all the screens
-import 'ticket_screen.dart';
+
 import 'settings_screen.dart';
 import 'profile_screen.dart';
 import 'passenger_map_screen.dart';
@@ -73,7 +73,7 @@ class _NavBarScreenState extends State<NavBarScreen> {
       NavBarItem(
         icon: Icons.confirmation_number,
         label: "Tickets",
-        screen: const TicketScreen(),
+        screen: const SizedBox.shrink(), // Placeholder, will show modal
       ),
       NavBarItem(
         icon: Icons.settings,
@@ -129,10 +129,92 @@ class _NavBarScreenState extends State<NavBarScreen> {
     ];
   }
 
-  void _onItemTapped(int index) {
+  void _onItemTapped(int index) async {
+    // If ticket icon tapped (index 2 for passenger)
+    if (widget.userRole.toLowerCase() == 'user' ||
+        widget.userRole.toLowerCase() == 'passenger') {
+      if (index == 2) {
+        _showTicketModal();
+        return;
+      }
+    }
     setState(() {
       _selectedIndex = index;
     });
+  }
+
+  void _showTicketModal() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return FutureBuilder<QuerySnapshot>(
+          future: FirebaseFirestore.instance
+              .collection('tickets')
+              .where('userId', isEqualTo: user.uid)
+              .orderBy('purchaseTime', descending: true)
+              .limit(1)
+              .get(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Padding(
+                padding: EdgeInsets.all(32.0),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.all(32.0),
+                child: Center(
+                  child: Text('No ticket found. Please purchase a ticket.'),
+                ),
+              );
+            }
+            final ticket =
+                snapshot.data!.docs.first.data() as Map<String, dynamic>;
+            return Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Center(
+                    child: Icon(
+                      Icons.confirmation_number,
+                      size: 48,
+                      color: Colors.green,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Ticket Details',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 12),
+                  Text('Bus: 	${ticket['busName'] ?? 'N/A'}'),
+                  Text('Route: 	${ticket['routeName'] ?? 'N/A'}'),
+                  Text('Seat: 	${ticket['seatNumber'] ?? 'N/A'}'),
+                  Text('Date: 	${ticket['date'] ?? 'N/A'}'),
+                  Text('Time: 	${ticket['time'] ?? 'N/A'}'),
+                  Text('Amount Paid: 	${ticket['amount'] ?? 'N/A'}'),
+                  const SizedBox(height: 20),
+                  Center(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Close'),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
