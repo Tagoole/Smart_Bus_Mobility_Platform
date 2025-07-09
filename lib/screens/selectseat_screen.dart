@@ -309,7 +309,7 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
 
       // Return booking result
       // After booking is successful, also save the pickup location as active
-      if (widget.pickupLocation != null && user != null) {
+      if (widget.pickupLocation != null) {
         // Deactivate old locations
         final existingLocations = await FirebaseFirestore.instance
             .collection('pickup_locations')

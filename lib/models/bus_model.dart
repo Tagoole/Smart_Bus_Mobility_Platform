@@ -14,8 +14,14 @@ class BusModel {
   final double fare;
   final DateTime? departureTime;
   final DateTime? estimatedArrival;
-  final Map<String, dynamic>? bookedSeats; // Track booked seats: {seatNumber: userId}
-  final Map<String, dynamic>? currentLocation; // Track current bus location: {latitude, longitude}
+  final Map<String, dynamic>?
+  bookedSeats; // Track booked seats: {seatNumber: userId}
+  final Map<String, dynamic>?
+  currentLocation; // Track current bus location: {latitude, longitude}
+  final double? startLat;
+  final double? startLng;
+  final double? destinationLat;
+  final double? destinationLng;
 
   BusModel({
     required this.busId,
@@ -33,6 +39,10 @@ class BusModel {
     this.estimatedArrival,
     this.bookedSeats,
     this.currentLocation,
+    this.startLat,
+    this.startLng,
+    this.destinationLat,
+    this.destinationLng,
   });
 
   factory BusModel.fromJson(Map<String, dynamic> json, String docId) {
@@ -56,6 +66,10 @@ class BusModel {
           : null,
       bookedSeats: json['bookedSeats'] ?? {},
       currentLocation: json['currentLocation'],
+      startLat: (json['startLat'] as num?)?.toDouble(),
+      startLng: (json['startLng'] as num?)?.toDouble(),
+      destinationLat: (json['destinationLat'] as num?)?.toDouble(),
+      destinationLng: (json['destinationLng'] as num?)?.toDouble(),
     );
   }
 
@@ -75,6 +89,10 @@ class BusModel {
       'estimatedArrival': estimatedArrival?.toIso8601String(),
       'bookedSeats': bookedSeats ?? {},
       'currentLocation': currentLocation,
+      'startLat': startLat,
+      'startLng': startLng,
+      'destinationLat': destinationLat,
+      'destinationLng': destinationLng,
     };
   }
 
@@ -95,6 +113,10 @@ class BusModel {
     DateTime? estimatedArrival,
     Map<String, dynamic>? bookedSeats,
     Map<String, dynamic>? currentLocation,
+    double? startLat,
+    double? startLng,
+    double? destinationLat,
+    double? destinationLng,
   }) {
     return BusModel(
       busId: busId ?? this.busId,
@@ -112,6 +134,10 @@ class BusModel {
       estimatedArrival: estimatedArrival ?? this.estimatedArrival,
       bookedSeats: bookedSeats ?? this.bookedSeats,
       currentLocation: currentLocation ?? this.currentLocation,
+      startLat: startLat ?? this.startLat,
+      startLng: startLng ?? this.startLng,
+      destinationLat: destinationLat ?? this.destinationLat,
+      destinationLng: destinationLng ?? this.destinationLng,
     );
   }
 
@@ -127,8 +153,8 @@ class BusModel {
 
   // Helper method to get current location as LatLng
   LatLng? getCurrentLocationLatLng() {
-    if (currentLocation != null && 
-        currentLocation!['latitude'] != null && 
+    if (currentLocation != null &&
+        currentLocation!['latitude'] != null &&
         currentLocation!['longitude'] != null) {
       return LatLng(
         currentLocation!['latitude'],

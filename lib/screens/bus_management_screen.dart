@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
+import 'package:smart_bus_mobility_platform1/screens/passenger_map_screen.dart'; // Added import for PassengerMapScreen
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:smart_bus_mobility_platform1/screens/admin_map_picker_screen.dart';
+import 'package:smart_bus_mobility_platform1/models/admin_route_point.dart';
 
 class BusManagementScreen extends StatefulWidget {
   const BusManagementScreen({super.key});
@@ -51,6 +55,12 @@ class _BusManagementScreenState extends State<BusManagementScreen>
 
   // Constant seat capacity for all buses
   static const int constantSeatCapacity = 30;
+
+  // Add these variables to hold picked locations and addresses
+  LatLng? _pickedStartLatLng;
+  String? _pickedStartAddress;
+  LatLng? _pickedDestinationLatLng;
+  String? _pickedDestinationAddress;
 
   @override
   void initState() {
@@ -146,6 +156,24 @@ class _BusManagementScreenState extends State<BusManagementScreen>
       );
       return;
     }
+    if (_pickedStartLatLng == null || _pickedStartAddress == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a start location on the map'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    if (_pickedDestinationLatLng == null || _pickedDestinationAddress == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a destination on the map'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     setState(() {
       isAddingBus = true;
@@ -162,8 +190,12 @@ class _BusManagementScreenState extends State<BusManagementScreen>
         'vehicleModel': selectedVehicleModel,
         'driverId': selectedDriverEmail, // Use email as driver ID
         'routeId': 'auto-generated', // Auto-generated route ID
-        'startPoint': _startPointController.text.trim(),
-        'destination': _destinationController.text.trim(),
+        'startPoint': _pickedStartAddress,
+        'startLat': _pickedStartLatLng!.latitude,
+        'startLng': _pickedStartLatLng!.longitude,
+        'destination': _pickedDestinationAddress,
+        'destinationLat': _pickedDestinationLatLng!.latitude,
+        'destinationLng': _pickedDestinationLatLng!.longitude,
         'seatCapacity': constantSeatCapacity,
         'availableSeats': constantSeatCapacity,
         'fare': double.parse(_fareController.text),
@@ -176,7 +208,30 @@ class _BusManagementScreenState extends State<BusManagementScreen>
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
-      await _firestore.collection('buses').add(busData);
+      final busRef = await _firestore.collection('buses').add(busData);
+
+      // Save start and destination as AdminRoutePoint in Firestore
+      final now = DateTime.now();
+      final startPoint = AdminRoutePoint(
+        id: '',
+        busId: busRef.id,
+        type: 'start',
+        address: _pickedStartAddress!,
+        latitude: _pickedStartLatLng!.latitude,
+        longitude: _pickedStartLatLng!.longitude,
+        createdAt: now,
+      );
+      final destinationPoint = AdminRoutePoint(
+        id: '',
+        busId: busRef.id,
+        type: 'destination',
+        address: _pickedDestinationAddress!,
+        latitude: _pickedDestinationLatLng!.latitude,
+        longitude: _pickedDestinationLatLng!.longitude,
+        createdAt: now,
+      );
+      await _firestore.collection('admin_route_points').add(startPoint.toJson());
+      await _firestore.collection('admin_route_points').add(destinationPoint.toJson());
 
       // Clear form
       _formKey.currentState!.reset();
@@ -188,6 +243,10 @@ class _BusManagementScreenState extends State<BusManagementScreen>
       setState(() {
         selectedDriverEmail = null;
         selectedVehicleModel = null;
+        _pickedStartLatLng = null;
+        _pickedStartAddress = null;
+        _pickedDestinationLatLng = null;
+        _pickedDestinationAddress = null;
       });
 
       // Reload buses
@@ -256,6 +315,62 @@ class _BusManagementScreenState extends State<BusManagementScreen>
         ),
       );
     }
+  }
+
+  Future<void> _pickAdminLocation({required bool isStart}) async {
+    final markerColor = isStart ? Colors.green : Colors.red;
+    final instructions = isStart ? 'Pick the START location for this bus route' : 'Pick the DESTINATION for this bus route';
+    final markerIcon = BitmapDescriptor.defaultMarkerWithHue(
+      isStart ? BitmapDescriptor.hueGreen : BitmapDescriptor.hueRed,
+    );
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AdminMapPickerScreen(
+          instructions: instructions,
+          markerIcon: markerIcon,
+          markerColor: markerColor,
+        ),
+      ),
+    );
+    if (result != null && result is Map && result['location'] != null && result['address'] != null) {
+      final LatLng latLng = result['location'];
+      final String address = result['address'];
+      setState(() {
+        if (isStart) {
+          _pickedStartLatLng = latLng;
+          _pickedStartAddress = address;
+        } else {
+          _pickedDestinationLatLng = latLng;
+          _pickedDestinationAddress = address;
+        }
+      });
+    }
+  }
+
+  Widget _buildAdminMapPickerButton({required String label, required String? address, required VoidCallback onTap, required Color color}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ElevatedButton.icon(
+          onPressed: onTap,
+          icon: const Icon(Icons.map),
+          label: Text(label),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: color,
+            foregroundColor: Colors.white,
+          ),
+        ),
+        if (address != null && address.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 4.0, left: 4.0),
+            child: Text(
+              address,
+              style: const TextStyle(fontSize: 13, color: Color(0xFF374151)),
+            ),
+          ),
+      ],
+    );
   }
 
   @override
@@ -736,30 +851,20 @@ class _BusManagementScreenState extends State<BusManagementScreen>
                 Row(
                   children: [
                     Expanded(
-                      child: _buildTextField(
-                        controller: _startPointController,
-                        label: 'Start Point',
-                        hint: 'Kampala',
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter start point';
-                          }
-                          return null;
-                        },
+                      child: _buildAdminMapPickerButton(
+                        label: _pickedStartAddress == null ? 'Set Start on Map' : 'Change Start Location',
+                        address: _pickedStartAddress,
+                        onTap: () => _pickAdminLocation(isStart: true),
+                        color: Colors.green,
                       ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: _buildTextField(
-                        controller: _destinationController,
-                        label: 'Destination',
-                        hint: 'Entebbe',
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter destination';
-                          }
-                          return null;
-                        },
+                      child: _buildAdminMapPickerButton(
+                        label: _pickedDestinationAddress == null ? 'Set Destination on Map' : 'Change Destination',
+                        address: _pickedDestinationAddress,
+                        onTap: () => _pickAdminLocation(isStart: false),
+                        color: Colors.red,
                       ),
                     ),
                   ],
