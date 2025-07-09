@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ForgotPasswordScreen2 extends StatefulWidget {
   const ForgotPasswordScreen2({super.key});
@@ -11,6 +12,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen2> {
   final TextEditingController _contactController = TextEditingController();
   final FocusNode _contactFocusNode = FocusNode();
   bool _isSubmitting = false;
+  bool get _isLoggedIn => FirebaseAuth.instance.currentUser != null;
+  final TextEditingController _newPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   // Color constants
   static const Color _lightCream = Color(0xFFFFF5D6);
@@ -23,28 +28,66 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen2> {
   void dispose() {
     _contactController.dispose();
     _contactFocusNode.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
   void _onSubmitPressed() async {
+    if (_isLoggedIn) {
+      // In-app password change for logged-in user
+      final newPassword = _newPasswordController.text.trim();
+      final confirmPassword = _confirmPasswordController.text.trim();
+      if (newPassword.isEmpty || confirmPassword.isEmpty) {
+        _showErrorSnackBar("Please enter and confirm your new password");
+        return;
+      }
+      if (newPassword != confirmPassword) {
+        _showErrorSnackBar("Passwords do not match");
+        return;
+      }
+      if (newPassword.length < 6) {
+        _showErrorSnackBar("Password must be at least 6 characters");
+        return;
+      }
+      setState(() {
+        _isSubmitting = true;
+      });
+      try {
+        await FirebaseAuth.instance.currentUser!.updatePassword(newPassword);
+        setState(() {
+          _isSubmitting = false;
+        });
+        _showSuccessDialog(message: "Password updated successfully.");
+      } catch (e) {
+        setState(() {
+          _isSubmitting = false;
+        });
+        _showErrorSnackBar('Error: \\${e.toString()}');
+      }
+      return;
+    }
     if (_contactController.text.trim().isEmpty) {
       _showErrorSnackBar("Please enter your contact information");
       return;
     }
-
     setState(() {
       _isSubmitting = true;
     });
-
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 2));
-
-    setState(() {
-      _isSubmitting = false;
-    });
-
-    // Show success message
-    _showSuccessDialog();
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(
+        email: _contactController.text.trim(),
+      );
+      setState(() {
+        _isSubmitting = false;
+      });
+      _showSuccessDialog();
+    } catch (e) {
+      setState(() {
+        _isSubmitting = false;
+      });
+      _showErrorSnackBar('Error: \\${e.toString()}');
+    }
   }
 
   void _showErrorSnackBar(String message) {
@@ -53,14 +96,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen2> {
         content: Text(message),
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
 
-  void _showSuccessDialog() {
+  void _showSuccessDialog({
+    String message =
+        "Password reset instructions have been sent to your contact information.",
+  }) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -75,19 +119,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen2> {
               Text("Success!"),
             ],
           ),
-          content: const Text(
-            "Password reset instructions have been sent to your contact information.",
-          ),
+          content: Text(message),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
                 Navigator.of(context).pop(); // Go back to previous screen
               },
-              child: const Text(
-                "OK",
-                style: TextStyle(color: _darkGreen),
-              ),
+              child: const Text("OK", style: TextStyle(color: _darkGreen)),
             ),
           ],
         );
@@ -168,21 +207,23 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen2> {
               children: [
                 // Header Section - Back Button
                 _buildBackButton(),
-                
+
                 const SizedBox(height: 40),
-                
+
                 // Lock Icon Illustration
                 _buildLockIcon(),
-                
+
                 const SizedBox(height: 40),
-                
+
                 // Main Card Panel
                 Expanded(
-                  child: _buildMainCard(),
+                  child: _isLoggedIn
+                      ? _buildPasswordResetCard()
+                      : _buildMainCard(),
                 ),
-                
+
                 const SizedBox(height: 20),
-                
+
                 // Footer
                 _buildFooter(),
               ],
@@ -210,11 +251,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen2> {
             ),
           ],
         ),
-        child: const Icon(
-          Icons.arrow_back,
-          color: Colors.white,
-          size: 24,
-        ),
+        child: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
       ),
     );
   }
@@ -227,10 +264,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen2> {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: _cardBackground.withOpacity(0.8),
-          border: Border.all(
-            color: _darkGreen.withOpacity(0.2),
-            width: 2,
-          ),
+          border: Border.all(color: _darkGreen.withOpacity(0.2), width: 2),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.1),
@@ -239,11 +273,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen2> {
             ),
           ],
         ),
-        child: const Icon(
-          Icons.lock_outline,
-          size: 60,
-          color: _darkGreen,
-        ),
+        child: const Icon(Icons.lock_outline, size: 60, color: _darkGreen),
       ),
     );
   }
@@ -276,9 +306,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen2> {
               height: 1.2,
             ),
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           // Subtitle
           const Text(
             "Quickly reset your password here.",
@@ -289,19 +319,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen2> {
               height: 1.4,
             ),
           ),
-          
+
           const SizedBox(height: 32),
-          
+
           // Input Section
           _buildContactInput(),
-          
+
           const SizedBox(height: 32),
-          
+
           // Submit Button
           _buildSubmitButton(),
-          
+
           const SizedBox(height: 24),
-          
+
           // Alternative Option
           _buildAlternativeOption(),
         ],
@@ -315,7 +345,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen2> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: _contactFocusNode.hasFocus ? _goldenYellow : _goldenYellow.withOpacity(0.3),
+          color: _contactFocusNode.hasFocus
+              ? _goldenYellow
+              : _goldenYellow.withOpacity(0.3),
           width: 2,
         ),
         boxShadow: [
@@ -342,11 +374,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen2> {
             fontWeight: FontWeight.w400,
             color: _lightGray,
           ),
-          prefixIcon: const Icon(
-            Icons.phone,
-            color: _darkGreen,
-            size: 24,
-          ),
+          prefixIcon: const Icon(Icons.phone, color: _darkGreen, size: 24),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
@@ -425,6 +453,79 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen2> {
           color: _darkGreen,
           fontStyle: FontStyle.italic,
         ),
+      ),
+    );
+  }
+
+  Widget _buildPasswordResetCard() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: _cardBackground,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            "Reset Password",
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: _darkGreen,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          TextField(
+            controller: _newPasswordController,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: "New Password",
+              prefixIcon: Icon(Icons.lock_outline),
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _confirmPasswordController,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: "Confirm New Password",
+              prefixIcon: Icon(Icons.lock),
+            ),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _isSubmitting ? null : _onSubmitPressed,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _darkGreen,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+              ),
+              child: _isSubmitting
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text(
+                      "Update Password",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+            ),
+          ),
+        ],
       ),
     );
   }

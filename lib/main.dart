@@ -13,7 +13,7 @@ import 'package:smart_bus_mobility_platform1/screens/forgot_password_screen2.dar
 import 'package:smart_bus_mobility_platform1/screens/profile_screen.dart'
     as profile;
 import 'package:smart_bus_mobility_platform1/screens/nav_bar_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/passenger_map_screen.dart';
+// REMOVED: import 'package:smart_bus_mobility_platform1/screens/passenger_map_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/login_screen_new.dart';
 import 'package:smart_bus_mobility_platform1/screens/payment_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/admin_home_screen.dart';
@@ -24,9 +24,7 @@ import 'package:flutter/services.dart';
 
 void main() async {
   BindingBase.debugZoneErrorsAreFatal = false;
-
   WidgetsFlutterBinding.ensureInitialized();
-
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
@@ -88,24 +86,23 @@ class MyApp extends StatelessWidget {
                         child: CircularProgressIndicator(color: Colors.white),
                       );
                     }
-
                     if (userSnapshot.hasData && userSnapshot.data!.exists) {
                       final userData =
                           userSnapshot.data!.data() as Map<String, dynamic>;
                       final role =
                           userData['role']?.toString().toLowerCase() ?? '';
-
                       // Route based on user role
                       switch (role) {
                         case 'admin':
                           return AdminDashboardScreen();
                         case 'driver':
+                          return BusDriverHomeScreen();
                         case 'user':
                         default:
                           return NavBarScreen(userRole: role);
                       }
                     } else {
-                      // Fallback to passenger screen if role fetch fails
+                      // Fallback to signin screen if role fetch fails
                       return SignInScreen();
                     }
                   },
@@ -121,17 +118,15 @@ class MyApp extends StatelessWidget {
             return SignInScreen();
           },
         ),
-        '/signup': (context) => const SignUpScreen(), // Add signup route
-        '/signin': (context) => const SignInScreen(), // Add signin route
-        '/forgotpassword': (context) =>
-            const ForgotPasswordScreen(), // Forgot password route
+        '/signup': (context) => const SignUpScreen(),
+        '/signin': (context) => const SignInScreen(),
+        '/forgotpassword': (context) => const ForgotPasswordScreen(),
         '/emailverification': (context) => const EmailVerificationScreen(),
-        // '/emailverificationsuccess': (context) => const EmailVerificationSuccessScreenAnimated(),
         '/forgotpassword2': (context) => const ForgotPasswordScreen2(),
         '/profilescreen': (context) => const profile.ProfileScreen(),
         '/personaldata': (context) => const PersonalData(),
         '/navbar': (context) => NavBarHelper.getNavBarForCurrentUser(),
-        '/passengerMap': (context) => PassengerMapScreen(),
+        // REMOVED: '/passengerMap': (context) => PassengerMapScreen(),
         '/login': (context) => SignInScreenNew(),
         '/payment': (context) => PaymentScreen(),
         '/verifyEmail': (context) => EmailVerificationScreen(),

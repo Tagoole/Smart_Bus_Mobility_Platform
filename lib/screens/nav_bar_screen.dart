@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 // Import all the screens
-
 import 'settings_screen.dart';
 import 'profile_screen.dart';
 import 'passenger_map_screen.dart';
@@ -11,6 +10,8 @@ import 'customer_home_screen.dart';
 import 'bus_driver_home_screen.dart';
 import 'driver_map_screen.dart';
 import 'admin_home_screen.dart';
+import 'ticket_screen.dart';
+ // Add this import
 
 // Navigation item model
 class NavBarItem {
@@ -61,19 +62,19 @@ class _NavBarScreenState extends State<NavBarScreen> {
   List<NavBarItem> _getPassengerNavigationItems() {
     return [
       NavBarItem(
-        icon: Icons.dashboard,
-        label: "Dashboard",
-        screen: const BusTrackingScreen(),
+        icon: Icons.home,
+        label: "Home",
+        screen: const BusTrackingScreen(), // Changed from PassengerMapScreen to BusTrackingScreen
       ),
       NavBarItem(
         icon: Icons.location_on,
         label: "Map",
-        screen: const PassengerMapScreen(),
+        screen: const PassengerMapScreen(), // Keep this if you want a separate map screen
       ),
       NavBarItem(
         icon: Icons.confirmation_number,
         label: "Tickets",
-        screen: const SizedBox.shrink(), // Placeholder, will show modal
+        screen: const TicketScreen(),
       ),
       NavBarItem(
         icon: Icons.settings,
@@ -133,92 +134,10 @@ class _NavBarScreenState extends State<NavBarScreen> {
     ];
   }
 
-  void _onItemTapped(int index) async {
-    // If ticket icon tapped (index 2 for passenger)
-    if (widget.userRole.toLowerCase() == 'user' ||
-        widget.userRole.toLowerCase() == 'passenger') {
-      if (index == 2) {
-        _showTicketModal();
-        return;
-      }
-    }
+  void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
-  }
-
-  void _showTicketModal() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return FutureBuilder<QuerySnapshot>(
-          future: FirebaseFirestore.instance
-              .collection('tickets')
-              .where('userId', isEqualTo: user.uid)
-              .orderBy('purchaseTime', descending: true)
-              .limit(1)
-              .get(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Padding(
-                padding: EdgeInsets.all(32.0),
-                child: Center(child: CircularProgressIndicator()),
-              );
-            }
-            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return const Padding(
-                padding: EdgeInsets.all(32.0),
-                child: Center(
-                  child: Text('No ticket found. Please purchase a ticket.'),
-                ),
-              );
-            }
-            final ticket =
-                snapshot.data!.docs.first.data() as Map<String, dynamic>;
-            return Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Center(
-                    child: Icon(
-                      Icons.confirmation_number,
-                      size: 48,
-                      color: Colors.green,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Ticket Details',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 12),
-                  Text('Bus: 	${ticket['busName'] ?? 'N/A'}'),
-                  Text('Route: 	${ticket['routeName'] ?? 'N/A'}'),
-                  Text('Seat: 	${ticket['seatNumber'] ?? 'N/A'}'),
-                  Text('Date: 	${ticket['date'] ?? 'N/A'}'),
-                  Text('Time: 	${ticket['time'] ?? 'N/A'}'),
-                  Text('Amount Paid: 	${ticket['amount'] ?? 'N/A'}'),
-                  const SizedBox(height: 20),
-                  Center(
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Close'),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
   }
 
   @override
@@ -264,7 +183,6 @@ class _NavBarScreenState extends State<NavBarScreen> {
     required String label,
   }) {
     final bool isSelected = _selectedIndex == index;
-
     return GestureDetector(
       onTap: () => _onItemTapped(index),
       child: AnimatedContainer(

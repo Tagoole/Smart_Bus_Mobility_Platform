@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'forgot_password_screen2.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -51,7 +53,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               child: Column(
                 children: [
                   const SizedBox(height: 20),
-                  
+
                   // Top Navigation - Back Button
                   Row(
                     children: [
@@ -80,9 +82,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 40),
-                  
+
                   // Lock Icon Section
                   Container(
                     width: 100,
@@ -97,9 +99,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       color: Color(0xFF004D00),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 40),
-                  
+
                   // Form Card
                   Container(
                     width: double.infinity,
@@ -131,9 +133,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             ),
                             textAlign: TextAlign.center,
                           ),
-                          
+
                           const SizedBox(height: 12),
-                          
+
                           // Subtext
                           const Text(
                             'Quickly reset your password here.',
@@ -144,16 +146,18 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             ),
                             textAlign: TextAlign.center,
                           ),
-                          
+
                           const SizedBox(height: 32),
-                          
+
                           // Email Input Field
                           Container(
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(30),
                               border: Border.all(
-                                color: const Color(0xFF9ACD32), // Light yellow-green
+                                color: const Color(
+                                  0xFF9ACD32,
+                                ), // Light yellow-green
                                 width: 2,
                               ),
                               boxShadow: [
@@ -199,29 +203,29 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               },
                             ),
                           ),
-                          
+
                           const SizedBox(height: 32),
-                          
+
                           // Submit Button
+                          const SizedBox(height: 24),
                           SizedBox(
                             width: double.infinity,
-                            height: 56,
                             child: ElevatedButton(
-                              onPressed: _isEmailValid ? _handleSubmit : null,
+                              onPressed: _isEmailValid ? _sendResetEmail : null,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: _isEmailValid 
-                                    ? const Color(0xFF004D00) 
-                                    : Colors.grey,
+                                backgroundColor: const Color(0xFF004D00),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(30),
                                 ),
-                                elevation: 5,
                               ),
                               child: const Text(
-                                'Submit',
+                                'Send Reset Link',
                                 style: TextStyle(
-                                  color: Color(0xFFE3E944), // Yellow-green
-                                  fontSize: 18,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                   fontFamily: 'Poppins',
                                 ),
@@ -232,9 +236,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Alternate Option
                   GestureDetector(
                     onTap: () {
@@ -251,9 +255,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 60),
-                  
+
                   // Footer Motto
                   const Text(
                     'Efficient • Real-time • Smart',
@@ -266,7 +270,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  
+
                   const SizedBox(height: 40),
                 ],
               ),
@@ -277,43 +281,32 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-  void _handleSubmit() {
-    if (_formKey.currentState!.validate()) {
-      // Show loading indicator
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return const Center(
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF004D00)),
-            ),
-          );
-        },
-      );
-
-      // Simulate API call
-      Future.delayed(const Duration(seconds: 2), () {
-        Navigator.pop(context); // Close loading dialog
-        
-        // Show success message
+  void _sendResetEmail() async {
+    if (!_formKey.currentState!.validate()) return;
+    final email = _emailController.text.trim();
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Password reset link sent to ${_emailController.text}',
-              style: const TextStyle(fontFamily: 'Poppins'),
-            ),
-            backgroundColor: const Color(0xFF004D00),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
+          const SnackBar(
+            content: Text('Password reset email sent!'),
+            backgroundColor: Colors.green,
           ),
         );
-        
-        // Navigate back or to next screen
-        Navigator.pop(context);
-      });
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ForgotPasswordScreen2(),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: \\${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -344,7 +337,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              
+
               // SMS Option
               ListTile(
                 leading: const Icon(
@@ -363,7 +356,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   // Handle SMS reset
                 },
               ),
-              
+
               // Call Support Option
               ListTile(
                 leading: const Icon(
@@ -382,7 +375,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   // Handle call support
                 },
               ),
-              
+
               const SizedBox(height: 20),
             ],
           ),
