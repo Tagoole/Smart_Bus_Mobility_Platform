@@ -3,7 +3,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
-import 'dart:math';
 
 void main() {
   runApp(const RouteOptimizerApp());
@@ -977,7 +976,7 @@ class _RouteOptimizerScreenState extends State<RouteOptimizerScreen>
             final index = entry.key;
             final point = entry.value;
             return _buildRouteItem(point, index, isOptimized);
-          }).toList(),
+          }),
         ],
       ),
     );

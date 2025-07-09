@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
-import 'AvailableBus_screen.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:smart_bus_mobility_platform1/resources/bus_service.dart';
+import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'passenger_map_screen.dart';
+import 'selectseat_screen.dart';
 
 void main() {
   runApp(const BusBooking());
@@ -32,176 +38,199 @@ class _FindBusScreenState extends State<FindBusScreen> {
   DateTime? returnDate;
   int adultCount = 1;
   int childrenCount = 0;
-  String fromLocation = "Origin";
-  String fromSubtext = "Originating Place";
-  String toLocation = "Destination";
-  String toSubtext = "Destination Place";
   bool showBusList = false;
-  List<Map<String, dynamic>> availableBuses = [];
-  final TextEditingController _originController = TextEditingController();
-  final TextEditingController _destinationController = TextEditingController();
+  List<BusModel> availableBuses = [];
+  List<BusModel> allActiveBuses = [];
+  bool isLoadingBuses = false;
+  bool isLoadingAllBuses = false;
+
+  // Pickup location
+  LatLng? pickupLocation;
+  String pickupAddress = "Select pickup location";
+
+  // Booking state
+  BusModel? currentBooking;
+  String? bookingId;
+  bool hasActiveBooking = false;
+
+  // Selected bus for booking
+  BusModel? selectedBus;
+
   final TextEditingController _departureDateController =
       TextEditingController();
   final TextEditingController _returnDateController = TextEditingController();
 
+  final BusService _busService = BusService();
+
+  @override
+  void initState() {
+    super.initState();
+    // Check for active bookings
+    _checkActiveBookings();
+    // Load all active buses for dropdown
+    _loadAllActiveBuses();
+  }
+
   @override
   void dispose() {
-    _originController.dispose();
-    _destinationController.dispose();
     _departureDateController.dispose();
     _returnDateController.dispose();
     super.dispose();
+  }
+
+  // Load all active buses for the dropdown
+  Future<void> _loadAllActiveBuses() async {
+    setState(() {
+      isLoadingAllBuses = true;
+    });
+
+    try {
+      // Get all buses from Firestore
+      final snapshot = await FirebaseFirestore.instance
+          .collection('buses')
+          .where('isAvailable', isEqualTo: true)
+          .get();
+
+      setState(() {
+        allActiveBuses = snapshot.docs.map((doc) {
+          final data = doc.data();
+          return BusModel.fromJson(data, doc.id);
+        }).toList();
+        isLoadingAllBuses = false;
+      });
+    } catch (e) {
+      print('Error loading all buses: $e');
+      setState(() {
+        isLoadingAllBuses = false;
+      });
+    }
+  }
+
+  // Check for active bookings
+  Future<void> _checkActiveBookings() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('bookings')
+          .where('userId', isEqualTo: user.uid)
+          .where('status', isEqualTo: 'confirmed')
+          .where('departureDate', isGreaterThan: DateTime.now())
+          .orderBy('departureDate')
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        final bookingData = snapshot.docs.first.data();
+        setState(() {
+          hasActiveBooking = true;
+          bookingId = snapshot.docs.first.id;
+          currentBooking = BusModel.fromJson(
+            bookingData['bus'],
+            bookingData['busId'] ?? '',
+          );
+          pickupLocation = LatLng(
+            bookingData['pickupLocation']['latitude'],
+            bookingData['pickupLocation']['longitude'],
+          );
+          pickupAddress = bookingData['pickupAddress'] ?? 'Pickup location set';
+          departureDate = (bookingData['departureDate'] as Timestamp).toDate();
+          adultCount = bookingData['adultCount'] ?? 1;
+          childrenCount = bookingData['childrenCount'] ?? 0;
+        });
+      }
+    } catch (e) {
+      print('Error checking active bookings: $e');
+    }
   }
 
   String formatDate(DateTime date) {
     return "${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}/${date.year.toString().substring(2)}";
   }
 
-  List<Map<String, dynamic>> getSampleBuses() {
-    return [
-      {
-        'busName': 'Express Travels',
-        'busNumber': 'EXP-1234',
-        'departureTime': '06:00 AM',
-        'arrivalTime': '02:00 PM',
-        'duration': '8h 00m',
-        'price': 850.0,
-        'seatsAvailable': 12,
-        'rating': 4.5,
-        'amenities': ['AC', 'WiFi', 'Charging Port'],
-        'busType': 'AC Sleeper',
-      },
-      {
-        'busName': 'Royal Coach',
-        'busNumber': 'RC-5678',
-        'departureTime': '08:30 AM',
-        'arrivalTime': '04:15 PM',
-        'duration': '7h 45m',
-        'price': 950.0,
-        'seatsAvailable': 8,
-        'rating': 4.2,
-        'amenities': ['AC', 'Entertainment', 'Snacks'],
-        'busType': 'AC Semi-Sleeper',
-      },
-      {
-        'busName': 'City Express',
-        'busNumber': 'CE-9012',
-        'departureTime': '10:00 AM',
-        'arrivalTime': '06:30 PM',
-        'duration': '8h 30m',
-        'price': 750.0,
-        'seatsAvailable': 15,
-        'rating': 4.0,
-        'amenities': ['AC', 'Charging Port'],
-        'busType': 'AC Seater',
-      },
-      {
-        'busName': 'Comfort Ride',
-        'busNumber': 'CR-3456',
-        'departureTime': '02:00 PM',
-        'arrivalTime': '10:45 PM',
-        'duration': '8h 45m',
-        'price': 900.0,
-        'seatsAvailable': 6,
-        'rating': 4.7,
-        'amenities': ['AC', 'WiFi', 'Entertainment', 'Blanket'],
-        'busType': 'Luxury AC',
-      },
-      {
-        'busName': 'Speed Line',
-        'busNumber': 'SL-7890',
-        'departureTime': '11:30 PM',
-        'arrivalTime': '07:00 AM',
-        'duration': '7h 30m',
-        'price': 800.0,
-        'seatsAvailable': 20,
-        'rating': 3.8,
-        'amenities': ['AC', 'Charging Port'],
-        'busType': 'AC Sleeper',
-      },
-    ];
-  }
-
-  void _selectLocation(bool isFrom) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(isFrom ? "Select Origin" : "Select Destination"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: const Text("Kampala"),
-              subtitle: const Text("Capital City"),
-              onTap: () {
-                setState(() {
-                  if (isFrom) {
-                    fromLocation = "Kampala";
-                    fromSubtext = "Capital City";
-                    _originController.text = "Kampala";
-                  } else {
-                    toLocation = "Kampala";
-                    toSubtext = "Capital City";
-                    _destinationController.text = "Kampala";
-                  }
-                });
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              title: const Text("Entebbe"),
-              subtitle: const Text("International Airport"),
-              onTap: () {
-                setState(() {
-                  if (isFrom) {
-                    fromLocation = "Entebbe";
-                    fromSubtext = "International Airport";
-                    _originController.text = "Entebbe";
-                  } else {
-                    toLocation = "Entebbe";
-                    toSubtext = "International Airport";
-                    _destinationController.text = "Entebbe";
-                  }
-                });
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              title: const Text("Jinja"),
-              subtitle: const Text("Source of the Nile"),
-              onTap: () {
-                setState(() {
-                  if (isFrom) {
-                    fromLocation = "Jinja";
-                    fromSubtext = "Source of the Nile";
-                    _originController.text = "Jinja";
-                  } else {
-                    toLocation = "Jinja";
-                    toSubtext = "Source of the Nile";
-                    _destinationController.text = "Jinja";
-                  }
-                });
-                Navigator.pop(context);
-              },
-            ),
-          ],
-        ),
+  void _selectPickupLocation() async {
+    // Navigate to passenger map screen to select pickup location
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PassengerMapScreen(isPickupSelection: true),
       ),
     );
+
+    // Handle the result from the map screen
+    if (result != null && result is Map<String, dynamic>) {
+      final selectedLocation = result['location'] as LatLng;
+      final selectedAddress = result['address'] as String;
+
+      setState(() {
+        pickupLocation = selectedLocation;
+        pickupAddress = selectedAddress;
+      });
+
+      // If this is an update to an existing booking, save it
+      if (hasActiveBooking && bookingId != null) {
+        await _saveUpdatedPickupLocation();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Pickup location set to: $pickupAddress"),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    }
   }
 
-  void _swapLocations() {
-    setState(() {
-      String tempLocation = fromLocation;
-      String tempSubtext = fromSubtext;
-      String tempController = _originController.text;
-      fromLocation = toLocation;
-      fromSubtext = toSubtext;
-      _originController.text = _destinationController.text;
-      toLocation = tempLocation;
-      toSubtext = tempSubtext;
-      _destinationController.text = tempController;
-    });
+  // Update pickup location for existing booking
+  Future<void> _updatePickupLocation() async {
+    if (currentBooking == null || bookingId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("No active booking found"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Show pickup location selection dialog
+    _selectPickupLocation();
+  }
+
+  // Save updated pickup location to Firestore
+  Future<void> _saveUpdatedPickupLocation() async {
+    if (currentBooking == null || bookingId == null || pickupLocation == null) {
+      return;
+    }
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('bookings')
+          .doc(bookingId)
+          .update({
+            'pickupLocation': {
+              'latitude': pickupLocation!.latitude,
+              'longitude': pickupLocation!.longitude,
+            },
+            'pickupAddress': pickupAddress,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Pickup location updated successfully!"),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error updating pickup location: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Future<void> _selectDate(bool isDeparture) async {
@@ -224,11 +253,21 @@ class _FindBusScreenState extends State<FindBusScreen> {
     }
   }
 
-  void _findBus() {
-    if (fromLocation == "Origin" || toLocation == "Destination") {
+  Future<void> _findBus() async {
+    if (selectedBus == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Please select origin and destination"),
+          content: Text("Please select a bus route"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (pickupLocation == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please select a pickup location"),
           backgroundColor: Colors.red,
         ),
       );
@@ -255,67 +294,70 @@ class _FindBusScreenState extends State<FindBusScreen> {
       return;
     }
 
-    // Navigate to AvailableBus_screen and pass relevant data if needed
+    setState(() {
+      availableBuses = [selectedBus!];
+      showBusList = true;
+    });
+  }
+
+  void _selectBusForSeatSelection(BusModel bus) {
+    // Navigate to seat selection screen with bus details
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AvailableBus(
-          origin: fromLocation,
-          destination: toLocation,
-          departureDate: departureDate != null
-              ? formatDate(departureDate!)
-              : '',
-          returnDate: returnDate != null ? formatDate(returnDate!) : '',
-          isOneWay: !isRoundTrip,
+        builder: (context) => SelectSeatScreen(
+          origin: bus.startPoint,
+          destination: bus.destination,
+          busProvider: bus.vehicleModel,
+          plateNumber: bus.numberPlate,
+          busModel: bus, // Pass the bus model
+          pickupLocation: pickupLocation,
+          pickupAddress: pickupAddress,
+          departureDate: departureDate,
+          returnDate: returnDate,
+          adultCount: adultCount,
+          childrenCount: childrenCount,
         ),
       ),
-    );
+    ).then((result) {
+      // Handle the result from seat selection
+      if (result != null && result is Map<String, dynamic>) {
+        // Seat selection was successful, handle the booking
+        _handleSeatSelectionResult(result, bus);
+      }
+    });
   }
 
-  void _bookBus(Map<String, dynamic> bus) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Book Bus"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("Bus: ${bus['busName']}"),
-            Text("Route: $fromLocation → $toLocation"),
-            Text(
-              "Date: ${departureDate != null ? formatDate(departureDate!) : 'Not selected'}",
-            ),
-            Text("Passengers: $adultCount Adults, $childrenCount Children"),
-            Text(
-              "Total: ₹${(bus['price'] * (adultCount + childrenCount)).toStringAsFixed(0)}",
-            ),
-          ],
+  void _handleSeatSelectionResult(Map<String, dynamic> result, BusModel bus) {
+    // This will be called when user returns from seat selection
+    if (result['success'] == true) {
+      // Booking was successful
+      setState(() {
+        hasActiveBooking = true;
+        bookingId = result['bookingId'];
+        currentBooking = bus;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Booking confirmed! Selected seats: ${result['selectedSeats'].join(', ')}",
+          ),
+          backgroundColor: Colors.green,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Bus booked successfully!"),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: const Text(
-              "Confirm Booking",
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
+      );
+
+      // Optionally navigate to payment or booking confirmation screen
+      // Navigator.push(context, MaterialPageRoute(builder: (context) => PaymentScreen()));
+    } else {
+      // Booking failed
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Booking failed. Please try again."),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -359,14 +401,133 @@ class _FindBusScreenState extends State<FindBusScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSearchSection(),
+                if (hasActiveBooking) _buildActiveBookingSection(),
+                if (!hasActiveBooking) _buildSearchSection(),
                 const SizedBox(height: 20),
-                if (showBusList) _buildAvailableBusesList(),
-                if (!showBusList) _buildUpcomingTicketSection(),
+                if (showBusList && !hasActiveBooking)
+                  _buildAvailableBusesList(),
+                if (!showBusList && !hasActiveBooking)
+                  _buildUpcomingTicketSection(),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  // Build active booking section
+  Widget _buildActiveBookingSection() {
+    if (currentBooking == null) return SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0xFFE0E0E0).withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green, size: 24),
+              SizedBox(width: 8),
+              Text(
+                "Active Booking",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+          _buildBookingInfoRow("Bus", currentBooking!.numberPlate),
+          _buildBookingInfoRow(
+            "Route",
+            "${currentBooking!.startPoint} → ${currentBooking!.destination}",
+          ),
+          _buildBookingInfoRow("Date", formatDate(departureDate!)),
+          _buildBookingInfoRow("Pickup", pickupAddress),
+          _buildBookingInfoRow(
+            "Passengers",
+            "$adultCount Adults, $childrenCount Children",
+          ),
+          _buildBookingInfoRow(
+            "Total",
+            "UGX ${(currentBooking!.fare * (adultCount + childrenCount)).toStringAsFixed(0)}",
+          ),
+          SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _updatePickupLocation,
+                  icon: Icon(Icons.edit_location),
+                  label: Text("Update Pickup"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      hasActiveBooking = false;
+                      currentBooking = null;
+                      bookingId = null;
+                      showBusList = false;
+                      selectedBus = null;
+                    });
+                  },
+                  icon: Icon(Icons.add),
+                  label: Text("Book Another"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBookingInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              "$label:",
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF757575),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(value, style: TextStyle(fontWeight: FontWeight.w600)),
+          ),
+        ],
       ),
     );
   }
@@ -379,7 +540,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Color(0xFFE0E0E0).withOpacity(0.1),
             spreadRadius: 1,
             blurRadius: 5,
             offset: const Offset(0, 2),
@@ -387,72 +548,54 @@ class _FindBusScreenState extends State<FindBusScreen> {
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => _selectLocation(true),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'From',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 19,
-                        ),
-                      ),
-                      TextField(
-                        controller: _originController,
-                        readOnly: true,
-                        decoration: InputDecoration(
-                          hintText: fromSubtext,
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 8,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: _swapLocations,
-                icon: const Icon(Icons.swap_horiz, color: Colors.green),
-              ),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => _selectLocation(false),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'To',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 19,
-                        ),
-                      ),
-                      TextField(
-                        controller: _destinationController,
-                        readOnly: true,
-                        decoration: InputDecoration(
-                          hintText: toSubtext,
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 8,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+          const Text(
+            'Select Bus Route',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF333333),
+            ),
           ),
+          const SizedBox(height: 16),
+
+          // Bus Route Dropdown
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              border: Border.all(color: Color(0xFFE0E0E0)),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: DropdownButtonFormField<BusModel>(
+              value: selectedBus,
+              hint: Text('Select a bus route'),
+              isExpanded: true,
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(vertical: 12),
+              ),
+              items: allActiveBuses.map((bus) {
+                return DropdownMenuItem<BusModel>(
+                  value: bus,
+                  child: Text(
+                    '${bus.startPoint} → ${bus.destination} (${bus.vehicleModel})',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              }).toList(),
+              onChanged: (BusModel? value) {
+                setState(() {
+                  selectedBus = value;
+                });
+              },
+            ),
+          ),
+
           const SizedBox(height: 20),
+
+          // Trip Type Selection
           Row(
             children: [
               Expanded(
@@ -461,7 +604,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: !isRoundTrip
                         ? Colors.green
-                        : Colors.grey[300],
+                        : const Color(0xFF9E9E9E),
                     foregroundColor: !isRoundTrip ? Colors.white : Colors.black,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(23),
@@ -477,7 +620,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isRoundTrip
                         ? Colors.green
-                        : Colors.grey[300],
+                        : const Color(0xFF9E9E9E),
                     foregroundColor: isRoundTrip ? Colors.white : Colors.black,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(23),
@@ -558,9 +701,9 @@ class _FindBusScreenState extends State<FindBusScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.grey[50],
+              color: Color(0xFFFAFAFA),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[300]!),
+              border: Border.all(color: Color(0xFFE0E0E0)),
             ),
             child: Column(
               children: [
@@ -599,6 +742,22 @@ class _FindBusScreenState extends State<FindBusScreen> {
               ),
             ),
           ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _selectPickupLocation,
+                  icon: Icon(Icons.location_on),
+                  label: Text(pickupAddress),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -626,7 +785,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
                   : null,
               icon: const Icon(Icons.remove),
               style: IconButton.styleFrom(
-                backgroundColor: Colors.grey[200],
+                backgroundColor: const Color(0xFF9E9E9E),
                 padding: const EdgeInsets.all(4),
                 minimumSize: const Size(32, 32),
               ),
@@ -643,10 +802,10 @@ class _FindBusScreenState extends State<FindBusScreen> {
               ),
             ),
             IconButton(
-              onPressed: count < 10 ? () => onCountChanged(count + 1) : null,
+              onPressed: () => onCountChanged(count + 1),
               icon: const Icon(Icons.add),
               style: IconButton.styleFrom(
-                backgroundColor: Colors.grey[200],
+                backgroundColor: Colors.green,
                 padding: const EdgeInsets.all(4),
                 minimumSize: const Size(32, 32),
               ),
@@ -658,6 +817,9 @@ class _FindBusScreenState extends State<FindBusScreen> {
   }
 
   Widget _buildAvailableBusesList() {
+    if (isLoadingBuses) {
+      return Center(child: CircularProgressIndicator());
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -665,7 +827,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              "Available Buses (${availableBuses.length})",
+              "Selected Bus",
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -677,10 +839,11 @@ class _FindBusScreenState extends State<FindBusScreen> {
                 setState(() {
                   showBusList = false;
                   availableBuses.clear();
+                  selectedBus = null;
                 });
               },
               child: const Text(
-                "Clear",
+                "Change Route",
                 style: TextStyle(
                   color: Colors.green,
                   fontWeight: FontWeight.bold,
@@ -703,171 +866,154 @@ class _FindBusScreenState extends State<FindBusScreen> {
     );
   }
 
-  Widget _buildBusCard(Map<String, dynamic> bus) {
+  Widget _buildBusCard(BusModel bus) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      bus['busName'],
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                      ),
-                    ),
-                    Text(
-                      bus['busNumber'],
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    ),
-                  ],
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.green,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    bus['busType'],
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: Row(
+      child: InkWell(
+        onTap: () => _selectBusForSeatSelection(bus),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        bus['departureTime'],
+                        bus.vehicleModel,
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
+                          color: Colors.green,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.arrow_forward, size: 16),
-                      const SizedBox(width: 8),
                       Text(
-                        bus['arrivalTime'],
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                        bus.numberPlate,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF757575),
                         ),
                       ),
                     ],
                   ),
-                ),
-                Text(
-                  bus['duration'],
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Icon(Icons.star, color: Colors.orange[400], size: 16),
-                const SizedBox(width: 4),
-                Text(
-                  "${bus['rating']}",
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Text(
-                  "${bus['seatsAvailable']} seats left",
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: (bus['amenities'] as List<String>).map((amenity) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    amenity,
-                    style: TextStyle(fontSize: 10, color: Colors.grey[700]),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "₹${bus['price'].toStringAsFixed(0)}",
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      bus.startPoint + ' → ' + bus.destination,
                       style: const TextStyle(
-                        fontSize: 20,
+                        color: Colors.white,
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: Colors.green,
                       ),
                     ),
-                    Text(
-                      "per person",
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Text(
+                          bus.departureTime != null
+                              ? bus.departureTime!.toString().substring(11, 16)
+                              : 'TBD',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(Icons.arrow_forward, size: 16),
+                        const SizedBox(width: 8),
+                        Text(
+                          bus.estimatedArrival != null
+                              ? bus.estimatedArrival!.toString().substring(
+                                  11,
+                                  16,
+                                )
+                              : 'TBD',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                ElevatedButton(
-                  onPressed: () => _bookBus(bus),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
+                  ),
+                  Text(
+                    '${bus.availableSeats} seats left',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF757575)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "UGX ${bus.fare.toStringAsFixed(0)}",
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                      ),
+                      Text(
+                        "per person",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF757575),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 8,
+                      horizontal: 12,
+                      vertical: 6,
                     ),
-                    shape: RoundedRectangleBorder(
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                  ),
-                  child: const Text(
-                    "Book Now",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.event_seat, color: Colors.white, size: 16),
+                        SizedBox(width: 4),
+                        Text(
+                          "Select Seats",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -888,131 +1034,27 @@ class _FindBusScreenState extends State<FindBusScreen> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(16),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    CircleAvatar(
-                      radius: 20,
-                      backgroundColor: Colors.green,
-                      child: const Text(
-                        'BHB-3344',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 8,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text(
-                            'Kampala → Jinja',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Departure: 07/10/25, 10:00 AM',
-                            style: TextStyle(color: Colors.grey, fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Icon(Icons.more_vert, color: Colors.grey),
-                  ],
-                ),
-                const Divider(height: 32, thickness: 1),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
+                    Icon(Icons.info_outline, color: Colors.blue),
+                    SizedBox(width: 8),
                     Text(
-                      'Seat: 12A',
+                      'No upcoming trips',
                       style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    Text(
-                      'Price: UGX 25,000',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: Colors.green,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Ticket cancelled"),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.cancel, color: Colors.red),
-                      label: const Text(
-                        'Cancel',
-                        style: TextStyle(color: Colors.red),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red[50],
-                        elevation: 0,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text("Ticket Details"),
-                            content: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: const [
-                                Text("Route: Kampala → Jinja"),
-                                Text("Date: 07/10/25"),
-                                Text("Time: 10:00 AM"),
-                                Text("Seat: 12A"),
-                                Text("Price: UGX 25,000"),
-                              ],
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text("Close"),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                      icon: const Icon(
-                        Icons.remove_red_eye,
-                        color: Colors.green,
-                      ),
-                      label: const Text(
-                        'View',
-                        style: TextStyle(color: Colors.green),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green[50],
-                        elevation: 0,
-                      ),
-                    ),
-                  ],
+                SizedBox(height: 8),
+                Text(
+                  'Select a bus route above to start booking your journey.',
+                  style: TextStyle(color: Color(0xFF666666), fontSize: 14),
                 ),
               ],
             ),

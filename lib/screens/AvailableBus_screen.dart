@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'selectseat_screen.dart';
 
 class AvailableBus extends StatefulWidget {
   final String? origin;

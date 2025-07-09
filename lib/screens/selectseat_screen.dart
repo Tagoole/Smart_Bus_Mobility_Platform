@@ -1,4 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
+import 'package:smart_bus_mobility_platform1/models/location_model.dart';
 
 enum SeatStatus { available, selected, reserved }
 
@@ -7,6 +13,13 @@ class SelectSeatScreen extends StatefulWidget {
   final String? destination;
   final String busProvider;
   final String plateNumber;
+  final BusModel? busModel;
+  final LatLng? pickupLocation;
+  final String? pickupAddress;
+  final DateTime? departureDate;
+  final DateTime? returnDate;
+  final int adultCount;
+  final int childrenCount;
 
   const SelectSeatScreen({
     super.key,
@@ -14,6 +27,13 @@ class SelectSeatScreen extends StatefulWidget {
     this.destination = 'Colombo',
     this.busProvider = 'Starck Ride',
     this.plateNumber = 'BHB-3344',
+    this.busModel,
+    this.pickupLocation,
+    this.pickupAddress,
+    this.departureDate,
+    this.returnDate,
+    this.adultCount = 1,
+    this.childrenCount = 0,
   });
 
   @override
@@ -24,8 +44,7 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
   // Seat management
   Map<int, SeatStatus> seatStatus = {};
   Set<int> selectedSeats = {};
-  final Set<int> reservedSeats = {1, 3, 6, 7, 11, 12, 16, 18, 19, 20, 25, 26, 27, 31, 32, 36, 37};
-  final Set<int> initiallySelectedSeats = {5, 21, 28};
+  StreamSubscription<DocumentSnapshot>? _busSubscription;
 
   // Seat layout configuration
   final int totalSeats = 40;
@@ -38,6 +57,11 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
   late String fromPlace;
   late String toPlace;
 
+  // Booking state
+  bool isBooking = false;
+  bool isLoading = true;
+  BusModel? currentBusData;
+
   @override
   void initState() {
     super.initState();
@@ -46,19 +70,71 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
     fromPlace = 'Originating Place';
     toPlace = 'Destination Place';
     _initializeSeats();
+    _loadBusData();
+  }
+
+  @override
+  void dispose() {
+    _busSubscription?.cancel();
+    super.dispose();
   }
 
   void _initializeSeats() {
+    // Initialize all seats as available
     for (int i = 1; i <= totalSeats; i++) {
       seatStatus[i] = SeatStatus.available;
     }
-    for (int seat in reservedSeats) {
-      seatStatus[seat] = SeatStatus.reserved;
+  }
+
+  void _loadBusData() {
+    if (widget.busModel == null) {
+      setState(() {
+        isLoading = false;
+      });
+      return;
     }
-    for (int seat in initiallySelectedSeats) {
-      if (!reservedSeats.contains(seat)) {
+
+    // Listen to real-time updates from the bus document
+    _busSubscription = FirebaseFirestore.instance
+        .collection('buses')
+        .doc(widget.busModel!.busId)
+        .snapshots()
+        .listen((snapshot) {
+          if (snapshot.exists) {
+            final busData = BusModel.fromJson(snapshot.data()!, snapshot.id);
+            setState(() {
+              currentBusData = busData;
+              _updateSeatStatus(busData);
+              isLoading = false;
+            });
+          } else {
+            setState(() {
+              isLoading = false;
+            });
+          }
+        });
+  }
+
+  void _updateSeatStatus(BusModel busData) {
+    // Reset all seats to available
+    for (int i = 1; i <= totalSeats; i++) {
+      seatStatus[i] = SeatStatus.available;
+    }
+
+    // Mark booked seats as reserved
+    if (busData.bookedSeats != null) {
+      for (String seatNumber in busData.bookedSeats!.keys) {
+        final seatNum = int.tryParse(seatNumber);
+        if (seatNum != null && seatNum <= totalSeats) {
+          seatStatus[seatNum] = SeatStatus.reserved;
+        }
+      }
+    }
+
+    // Keep currently selected seats as selected (if they're not reserved)
+    for (int seat in selectedSeats) {
+      if (seatStatus[seat] == SeatStatus.available) {
         seatStatus[seat] = SeatStatus.selected;
-        selectedSeats.add(seat);
       }
     }
   }
@@ -105,6 +181,154 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
         return Colors.white;
       default:
         return Colors.black;
+    }
+  }
+
+  Future<void> _confirmBooking() async {
+    if (selectedSeats.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select at least one seat'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (widget.busModel == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Bus information not available'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      isBooking = true;
+    });
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Please login to book a bus"),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Calculate total fare
+      final totalFare =
+          widget.busModel!.fare * (widget.adultCount + widget.childrenCount);
+
+      // Save booking to Firestore
+      final bookingData = {
+        'userId': user.uid,
+        'bus': widget.busModel!.toJson(),
+        'busId': widget.busModel!.busId,
+        'origin': widget.origin,
+        'destination': widget.destination,
+        'pickupLocation': widget.pickupLocation != null
+            ? {
+                'latitude': widget.pickupLocation!.latitude,
+                'longitude': widget.pickupLocation!.longitude,
+              }
+            : null,
+        'pickupAddress': widget.pickupAddress,
+        'departureDate': widget.departureDate != null
+            ? Timestamp.fromDate(widget.departureDate!)
+            : null,
+        'returnDate': widget.returnDate != null
+            ? Timestamp.fromDate(widget.returnDate!)
+            : null,
+        'adultCount': widget.adultCount,
+        'childrenCount': widget.childrenCount,
+        'selectedSeats': selectedSeats.toList(),
+        'totalFare': totalFare,
+        'status': 'confirmed',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      final docRef = await FirebaseFirestore.instance
+          .collection('bookings')
+          .add(bookingData);
+
+      // Update bus available seats and bookedSeats
+      final busRef = FirebaseFirestore.instance
+          .collection('buses')
+          .doc(widget.busModel!.busId);
+
+      // Get the latest bookedSeats map
+      final busSnapshot = await busRef.get();
+      Map<String, dynamic> bookedSeats = {};
+      if (busSnapshot.exists &&
+          busSnapshot.data() != null &&
+          busSnapshot.data()!.containsKey('bookedSeats')) {
+        bookedSeats = Map<String, dynamic>.from(
+          busSnapshot.data()!['bookedSeats'] ?? {},
+        );
+      }
+      // Add the new bookings
+      for (int seat in selectedSeats) {
+        bookedSeats[seat.toString()] = user.uid;
+      }
+
+      await busRef.update({
+        'availableSeats':
+            (busSnapshot.data()?['availableSeats'] ??
+                widget.busModel!.seatCapacity) -
+            selectedSeats.length,
+        'bookedSeats': bookedSeats,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // Return booking result
+      // After booking is successful, also save the pickup location as active
+      if (widget.pickupLocation != null && user != null) {
+        // Deactivate old locations
+        final existingLocations = await FirebaseFirestore.instance
+            .collection('pickup_locations')
+            .where('userId', isEqualTo: user.uid)
+            .where('isActive', isEqualTo: true)
+            .get();
+        for (var doc in existingLocations.docs) {
+          await doc.reference.update({'isActive': false});
+        }
+        // Save new active pickup location
+        final locationModel = LocationModel.createPickupLocation(
+          userId: user.uid,
+          latitude: widget.pickupLocation!.latitude,
+          longitude: widget.pickupLocation!.longitude,
+          locationName: 'Pickup Location',
+          notes: 'Added on ${DateTime.now().toString()}',
+        );
+        await FirebaseFirestore.instance
+            .collection('pickup_locations')
+            .add(locationModel.toJson());
+      }
+
+      Navigator.pop(context, {
+        'bookingId': docRef.id,
+        'selectedSeats': selectedSeats.toList(),
+        'totalFare': totalFare,
+        'success': true,
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error booking: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        isBooking = false;
+      });
     }
   }
 
@@ -260,8 +484,10 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 16,
+                        runSpacing: 8,
                         children: [
                           _buildLegendItem(
                             color: Colors.green[900]!,
@@ -395,7 +621,7 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _proceedToBooking,
+                    onPressed: isBooking ? null : _confirmBooking,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
                       foregroundColor: Colors.white,
@@ -404,13 +630,37 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: Text(
-                      'Continue (${selectedSeats.length} seat${selectedSeats.length > 1 ? 's' : ''})',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    child: isBooking
+                        ? const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Confirming Booking...',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          )
+                        : Text(
+                            'Confirm Booking (${selectedSeats.length} seat${selectedSeats.length > 1 ? 's' : ''})',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                 ),
             ],
@@ -452,7 +702,9 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
         decoration: BoxDecoration(
           color: _getSeatColor(seatNumber),
           border: Border.all(
-            color: seatStatus[seatNumber] == SeatStatus.available ? Colors.grey[400]! : Colors.transparent,
+            color: seatStatus[seatNumber] == SeatStatus.available
+                ? Colors.grey[400]!
+                : Colors.transparent,
             width: 1,
           ),
           borderRadius: BorderRadius.circular(8),
@@ -497,10 +749,7 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
         const SizedBox(width: 8),
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
         ),
       ],
     );
@@ -510,11 +759,7 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
     return const Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          Icons.directions_car,
-          size: 16,
-          color: Colors.blue,
-        ),
+        Icon(Icons.directions_car, size: 16, color: Colors.blue),
         SizedBox(width: 4),
         Text(
           'Driver',
@@ -525,50 +770,6 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  void _proceedToBooking() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Seat Selection Confirmed'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Bus: ${widget.busProvider} ${widget.plateNumber}'),
-              const SizedBox(height: 8),
-              Text('Selected Seats: ${selectedSeats.toList()..sort()}'),
-              const SizedBox(height: 8),
-              Text('Total Seats: ${selectedSeats.length}'),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Back'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Selected seats: ${selectedSeats.join(', ')}'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Confirm Booking'),
-            ),
-          ],
-        );
-      },
     );
   }
 }

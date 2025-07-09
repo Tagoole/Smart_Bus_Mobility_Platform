@@ -1,116 +1,114 @@
 import 'package:flutter/material.dart';
-import 'package:smart_bus_mobility_platform1/resources/auth_service.dart';
 import 'package:smart_bus_mobility_platform1/routes/app_routes.dart';
-import 'package:smart_bus_mobility_platform1/utils/utils.dart';
-import 'package:flutter/gestures.dart';
+import 'package:smart_bus_mobility_platform1/resources/auth_service.dart';
 
-// work on remember me
-class SignInScreen extends StatefulWidget {
-  const SignInScreen({super.key});
+class SignInScreenNew extends StatefulWidget {
+  const SignInScreenNew({super.key});
 
   @override
-  State<SignInScreen> createState() => _SignInScreenState();
+  State<SignInScreenNew> createState() => _SignInScreenNewState();
 }
 
-class _SignInScreenState extends State<SignInScreen> {
+class _SignInScreenNewState extends State<SignInScreenNew> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  bool _rememberMe = false;
-  bool _obscurePassword = true;
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   void loginUser() async {
+    // Validate inputs
+    if (_emailController.text.trim().isEmpty ||
+        _passwordController.text.trim().isEmpty) {
+      _showSnackBar('Please fill in all fields');
+      return;
+    }
+
+    // Set loading state
     setState(() {
       _isLoading = true;
     });
-    Map<String, String> result = await AuthMethods().loginUser(
-      password: _passwordController.text,
-      email: _emailController.text,
-    );
 
-    if (result['status'] == 'Success') {
-      print('Logging in was a success');
-      String role = result['role'] ?? '';
-      _navigateBasedOnRole(role);
-    } else {
-      showSnackBar(result['status'] ?? 'Login failed', context);
+    try {
+      // Perform login
+      Map<String, String> result = await AuthMethods().loginUser(
+        password: _passwordController.text,
+        email: _emailController.text,
+      );
+
+      // Handle result
+      if (result['status'] == 'Success') {
+        String role = result['role'] ?? '';
+        _handleSuccessfulLogin(role);
+      } else {
+        _handleFailedLogin(result['status'] ?? 'Login failed');
+      }
+    } catch (e) {
+      _handleFailedLogin('Login error: ${e.toString()}');
     }
-    setState(() {
-      _isLoading = false;
-    });
   }
 
-  // method to navigate user to appropriate page after login success
-  /*
+  void _handleSuccessfulLogin(String role) {
+    // Reset loading state
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+
+    // Navigate based on role
+    _navigateBasedOnRole(role);
+  }
+
+  void _handleFailedLogin(String message) {
+    // Reset loading state
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+
+    // Show error message
+    _showSnackBar(message);
+  }
+
   void _navigateBasedOnRole(String role) {
     switch (role.toLowerCase()) {
       case 'admin':
-        Navigator.pushReplacementNamed(context, AppRoutes.adminScreen);
+        _navigateToScreen(AppRoutes.adminScreen);
         break;
       case 'user':
-        Navigator.pushReplacementNamed(context, AppRoutes.passengerHomeScreen);
+        _navigateToScreen(AppRoutes.passengerHomeScreen);
         break;
       case 'driver':
-        Navigator.pushReplacementNamed(context, AppRoutes.busDriverHomeScreen);
+        _navigateToScreen(AppRoutes.busDriverHomeScreen);
+        break;
       default:
-        showSnackBar('Unknown user role: $role', context);
-        Navigator.pushReplacementNamed(context, AppRoutes.loginScreen);
+        _showSnackBar('Unknown user role: $role');
         break;
     }
   }
-  */ 
-  void _navigateBasedOnRole(String role) {
-  print('Navigating based on role: $role');
-  
-  // Check if widget is still mounted before navigation
-  if (!mounted) {
-    print('Widget unmounted, cannot navigate');
-    return;
+
+  void _navigateToScreen(String route) {
+    // Use a simple navigation approach
+    Navigator.of(context).pushNamedAndRemoveUntil(route, (route) => false);
   }
 
-  String? targetRoute;
-  
-  switch (role.toLowerCase()) {
-    case 'admin':
-      print('Navigating to admin screen');
-      targetRoute = AppRoutes.busManagementScreen;
-      break;
-    case 'user':
-      print('Navigating to passenger map screen');
-      targetRoute = AppRoutes.passengerHomeScreen;
-      break;
-    case 'driver':
-      print('Navigating to bus driver screen');
-      targetRoute = AppRoutes.driverMapScreen;
-      break;
-    default:
-      print('Unknown role: $role, showing error');
-      if (mounted) {
-        showSnackBar('Unknown user role: $role', context);
-        // Reset loading state since we're not navigating
-        setState(() {
-          _isLoading = false;
-        });
-      }
-      return;
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
-  // Perform navigation if we have a valid route
-  if (targetRoute != null && mounted) {
-    try {
-      Navigator.pushReplacementNamed(context, targetRoute);
-    } catch (e) {
-      print('Navigation error: $e');
-      // Handle navigation error
-      if (mounted) {
-        showSnackBar('Navigation failed. Please try again.', context);
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -247,7 +245,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     // Email Input
                     _buildInputField(
                       controller: _emailController,
-                      labelText: 'Email', // <-- Use labelText
+                      labelText: 'Email',
                       prefixIcon: Icons.email_outlined,
                     ),
                     const SizedBox(height: 16),
@@ -291,85 +289,101 @@ class _SignInScreenState extends State<SignInScreen> {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(
-          color: const Color(0xFF8BC34A), // Lime green
-          width: 2,
-        ),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: TextField(
         controller: controller,
         obscureText: obscureText,
         decoration: InputDecoration(
-          labelText: labelText, // <-- Use labelText for floating label
-          labelStyle: const TextStyle(
-            color: Color(0xFF1B5E20), // Dark green
-            fontWeight: FontWeight.w500,
-          ),
+          labelText: labelText,
           prefixIcon: Icon(prefixIcon, color: const Color(0xFF1B5E20)),
           suffixIcon: suffixIcon,
-          border: InputBorder.none,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(30),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: Colors.white,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 20,
             vertical: 16,
           ),
         ),
-        style: const TextStyle(color: Colors.black),
       ),
     );
   }
 
   Widget _buildPasswordField() {
-    return _buildInputField(
-      controller: _passwordController,
-      labelText: 'Password', // <-- Use labelText
-      prefixIcon: Icons.lock_outline,
-      obscureText: _obscurePassword,
-      suffixIcon: IconButton(
-        icon: Icon(
-          _obscurePassword ? Icons.visibility_off : Icons.visibility,
-          color: const Color(0xFF1B5E20),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(30),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _passwordController,
+        obscureText: _obscurePassword,
+        decoration: InputDecoration(
+          labelText: 'Password',
+          prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF1B5E20)),
+          suffixIcon: IconButton(
+            icon: Icon(
+              _obscurePassword ? Icons.visibility : Icons.visibility_off,
+              color: const Color(0xFF1B5E20),
+            ),
+            onPressed: () {
+              setState(() {
+                _obscurePassword = !_obscurePassword;
+              });
+            },
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(30),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 16,
+          ),
         ),
-        onPressed: () {
-          setState(() {
-            _obscurePassword = !_obscurePassword;
-          });
-        },
       ),
     );
   }
 
   Widget _buildRememberMeRow() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          children: [
-            Checkbox(
-              value: _rememberMe,
-              onChanged: (value) {
-                setState(() {
-                  _rememberMe = value ?? false;
-                });
-              },
-              activeColor: const Color(0xFF1B5E20),
-            ),
-            const Text(
-              'Remember me',
-              style: TextStyle(color: Color(0xFF1B5E20), fontSize: 14),
-            ),
-          ],
+        Checkbox(
+          value: false,
+          onChanged: (value) {
+            // TODO: Implement remember me functionality
+          },
+          activeColor: const Color(0xFF1B5E20),
         ),
+        const Text('Remember me', style: TextStyle(color: Color(0xFF1B5E20))),
+        const Spacer(),
         TextButton(
           onPressed: () {
-            // Handle forgot password
+            Navigator.pushNamed(context, AppRoutes.forgotPasswordScreen);
           },
           child: const Text(
             'Forgot Password?',
-            style: TextStyle(
-              color: Color(0xFF1B5E20),
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: Color(0xFF1B5E20)),
           ),
         ),
       ],
@@ -381,22 +395,29 @@ class _SignInScreenState extends State<SignInScreen> {
       width: double.infinity,
       height: 50,
       child: ElevatedButton(
-        onPressed: loginUser,
+        onPressed: _isLoading ? null : loginUser,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF1B5E20), // Dark green
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(30),
           ),
-          elevation: 8,
+          elevation: 3,
         ),
         child: _isLoading
-            ? CircularProgressIndicator(color: Colors.white)
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
             : const Text(
                 'Sign In',
                 style: TextStyle(
-                  color: Color(0xFF76FF03), // Neon green
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
                 ),
               ),
       ),
@@ -408,38 +429,38 @@ class _SignInScreenState extends State<SignInScreen> {
       children: [
         Row(
           children: [
-            const Expanded(child: Divider(color: Colors.black)),
+            Expanded(child: Divider(color: Colors.grey[400])),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
-                'Continue with',
-                style: TextStyle(
-                  color: Colors.black.withOpacity(0.7),
-                  fontSize: 14,
-                ),
+                'Or continue with',
+                style: TextStyle(color: Colors.grey[600]),
               ),
             ),
-            const Expanded(child: Divider(color: Colors.black)),
+            Expanded(child: Divider(color: Colors.grey[400])),
           ],
         ),
         const SizedBox(height: 20),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            _buildSocialIcon(
-              icon: Icons.camera_alt, // Instagram placeholder
-              color: const Color(0xFFE1306C),
-              onTap: () {},
+            _buildSocialButton(
+              icon: 'Google.png',
+              onPressed: () {
+                // TODO: Implement Google sign in
+              },
             ),
-            _buildSocialIcon(
-              icon: Icons.facebook,
-              color: const Color(0xFF1877F2),
-              onTap: () {},
+            _buildSocialButton(
+              icon: 'facebook.png',
+              onPressed: () {
+                // TODO: Implement Facebook sign in
+              },
             ),
-            _buildSocialIcon(
-              icon: Icons.search, // Google placeholder
-              color: const Color(0xFFDB4437),
-              onTap: () {},
+            _buildSocialButton(
+              icon: 'apple.png',
+              onPressed: () {
+                // TODO: Implement Apple sign in
+              },
             ),
           ],
         ),
@@ -447,81 +468,74 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  Widget _buildSocialIcon({
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
+  Widget _buildSocialButton({
+    required String icon,
+    required VoidCallback onPressed,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 50,
-        height: 50,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Icon(icon, color: color, size: 24),
+    return Container(
+      width: 50,
+      height: 50,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: IconButton(
+        onPressed: onPressed,
+        icon: Image.asset(icon, width: 24, height: 24),
       ),
     );
   }
 
   Widget _buildFooterText() {
-  return Center(
-    child: RichText(
-      text: TextSpan(
-        text: "Don't have an account? ",
-        style: const TextStyle(color: Colors.black, fontSize: 14),
-        children: [
-          TextSpan(
-            text: 'Sign Up',
-            style: const TextStyle(
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          "Don't have an account? ",
+          style: TextStyle(color: Colors.grey[600]),
+        ),
+        TextButton(
+          onPressed: () {
+            Navigator.pushNamed(context, AppRoutes.signUpScreen);
+          },
+          child: const Text(
+            'Sign Up',
+            style: TextStyle(
               color: Color(0xFF1B5E20),
-              fontWeight: FontWeight.bold,
-              decoration: TextDecoration.underline,
+              fontWeight: FontWeight.w600,
             ),
-            recognizer: TapGestureRecognizer()
-              ..onTap = () {
-                Navigator.pushNamed(context, AppRoutes.signUpScreen);
-              },
           ),
-        ],
-      ),
-    ),
-  );
-}
+        ),
+      ],
+    );
   }
+}
 
-
+// Custom painter for diagonal divider
 class DiagonalDividerPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color =
-          const Color(0xFFFFF59D) // Light yellow
+      ..color = Colors.white
       ..style = PaintingStyle.fill;
 
     final path = Path();
-    path.moveTo(0, size.height);
+    path.moveTo(0, 0);
     path.lineTo(size.width, 0);
     path.lineTo(size.width, size.height);
+    path.lineTo(0, size.height * 0.7);
     path.close();
 
     canvas.drawPath(path, paint);
   }
 
   @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-
-
-
-
-

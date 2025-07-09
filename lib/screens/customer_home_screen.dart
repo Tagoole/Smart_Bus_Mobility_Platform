@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 class BusTrackingScreen extends StatefulWidget {
+  const BusTrackingScreen({super.key});
+
   @override
   _BusTrackingScreenState createState() => _BusTrackingScreenState();
 }
@@ -19,8 +21,6 @@ class _BusTrackingScreenState extends State<BusTrackingScreen> {
             // Header
             _buildHeader(),
             
-            // Notifications
-            _buildNotifications(),
             
             // Map and Content
             Expanded(
@@ -297,25 +297,6 @@ class _BusTrackingScreenState extends State<BusTrackingScreen> {
         ),
         
         // Next Buses
-        Container(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Next Buses',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              SizedBox(height: 16),
-              _buildBusItem('12', 'Route 12 - City Center', '4 mins'),
-              _buildBusItem('19', 'Route 19 - Ntinda', '9 mins'),
-            ],
-          ),
-        ),
         
         SizedBox(height: 24),
         

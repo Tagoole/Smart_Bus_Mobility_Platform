@@ -1,5 +1,5 @@
 // this is where the sign up and other methods will live
-
+import 'package:smart_bus_mobility_platform1/models/user_model.dart' as model;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -28,14 +28,17 @@ class AuthMethods {
         print(credential.user!.uid);
         print(credential.user!.email);
 
+        model.UserModel user = model.UserModel(
+          username: username,
+          uid: credential.user!.uid,
+          email: email,
+          contact: contact,
+          role: role,
+        );
         // Adding the user to the database
-        await _firestore.collection('users').doc(credential.user!.uid).set({
-          'uid': credential.user!.uid,
-          'username': username,
-          'email': email,
-          'role': role,
-          'contact': contact,
-        });
+        await _firestore.collection('users').doc(credential.user!.uid).set(
+          user.toJson()
+        );
         return 'Success';
       }
     } catch (error) {
@@ -48,7 +51,6 @@ class AuthMethods {
     required String password,
     required String email,
   }) async {
-    String result = 'Some error occurred..';
     try {
       if (email.isNotEmpty && password.isNotEmpty) {
         UserCredential credential = await _auth.signInWithEmailAndPassword(
@@ -73,13 +75,11 @@ class AuthMethods {
         } else {
           return {'status': 'User data not found'};
         }
-        //result = 'Success';
       } else {
         return {'status': 'Enter all fields'};
       }
     } catch (error) {
-      result = error.toString();
+      return {'status': error.toString()};
     }
-    throw 'Some Error occurred';
   }
 }

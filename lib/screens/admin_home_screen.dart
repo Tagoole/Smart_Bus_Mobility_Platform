@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:smart_bus_mobility_platform1/screens/bus_management_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
-  const AdminDashboardScreen({Key? key}) : super(key: key);
+  const AdminDashboardScreen({super.key});
 
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
@@ -13,11 +14,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     with TickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
-  
+
   // Firebase instances
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  
+
   // Data holders
   Map<String, dynamic> summaryData = {};
   List<Map<String, dynamic>> recentActivities = [];
@@ -48,32 +49,38 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       // Load summary data from Firebase
       final driversSnapshot = await _firestore.collection('drivers').get();
       final busesSnapshot = await _firestore.collection('buses').get();
-      final routesSnapshot = await _firestore.collection('routes')
-          .where('status', isEqualTo: 'pending').get();
+      final routesSnapshot = await _firestore
+          .collection('routes')
+          .where('status', isEqualTo: 'pending')
+          .get();
       final feedbackSnapshot = await _firestore.collection('feedback').get();
-      
+
       // Get today's tickets
       final today = DateTime.now();
       final startOfDay = DateTime(today.year, today.month, today.day);
-      final ticketsSnapshot = await _firestore.collection('tickets')
-          .where('createdAt', isGreaterThanOrEqualTo: startOfDay).get();
+      final ticketsSnapshot = await _firestore
+          .collection('tickets')
+          .where('createdAt', isGreaterThanOrEqualTo: startOfDay)
+          .get();
 
       // Load recent activities
-      final activitiesSnapshot = await _firestore.collection('activities')
+      final activitiesSnapshot = await _firestore
+          .collection('activities')
           .orderBy('timestamp', descending: true)
           .limit(4)
           .get();
 
       setState(() {
         summaryData = {
-          'activeDrivers': driversSnapshot.docs.where((doc) => 
-              doc.data()['status'] == 'active').length,
+          'activeDrivers': driversSnapshot.docs
+              .where((doc) => doc.data()['status'] == 'active')
+              .length,
           'pendingRoutes': routesSnapshot.size,
           'feedbackCount': feedbackSnapshot.size,
           'totalBuses': busesSnapshot.size,
           'ticketsToday': ticketsSnapshot.size,
         };
-        
+
         recentActivities = activitiesSnapshot.docs.map((doc) {
           final data = doc.data();
           return {
@@ -83,7 +90,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
             'user': data['user'] ?? '',
           };
         }).toList();
-        
+
         isLoading = false;
       });
     } catch (e) {
@@ -97,7 +104,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   String _formatTime(DateTime dateTime) {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
-    
+
     if (difference.inMinutes < 60) {
       return '${difference.inMinutes} minutes ago';
     } else if (difference.inHours < 24) {
@@ -145,9 +152,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(
-          bottom: BorderSide(color: Color(0xFFE5E7EB), width: 1),
-        ),
+        border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB), width: 1)),
         boxShadow: [
           BoxShadow(
             color: Color(0x0A000000),
@@ -219,10 +224,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   SizedBox(height: 4),
                   Text(
                     'Manage your routes and operations efficiently',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Color(0xFF6B7280),
-                    ),
+                    style: TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
                   ),
                 ],
               ),
@@ -232,10 +234,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               children: [
                 const Text(
                   'Last updated',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF6B7280),
-                  ),
+                  style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
                 ),
                 const Text(
                   '2 minutes ago',
@@ -283,10 +282,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            Colors.white,
-            const Color(0xFFF0EADC).withOpacity(0.2),
-          ],
+          colors: [Colors.white, const Color(0xFFF0EADC).withOpacity(0.2)],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
@@ -317,10 +313,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 SizedBox(height: 12),
                 Text(
                   'Your system is running smoothly. Here\'s today\'s overview.',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFF6B7280),
-                  ),
+                  style: TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
                 ),
               ],
             ),
@@ -344,10 +337,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 SizedBox(height: 4),
                 Text(
                   'System Health',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF6B7280),
-                  ),
+                  style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
                 ),
               ],
             ),
@@ -453,7 +443,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 400),
             curve: Curves.easeInOut,
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -475,6 +465,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               ],
             ),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Icon with glow
@@ -492,22 +483,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     ),
                     child: CircleAvatar(
                       backgroundColor: item['bgColor'].withOpacity(0.18),
-                      radius: 22,
-                      child: Icon(
-                        item['icon'],
-                        color: item['color'],
-                        size: 28,
-                      ),
+                      radius: 18,
+                      child: Icon(item['icon'], color: item['color'], size: 22),
                     ),
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 8),
                 // Value with playful font and color
                 Center(
                   child: Text(
                     item['value'],
                     style: TextStyle(
-                      fontSize: 28,
+                      fontSize: 24,
                       fontWeight: FontWeight.w900,
                       color: item['color'],
                       fontFamily: 'Poppins',
@@ -522,60 +509,65 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     ),
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 // Title
                 Center(
                   child: Text(
                     item['title'],
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 11,
                       color: Color(0xFF6B7280),
                       fontWeight: FontWeight.w600,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 6),
                 // Animated progress bar (for demo, random progress)
                 TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0.0, end: 0.7 + (item['value'].hashCode % 30) / 100),
+                  tween: Tween(
+                    begin: 0.0,
+                    end: 0.7 + (item['value'].hashCode % 30) / 100,
+                  ),
                   duration: const Duration(milliseconds: 900),
                   builder: (context, progress, _) {
                     return ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(6),
                       child: LinearProgressIndicator(
                         value: progress,
-                        minHeight: 6,
+                        minHeight: 4,
                         backgroundColor: item['color'].withOpacity(0.10),
-                        valueColor: AlwaysStoppedAnimation<Color>(item['color']),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          item['color'],
+                        ),
                       ),
                     );
                   },
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      item['isIncrease'] ? Icons.trending_up : Icons.trending_down,
+                      item['isIncrease']
+                          ? Icons.trending_up
+                          : Icons.trending_down,
                       color: item['isIncrease'] ? Colors.green : Colors.red,
-                      size: 14,
+                      size: 12,
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 2),
                     Text(
                       item['change'],
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 10,
                         fontWeight: FontWeight.w500,
                         color: item['isIncrease'] ? Colors.green : Colors.red,
                       ),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 2),
                     const Text(
                       'vs yesterday',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Color(0xFF9CA3AF),
-                      ),
+                      style: TextStyle(fontSize: 8, color: Color(0xFF9CA3AF)),
                     ),
                   ],
                 ),
@@ -651,10 +643,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               SizedBox(height: 4),
               Text(
                 'Streamline your workflow with these shortcuts',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Color(0xFF6B7280),
-                ),
+                style: TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
               ),
             ],
           ),
@@ -787,9 +776,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     children: [
                       Text(
                         'Get Started',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: TextStyle(fontWeight: FontWeight.w600),
                       ),
                       SizedBox(width: 8),
                       Icon(Icons.arrow_forward, size: 16),
@@ -853,7 +840,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 int index = entry.key;
                 Map<String, dynamic> activity = entry.value;
                 bool isLast = index == recentActivities.length - 1;
-                
+
                 return Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -980,7 +967,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         Navigator.pushNamed(context, '/route-optimization');
         break;
       case 'manage-buses':
-        Navigator.pushNamed(context, '/manage-buses');
+        // Navigate to bus management screen
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const BusManagementScreen()),
+        );
         break;
       case 'manage-drivers':
         Navigator.pushNamed(context, '/manage-drivers');

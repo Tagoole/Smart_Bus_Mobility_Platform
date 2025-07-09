@@ -5,14 +5,26 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:smart_bus_mobility_platform1/routes/app_routes.dart';
 import 'package:smart_bus_mobility_platform1/screens/login_screen.dart';
-//import 'package:smart_bus_mobility_platform1/screens/signup_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/personal_data_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/signup_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/forgot_password_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/email_verification_screen.dart'; // Add this import
-import 'package:smart_bus_mobility_platform1/screens/bus_dashboard_screen.dart';
-// Ensure that the file 'bus_driver_home_screen.dart' contains a class named 'BusDriverHomeScreen'
+import 'package:smart_bus_mobility_platform1/screens/email_verification_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/forgot_password_screen2.dart';
+import 'package:smart_bus_mobility_platform1/screens/profile_screen.dart'
+    as profile;
+import 'package:smart_bus_mobility_platform1/screens/nav_bar_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/passenger_map_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/login_screen_new.dart';
+import 'package:smart_bus_mobility_platform1/screens/payment_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/admin_home_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/customer_home_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/bus_driver_home_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
 
 void main() async {
+  BindingBase.debugZoneErrorsAreFatal = false;
+
   WidgetsFlutterBinding.ensureInitialized();
 
   SystemChrome.setPreferredOrientations([
@@ -50,22 +62,84 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'Smart Bus Mobility',
-        theme: ThemeData.light().copyWith(
-          scaffoldBackgroundColor: Colors.blueGrey,
-        ),
-        routes: {
-          ...AppRoutes.getRoutes(),
-          '/signin': (context) => const SignInScreen(),
-          '/forgotpassword': (context) => const ForgotPasswordScreen(),
-          '/emailverification': (context) => const EmailVerificationScreen(),
-          '/driverhome': (context) => const DashboardScreen() , // <-- FIXED
-        },
-        home: DashboardScreen() , // <-- FIXED
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Smart Bus Mobility',
+      theme: ThemeData.light().copyWith(
+        scaffoldBackgroundColor: Colors.blueGrey,
       ),
+      routes: {
+        ...AppRoutes.getRoutes(), // Spread your existing routes
+        '/': (context) => StreamBuilder(
+          stream: FirebaseAuth.instance.authStateChanges(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.active) {
+              if (snapshot.hasData) {
+                // User is authenticated, get their role and route accordingly
+                return FutureBuilder<DocumentSnapshot>(
+                  future: FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(snapshot.data!.uid)
+                      .get(),
+                  builder: (context, userSnapshot) {
+                    if (userSnapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return Center(
+                        child: CircularProgressIndicator(color: Colors.white),
+                      );
+                    }
+
+                    if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                      final userData =
+                          userSnapshot.data!.data() as Map<String, dynamic>;
+                      final role =
+                          userData['role']?.toString().toLowerCase() ?? '';
+
+                      // Route based on user role
+                      switch (role) {
+                        case 'admin':
+                          return AdminDashboardScreen();
+                        case 'driver':
+                        case 'user':
+                        default:
+                          return NavBarScreen(userRole: role);
+                      }
+                    } else {
+                      // Fallback to passenger screen if role fetch fails
+                      return SignInScreen();
+                    }
+                  },
+                );
+              } else if (snapshot.hasError) {
+                return Center(child: Text('${snapshot.error}'));
+              }
+            } else if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              );
+            }
+            return SignInScreen();
+          },
+        ),
+        '/signup': (context) => const SignUpScreen(), // Add signup route
+        '/signin': (context) => const SignInScreen(), // Add signin route
+        '/forgotpassword': (context) =>
+            const ForgotPasswordScreen(), // Forgot password route
+        '/emailverification': (context) => const EmailVerificationScreen(),
+        // '/emailverificationsuccess': (context) => const EmailVerificationSuccessScreenAnimated(),
+        '/forgotpassword2': (context) => const ForgotPasswordScreen2(),
+        '/profilescreen': (context) => const profile.ProfileScreen(),
+        '/personaldata': (context) => const PersonalData(),
+        '/navbar': (context) => NavBarHelper.getNavBarForCurrentUser(),
+        '/passengerMap': (context) => PassengerMapScreen(),
+        '/login': (context) => SignInScreenNew(),
+        '/payment': (context) => PaymentScreen(),
+        '/verifyEmail': (context) => EmailVerificationScreen(),
+        '/forgotPassword': (context) => ForgotPasswordScreen(),
+        '/admin': (context) => AdminDashboardScreen(),
+        '/passenger': (context) => BusTrackingScreen(),
+        '/busdriver': (context) => BusDriverHomeScreen(),
+      },
     );
   }
 }
