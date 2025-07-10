@@ -7,6 +7,7 @@ import 'package:smart_bus_mobility_platform1/screens/email_verification_screen.d
 import 'package:smart_bus_mobility_platform1/screens/forgot_password_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/login_screen_new.dart';
 import 'package:smart_bus_mobility_platform1/screens/payment_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/profile_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/signup_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/passenger_map_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/splash_screen.dart';
@@ -45,15 +46,12 @@ class AppRoutes {
       loginScreen: (context) => SignInScreenNew(),
       passengerMapScreen: (context) => PassengerMapScreen(),
       paymentScreen: (context) => PaymentScreen(),
+      profileScreen: (context) => ProfileScreen(),
       //mapScreen: (context) => MapScreen(),
       emailVerificationScreen: (context) => EmailVerificationScreen(),
       forgotPasswordScreen: (context) => ForgotPasswordScreen(),
       adminScreen: (context) => AdminDashboardScreen(),
       passengerHomeScreen: (context) => BusTrackingScreen(),
-      
-
-
-
 
       busDriverHomeScreen: (context) => BusDriverHomeScreen(),
       //coordinatetoAddressScreen: (context) => TransformLatLngToAddress(),

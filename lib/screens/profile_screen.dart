@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'personal_data_screen.dart';
 import 'nav_bar_screen.dart';
 
@@ -11,6 +12,61 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final int _selectedIndex = 4; // Profile tab index
+
+  Future<void> _logout() async {
+    // Show confirmation dialog
+    bool? shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.logout, color: Colors.red, size: 24),
+              SizedBox(width: 8),
+              Text('Logout'),
+            ],
+          ),
+          content: Text('Are you sure you want to logout?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: Text('Logout'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLogout == true) {
+      try {
+        // Sign out from Firebase
+        await FirebaseAuth.instance.signOut();
+
+        // Navigate to login screen and clear all previous routes
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil('/login', (Route<dynamic> route) => false);
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error logging out: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -273,6 +329,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         },
                       ),
 
+                      const SizedBox(height: 15),
+
+                      // Logout option
+                      _buildProfileOption(
+                        icon: Icons.logout,
+                        title: 'Logout',
+                        subtitle: 'Sign out of your account',
+                        onTap: _logout,
+                      ),
+
                       const SizedBox(height: 30),
 
                       // Stats Section
@@ -518,10 +584,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _onItemTapped(int index) {
     if (index != 4) {
       // If not profile tab, navigate to NavBarScreen
-Navigator.pushReplacement(
-  context,
-  MaterialPageRoute(builder: (context) => NavBarHelper.getNavBarForCurrentUser()),
-);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => NavBarHelper.getNavBarForCurrentUser(),
+        ),
+      );
     }
     // If profile tab (index 4), stay on current screen
   }

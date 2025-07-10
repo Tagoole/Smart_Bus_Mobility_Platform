@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geolocator/geolocator.dart';
 import 'dart:async';
-import 'dart:async' as async;
-import 'dart:math' as math;
+import 'dart:math';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:smart_bus_mobility_platform1/utils/utils.dart';
 
 class BusTrackingScreen extends StatefulWidget {
   const BusTrackingScreen({super.key});
@@ -18,6 +20,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
   bool _showActiveJourney = false;
   String? _username;
   bool _isLoadingUser = true;
+  bool _showDropdown = false; // Add dropdown state
 
   // Enhanced data for dynamic content
   List<Map<String, dynamic>> _recentBookings = [];
@@ -204,37 +207,119 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
     return 'Hello';
   }
 
+  void _toggleDropdown() {
+    setState(() {
+      _showDropdown = !_showDropdown;
+    });
+  }
+
+  void _navigateToProfile() {
+    setState(() {
+      _showDropdown = false;
+    });
+    // Navigate to profile page
+    Navigator.pushNamed(context, '/profile');
+  }
+
+  Future<void> _logout() async {
+    setState(() {
+      _showDropdown = false;
+    });
+
+    // Show confirmation dialog
+    bool? shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.logout, color: Colors.red, size: 24),
+              SizedBox(width: 8),
+              Text('Logout'),
+            ],
+          ),
+          content: Text('Are you sure you want to logout?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: Text('Logout'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLogout == true) {
+      try {
+        // Sign out from Firebase
+        await FirebaseAuth.instance.signOut();
+
+        // Navigate to login screen and clear all previous routes
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil('/login', (Route<dynamic> route) => false);
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error logging out: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       body: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            _buildHeader(),
-            // Content
-            Expanded(
-              child: SingleChildScrollView(
-                child: SlideTransition(
-                  position: _slideAnimation,
-                  child: Column(
-                    children: [
-                      // Quick Stats Cards
-                      _buildQuickStats(),
-                      SizedBox(height: 16),
+        child: GestureDetector(
+          onTap: () {
+            if (_showDropdown) {
+              setState(() {
+                _showDropdown = false;
+              });
+            }
+          },
+          child: Column(
+            children: [
+              // Header
+              _buildHeader(),
+              // Content
+              Expanded(
+                child: SingleChildScrollView(
+                  child: SlideTransition(
+                    position: _slideAnimation,
+                    child: Column(
+                      children: [
+                        // Quick Stats Cards
+                        _buildQuickStats(),
+                        SizedBox(height: 16),
 
-                      // Active Journey or Main Content
-                      _showActiveJourney
-                          ? _buildActiveJourney()
-                          : _buildMainContent(),
-                      SizedBox(height: 32),
-                    ],
+                        // Active Journey or Main Content
+                        _showActiveJourney
+                            ? _buildActiveJourney()
+                            : _buildMainContent(),
+                        SizedBox(height: 32),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -289,17 +374,21 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
             ),
           ),
           SizedBox(width: 12),
+          // Avatar with dropdown
           Stack(
             children: [
-              CircleAvatar(
-                backgroundColor: Colors.green[700],
-                child: Text(
-                  _username != null && _username!.isNotEmpty
-                      ? _username![0].toUpperCase()
-                      : '',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+              GestureDetector(
+                onTap: _toggleDropdown,
+                child: CircleAvatar(
+                  backgroundColor: Colors.green[700],
+                  child: Text(
+                    _username != null && _username!.isNotEmpty
+                        ? _username![0].toUpperCase()
+                        : '',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -314,6 +403,59 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                       color: Colors.green,
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 2),
+                    ),
+                  ),
+                ),
+              // Dropdown menu
+              if (_showDropdown)
+                Positioned(
+                  top: 50,
+                  right: 0,
+                  child: Container(
+                    width: 180,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 12,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Profile option
+                        ListTile(
+                          leading: Icon(Icons.person, color: Colors.blue),
+                          title: Text(
+                            'Profile',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          onTap: _navigateToProfile,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                        ),
+                        Divider(height: 1, color: Colors.grey[200]),
+                        // Logout option
+                        ListTile(
+                          leading: Icon(Icons.logout, color: Colors.red),
+                          title: Text(
+                            'Logout',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.red,
+                            ),
+                          ),
+                          onTap: _logout,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                        ),
+                      ],
                     ),
                   ),
                 ),
