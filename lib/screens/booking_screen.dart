@@ -161,6 +161,17 @@ class _FindBusScreenState extends State<FindBusScreen> {
   }
 
   String formatDate(DateTime date) {
+    // Use a more compact format for mobile screens
+    return DateFormat('MMM dd, yyyy').format(date);
+  }
+
+  String formatDateCompact(DateTime date) {
+    // Even more compact format for very small screens
+    return DateFormat('MMM dd').format(date);
+  }
+
+  String formatDateFull(DateTime date) {
+    // Full format for when there's enough space
     final daySuffix = _getDayOfMonthSuffix(date.day);
     final formatted =
         DateFormat('EEEE d').format(date) +
@@ -190,7 +201,10 @@ class _FindBusScreenState extends State<FindBusScreen> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => PassengerMapScreen(isPickupSelection: true),
+        builder: (context) => PassengerMapScreen(
+          isPickupSelection: true,
+          selectedBus: selectedBus, // Pass the selected bus
+        ),
       ),
     );
 
@@ -551,7 +565,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
             "Route",
             "${currentBooking!.startPoint} → ${currentBooking!.destination}",
           ),
-          _buildBookingInfoRow("Date", formatDate(departureDate!)),
+          _buildBookingInfoRow("Date", formatDateCompact(departureDate!)),
           _buildBookingInfoRow("Pickup", pickupAddress),
           _buildBookingInfoRow(
             "Passengers",
@@ -892,70 +906,152 @@ class _FindBusScreenState extends State<FindBusScreen> {
             ],
           ),
           const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          // Date selection - responsive layout
+          LayoutBuilder(
+            builder: (context, constraints) {
+              // Use column layout for smaller screens, row for larger screens
+              if (constraints.maxWidth < 400) {
+                return Column(
                   children: [
-                    const Text(
-                      'Departure Date',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    GestureDetector(
-                      onTap: () => _selectDate(true),
-                      child: AbsorbPointer(
-                        child: TextField(
-                          controller: _departureDateController,
-                          decoration: const InputDecoration(
-                            hintText: 'mm/dd/yy',
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(vertical: 8),
-                            suffixIcon: Icon(Icons.calendar_today, size: 16),
-                          ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Departure Date',
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Return Date',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isRoundTrip ? Colors.black : Colors.grey,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: isRoundTrip ? () => _selectDate(false) : null,
-                      child: AbsorbPointer(
-                        child: TextField(
-                          controller: _returnDateController,
-                          enabled: isRoundTrip,
-                          decoration: InputDecoration(
-                            hintText: 'mm/dd/yy',
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(
-                              vertical: 8,
-                            ),
-                            suffixIcon: Icon(
-                              Icons.calendar_today,
-                              size: 16,
-                              color: isRoundTrip ? null : Colors.grey,
+                        GestureDetector(
+                          onTap: () => _selectDate(true),
+                          child: AbsorbPointer(
+                            child: TextField(
+                              controller: _departureDateController,
+                              decoration: const InputDecoration(
+                                hintText: 'Select date',
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
+                                suffixIcon: Icon(
+                                  Icons.calendar_today,
+                                  size: 16,
+                                ),
+                              ),
                             ),
                           ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Return Date',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isRoundTrip ? Colors.black : Colors.grey,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: isRoundTrip ? () => _selectDate(false) : null,
+                          child: AbsorbPointer(
+                            child: TextField(
+                              controller: _returnDateController,
+                              enabled: isRoundTrip,
+                              decoration: InputDecoration(
+                                hintText: 'Select date',
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
+                                suffixIcon: Icon(
+                                  Icons.calendar_today,
+                                  size: 16,
+                                  color: isRoundTrip ? null : Colors.grey,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              } else {
+                return Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Departure Date',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          GestureDetector(
+                            onTap: () => _selectDate(true),
+                            child: AbsorbPointer(
+                              child: TextField(
+                                controller: _departureDateController,
+                                decoration: const InputDecoration(
+                                  hintText: 'Select date',
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
+                                  suffixIcon: Icon(
+                                    Icons.calendar_today,
+                                    size: 16,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Return Date',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: isRoundTrip ? Colors.black : Colors.grey,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: isRoundTrip
+                                ? () => _selectDate(false)
+                                : null,
+                            child: AbsorbPointer(
+                              child: TextField(
+                                controller: _returnDateController,
+                                enabled: isRoundTrip,
+                                decoration: InputDecoration(
+                                  hintText: 'Select date',
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
+                                  suffixIcon: Icon(
+                                    Icons.calendar_today,
+                                    size: 16,
+                                    color: isRoundTrip ? null : Colors.grey,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
-                ),
-              ),
-            ],
+                );
+              }
+            },
           ),
           const SizedBox(height: 20),
           Container(

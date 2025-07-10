@@ -22,8 +22,13 @@ import 'package:smart_bus_mobility_platform1/utils/marker_icon_utils.dart';
 
 class PassengerMapScreen extends StatefulWidget {
   final bool isPickupSelection;
+  final BusModel? selectedBus; // Add selected bus parameter
 
-  const PassengerMapScreen({super.key, this.isPickupSelection = false});
+  const PassengerMapScreen({
+    super.key,
+    this.isPickupSelection = false,
+    this.selectedBus, // Add this parameter
+  });
 
   @override
   State<PassengerMapScreen> createState() => _PassengerMapScreenState();
@@ -81,6 +86,18 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   // Check for active booking and load bus data
   Future<void> _checkActiveBooking() async {
     try {
+      // If we have a selected bus from booking screen, use it for pickup selection
+      if (widget.isPickupSelection && widget.selectedBus != null) {
+        setState(() {
+          _bookedBus = widget.selectedBus;
+          _hasActiveBooking = false; // This is not an active booking yet
+        });
+
+        // Fetch original route (start to destination) for pickup selection
+        await _fetchOriginalRoutePolyline();
+        return;
+      }
+
       final userId = _getCurrentUserId();
       if (userId == null) return;
 
@@ -592,7 +609,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
         if (widget.isPickupSelection && _bookedBus != null) {
           // Fetch original route (start to destination)
           await _fetchOriginalRoutePolyline();
-          
+
           // Fetch pickup route
           final startLat = _bookedBus!.startLat ?? 0.0;
           final startLng = _bookedBus!.startLng ?? 0.0;
@@ -623,7 +640,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
             if (widget.isPickupSelection && _bookedBus != null) {
               // Fetch original route (start to destination)
               await _fetchOriginalRoutePolyline();
-              
+
               // Fetch pickup route
               final startLat = _bookedBus!.startLat ?? 0.0;
               final startLng = _bookedBus!.startLng ?? 0.0;
@@ -724,7 +741,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
       if (widget.isPickupSelection && _bookedBus != null) {
         // Fetch original route (start to destination)
         await _fetchOriginalRoutePolyline();
-        
+
         // Fetch pickup route if pickup is selected
         if (_pickupLocation != null) {
           final startLat = _bookedBus!.startLat ?? 0.0;
@@ -964,6 +981,101 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                 ),
               ),
 
+            // Bus route info card (show when in pickup selection mode with selected bus)
+            if (widget.isPickupSelection && _bookedBus != null)
+              Container(
+                margin: EdgeInsets.all(16),
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF576238),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.route,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Selected Bus Route',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF111827),
+                                ),
+                              ),
+                              Text(
+                                _bookedBus!.numberPlate,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF6B7280),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Icon(Icons.route, size: 16, color: Color(0xFF6B7280)),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${_bookedBus!.startPoint} → ${_bookedBus!.destination}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF6B7280),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.info_outline, size: 16, color: Color(0xFF6B7280)),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Tap on the map to select your pickup location',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF6B7280),
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
             // Map
             Expanded(
               child: Container(
@@ -1042,6 +1154,87 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                         const Center(child: CircularProgressIndicator()),
                       // Zoom controls
                       MapZoomControls(mapController: _mapController),
+                      // Route legend (only show in pickup selection mode when routes are available)
+                      if (widget.isPickupSelection && 
+                          (_originalRouteInfo != null || _routeInfo != null))
+                        Positioned(
+                          top: 16,
+                          right: 16,
+                          child: Container(
+                            padding: EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.2),
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Route Legend',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF111827),
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                if (_originalRouteInfo != null) ...[
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 16,
+                                        height: 3,
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue,
+                                          borderRadius: BorderRadius.circular(2),
+                                        ),
+                                      ),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Bus Route',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: Color(0xFF6B7280),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 4),
+                                ],
+                                if (_routeInfo != null) ...[
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 16,
+                                        height: 3,
+                                        decoration: BoxDecoration(
+                                          color: Colors.green,
+                                          borderRadius: BorderRadius.circular(2),
+                                        ),
+                                      ),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Pickup Route',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: Color(0xFF6B7280),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
