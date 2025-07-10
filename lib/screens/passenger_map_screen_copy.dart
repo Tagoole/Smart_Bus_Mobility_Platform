@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:smart_bus_mobility_platform1/widgets/map_zoom_controls.dart';
+import 'package:smart_bus_mobility_platform1/utils/marker_icon_utils.dart';
 
 class PassengerMapScreen extends StatefulWidget {
   const PassengerMapScreen({super.key});
@@ -44,26 +45,14 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     // ...
   ];
 
-  Future<Uint8List> getImagesFromMarkers(String path, int width) async {
-    ByteData data = await rootBundle.load(path);
-    ui.Codec codec = await ui.instantiateImageCodec(
-      data.buffer.asUint8List(),
-      targetHeight: width,
-    );
-    ui.FrameInfo frameInfo = await codec.getNextFrame();
-    return (await frameInfo.image.toByteData(
-      format: ui.ImageByteFormat.png,
-    ))!.buffer.asUint8List();
-  }
-
   packData() async {
     for (int a = 0; a < images.length; a++) {
-      final Uint8List iconMaker = await getImagesFromMarkers(images[a], 40);
+      final icon = await MarkerIconUtils.getFixedSizeMarkerIcon(images[a]);
       myMarker.add(
         Marker(
           markerId: MarkerId(a.toString()),
           position: latlngForImages[a],
-          icon: BitmapDescriptor.bytes(iconMaker),
+          icon: icon,
           infoWindow: InfoWindow(title: 'Title Marker$a'),
           anchor: Offset(0.5, 0.5),
         ),
@@ -118,9 +107,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
               },
             ),
             // Zoom controls
-            MapZoomControls(
-              mapController: _mapController,
-            ),
+            MapZoomControls(mapController: _mapController),
           ],
         ),
       ),
@@ -139,4 +126,3 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     );
   }
 }
-

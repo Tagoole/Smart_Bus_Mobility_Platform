@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 import 'package:smart_bus_mobility_platform1/widgets/map_zoom_controls.dart';
+import 'package:smart_bus_mobility_platform1/utils/marker_icon_utils.dart';
 
 class BusDriverHomeScreen extends StatefulWidget {
   @override
@@ -100,9 +101,7 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
           Marker(
             markerId: MarkerId('driver_location'),
             position: LatLng(position.latitude, position.longitude),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueBlue,
-            ),
+            icon: MarkerIcons.driverMarker,
             infoWindow: InfoWindow(
               title: 'Your Location',
               snippet: 'Bus: $_busNumber',
@@ -128,7 +127,7 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
         Marker(
           markerId: MarkerId('stop_$i'),
           position: _routePoints[i],
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+          icon: MarkerIcons.startMarker, // Using start marker for route stops
           infoWindow: InfoWindow(
             title: 'Stop ${i + 1}',
             snippet: 'Route: $_assignedRoute',
@@ -670,7 +669,10 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                     _currentPosition != null
                         ? GoogleMap(
                             initialCameraPosition: CameraPosition(
-                              target: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+                              target: LatLng(
+                                _currentPosition!.latitude,
+                                _currentPosition!.longitude,
+                              ),
                               zoom: 15,
                             ),
                             onMapCreated: (GoogleMapController controller) {
@@ -685,9 +687,7 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                         : Center(child: CircularProgressIndicator()),
                     // Zoom controls
                     if (_currentPosition != null)
-                      MapZoomControls(
-                        mapController: _mapController,
-                      ),
+                      MapZoomControls(mapController: _mapController),
                   ],
                 ),
               ),

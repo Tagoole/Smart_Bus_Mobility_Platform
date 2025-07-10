@@ -16,6 +16,7 @@ import 'package:intl/intl.dart';
 import 'package:smart_bus_mobility_platform1/utils/directions_repository.dart';
 import 'package:smart_bus_mobility_platform1/utils/directions_model.dart';
 import 'package:smart_bus_mobility_platform1/widgets/map_zoom_controls.dart';
+import 'package:smart_bus_mobility_platform1/utils/marker_icon_utils.dart';
 
 // return user info so tha checking role is ok
 
@@ -55,37 +56,17 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   bool _hasActiveBooking = false;
   Timer? _busTrackingTimer;
   Directions? _routeInfo;
+  Directions? _originalRouteInfo; // Original route from start to destination
   bool _isLoadingRoute = false;
-
-  // Load custom marker icons with constant size
-  Future<Uint8List> getImagesFromMarkers(String path, int width) async {
-    ByteData data = await rootBundle.load(path);
-    ui.Codec codec = await ui.instantiateImageCodec(
-      data.buffer.asUint8List(),
-      targetHeight: width,
-    );
-    ui.FrameInfo frameInfo = await codec.getNextFrame();
-    return (await frameInfo.image.toByteData(
-      format: ui.ImageByteFormat.png,
-    ))!.buffer.asUint8List();
-  }
 
   // Load custom marker icons
   Future<void> _loadMarkerIcons() async {
     try {
-      // Load pickup marker icon - constant size
-      final Uint8List pickupIconData = await getImagesFromMarkers(
-        'images/passenger_icon.png',
-        70, // Larger size for better visibility
-      );
-      _pickupMarkerIcon = BitmapDescriptor.bytes(pickupIconData);
+      // Load pickup marker icon - fixed size
+      _pickupMarkerIcon = await MarkerIcons.passengerIcon;
 
-      // Load bus marker icon - constant size
-      final Uint8List busIconData = await getImagesFromMarkers(
-        'images/bus_icon.png',
-        80, // Larger size for better visibility
-      );
-      _busMarkerIcon = BitmapDescriptor.bytes(busIconData);
+      // Load bus marker icon - fixed size
+      _busMarkerIcon = await MarkerIcons.busIcon;
     } catch (e) {
       print('Error loading marker icons: $e');
       _pickupMarkerIcon = BitmapDescriptor.defaultMarkerWithHue(
@@ -139,6 +120,22 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                   pickup['longitude'],
                 );
               });
+            }
+
+            // Always show route in pickup selection mode
+            if (widget.isPickupSelection) {
+              // Fetch original route (start to destination)
+              await _fetchOriginalRoutePolyline();
+
+              // Fetch pickup route if pickup is selected
+              if (_pickupLocation != null) {
+                final startLat = _bookedBus!.startLat ?? 0.0;
+                final startLng = _bookedBus!.startLng ?? 0.0;
+                await _fetchRoutePolyline(
+                  LatLng(startLat, startLng),
+                  _pickupLocation!,
+                );
+              }
             }
 
             // Start bus tracking
@@ -228,6 +225,31 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
       setState(() {
         _routeInfo = null;
         _isLoadingRoute = false;
+      });
+    }
+  }
+
+  /// Fetches the original route polyline (start to destination)
+  Future<void> _fetchOriginalRoutePolyline() async {
+    if (_bookedBus == null) return;
+
+    try {
+      final startLat = _bookedBus!.startLat ?? 0.0;
+      final startLng = _bookedBus!.startLng ?? 0.0;
+      final destLat = _bookedBus!.destinationLat ?? 0.0;
+      final destLng = _bookedBus!.destinationLng ?? 0.0;
+
+      final directions = await DirectionsRepository().getDirections(
+        origin: LatLng(startLat, startLng),
+        destination: LatLng(destLat, destLng),
+      );
+      setState(() {
+        _originalRouteInfo = directions;
+      });
+    } catch (e) {
+      print('Error fetching original route polyline: $e');
+      setState(() {
+        _originalRouteInfo = null;
       });
     }
   }
@@ -566,6 +588,19 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
         });
         _updateMarkers();
         print('Loaded saved pickup location from pickup_locations');
+        // Always show route in pickup selection mode
+        if (widget.isPickupSelection && _bookedBus != null) {
+          // Fetch original route (start to destination)
+          await _fetchOriginalRoutePolyline();
+          
+          // Fetch pickup route
+          final startLat = _bookedBus!.startLat ?? 0.0;
+          final startLng = _bookedBus!.startLng ?? 0.0;
+          await _fetchRoutePolyline(
+            LatLng(startLat, startLng),
+            LatLng(latitude, longitude),
+          );
+        }
       } else {
         // Fallback: Try to load from the latest booking
         final bookingSnapshot = await FirebaseFirestore.instance
@@ -584,6 +619,19 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
             });
             _updateMarkers();
             print('Loaded pickup location from latest booking');
+            // Always show route in pickup selection mode
+            if (widget.isPickupSelection && _bookedBus != null) {
+              // Fetch original route (start to destination)
+              await _fetchOriginalRoutePolyline();
+              
+              // Fetch pickup route
+              final startLat = _bookedBus!.startLat ?? 0.0;
+              final startLng = _bookedBus!.startLng ?? 0.0;
+              await _fetchRoutePolyline(
+                LatLng(startLat, startLng),
+                LatLng(pickup['latitude'], pickup['longitude']),
+              );
+            }
           }
         }
       }
@@ -671,6 +719,23 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     _getCurrentLocation();
     _checkActiveBooking();
     _loadSavedPickupLocations();
+    // If in pickup selection mode and bus is known, show route from start to destination
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (widget.isPickupSelection && _bookedBus != null) {
+        // Fetch original route (start to destination)
+        await _fetchOriginalRoutePolyline();
+        
+        // Fetch pickup route if pickup is selected
+        if (_pickupLocation != null) {
+          final startLat = _bookedBus!.startLat ?? 0.0;
+          final startLng = _bookedBus!.startLng ?? 0.0;
+          await _fetchRoutePolyline(
+            LatLng(startLat, startLng),
+            _pickupLocation!,
+          );
+        }
+      }
+    });
   }
 
   @override
@@ -689,7 +754,23 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
 
   @override
   void dispose() {
+    // Cancel bus tracking timer
     _busTrackingTimer?.cancel();
+
+    // Dispose map controller properly
+    _mapController?.dispose();
+
+    // Clear any pending operations
+    if (_controller.isCompleted) {
+      _controller.future.then((controller) {
+        try {
+          controller.dispose();
+        } catch (e) {
+          print('Error disposing map controller: $e');
+        }
+      });
+    }
+
     super.dispose();
   }
 
@@ -913,20 +994,49 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                         zoomControlsEnabled: false,
                         mapToolbarEnabled: false,
                         // Draw the route polyline if available
-                        polylines: _routeInfo != null
-                            ? {
-                                Polyline(
-                                  polylineId: PolylineId('route'),
-                                  color: Colors.blue,
-                                  width: 5,
-                                  points: _routeInfo!.polylinePoints
-                                      .map(
-                                        (e) => LatLng(e.latitude, e.longitude),
-                                      )
-                                      .toList(),
-                                ),
-                              }
-                            : {},
+                        polylines: {
+                          // Original route (start to destination) - always show in pickup selection
+                          if (_originalRouteInfo != null &&
+                              widget.isPickupSelection)
+                            Polyline(
+                              polylineId: PolylineId('original_route'),
+                              color: Colors.blue,
+                              width: 4,
+                              points: _originalRouteInfo!.polylinePoints
+                                  .map((e) => LatLng(e.latitude, e.longitude))
+                                  .toList(),
+                            ),
+                          // Pickup route (start to pickup) or bus tracking route
+                          if (_routeInfo != null)
+                            Polyline(
+                              polylineId: PolylineId('route'),
+                              color: widget.isPickupSelection
+                                  ? Colors.green
+                                  : Colors.blue,
+                              width: 5,
+                              points: _routeInfo!.polylinePoints
+                                  .map((e) => LatLng(e.latitude, e.longitude))
+                                  .toList(),
+                            ),
+                        },
+                        onTap: (LatLng latLng) async {
+                          if (widget.isPickupSelection) {
+                            await _addPickupLocation(latLng);
+                            // Fetch original route (start to destination) if not already fetched
+                            if (_originalRouteInfo == null) {
+                              await _fetchOriginalRoutePolyline();
+                            }
+                            // Fetch route from bus start to pickup
+                            if (_bookedBus != null) {
+                              final startLat = _bookedBus!.startLat ?? 0.0;
+                              final startLng = _bookedBus!.startLng ?? 0.0;
+                              await _fetchRoutePolyline(
+                                LatLng(startLat, startLng),
+                                latLng,
+                              );
+                            }
+                          }
+                        },
                       ),
                       if (_isLoadingRoute)
                         const Center(child: CircularProgressIndicator()),

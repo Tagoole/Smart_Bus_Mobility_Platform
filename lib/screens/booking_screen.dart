@@ -11,6 +11,7 @@ import 'package:intl/intl.dart';
 import 'package:smart_bus_mobility_platform1/utils/directions_repository.dart';
 import 'package:smart_bus_mobility_platform1/utils/directions_model.dart';
 import 'package:smart_bus_mobility_platform1/widgets/map_zoom_controls.dart';
+import 'package:smart_bus_mobility_platform1/utils/marker_icon_utils.dart';
 
 void main() {
   runApp(const BusBooking());
@@ -702,17 +703,13 @@ class _FindBusScreenState extends State<FindBusScreen> {
                   markerId: MarkerId('start'),
                   position: start,
                   infoWindow: InfoWindow(title: startLabel),
-                  icon: BitmapDescriptor.defaultMarkerWithHue(
-                    BitmapDescriptor.hueGreen,
-                  ),
+                  icon: MarkerIcons.startMarker,
                 ),
                 Marker(
                   markerId: MarkerId('end'),
                   position: end,
                   infoWindow: InfoWindow(title: endLabel),
-                  icon: BitmapDescriptor.defaultMarkerWithHue(
-                    BitmapDescriptor.hueRed,
-                  ),
+                  icon: MarkerIcons.endMarker,
                 ),
               },
               myLocationEnabled: false,

@@ -20,6 +20,7 @@ import 'package:smart_bus_mobility_platform1/utils/directions_repository.dart';
 import 'package:smart_bus_mobility_platform1/utils/directions_model.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:smart_bus_mobility_platform1/widgets/map_zoom_controls.dart';
+import 'package:smart_bus_mobility_platform1/utils/marker_icon_utils.dart';
 
 class DriverMapScreen extends StatefulWidget {
   const DriverMapScreen({super.key});
@@ -69,35 +70,19 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   double _totalRouteDistance = 0.0;
   List<som.BusStop> _optimizedRouteStops = [];
   bool _showRouteSummary = false;
+  final Set<Polyline> _allPolylines = {}; // Add this for multiple polylines
 
-  // Load custom marker icons with constant size
-  Future<Uint8List> getImagesFromMarkers(String path, int width) async {
-    ByteData data = await rootBundle.load(path);
-    ui.Codec codec = await ui.instantiateImageCodec(
-      data.buffer.asUint8List(),
-      targetHeight: width,
-    );
-    ui.FrameInfo frameInfo = await codec.getNextFrame();
-    return (await frameInfo.image.toByteData(
-      format: ui.ImageByteFormat.png,
-    ))!.buffer.asUint8List();
-  }
+  // Timers for periodic updates
+  Timer? _passengerRefreshTimer;
+  Timer? _locationUpdateTimer;
 
   Future<void> _loadMarkerIcons() async {
     try {
-      // Load driver marker icon (bus icon) - constant size
-      final Uint8List driverIconData = await getImagesFromMarkers(
-        'images/bus_icon.png',
-        80, // Larger size for better visibility
-      );
-      _driverMarkerIcon = BitmapDescriptor.bytes(driverIconData);
+      // Load driver marker icon (bus icon) - fixed size
+      _driverMarkerIcon = await MarkerIcons.busIcon;
 
-      // Load passenger marker icon - constant size
-      final Uint8List passengerIconData = await getImagesFromMarkers(
-        'images/passenger_icon.png',
-        70, // Larger size for better visibility
-      );
-      _passengerMarkerIcon = BitmapDescriptor.bytes(passengerIconData);
+      // Load passenger marker icon - fixed size
+      _passengerMarkerIcon = await MarkerIcons.passengerIcon;
     } catch (e) {
       print('Error loading marker icons: $e');
       // Fallback to default markers if custom icons fail
@@ -161,6 +146,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         // Load passengers for this bus
         await _loadPassengers();
       } else {
+        print('No bus assigned to driver: $_driverEmail');
         setState(() {
           _statusMessage = 'No bus assigned to you';
           _isLoading = false;
@@ -169,7 +155,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     } catch (e) {
       print('Error loading driver data: $e');
       setState(() {
-        _statusMessage = 'Error loading driver data';
+        _statusMessage = 'Error loading driver data: ${e.toString()}';
         _isLoading = false;
       });
     }
@@ -177,7 +163,13 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
   // Load passengers who have booked this driver's bus
   Future<void> _loadPassengers() async {
-    if (_driverBus == null) return;
+    if (_driverBus == null) {
+      print('No driver bus available for loading passengers');
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
 
     try {
       final bookingsSnapshot = await FirebaseFirestore.instance
@@ -225,7 +217,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     } catch (e) {
       print('Error loading passengers: $e');
       setState(() {
-        _statusMessage = 'Error loading passengers';
+        _statusMessage = 'Error loading passengers: ${e.toString()}';
         _isLoading = false;
       });
     }
@@ -241,12 +233,12 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       // Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
+        print('Location services are disabled');
         _showSnackBar(
           'Location services are disabled. Please enable location services.',
         );
-        setState(() {
-          _isLoadingLocation = false;
-        });
+        // Use default location and continue
+        _setDefaultLocation();
         return;
       }
 
@@ -255,19 +247,19 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
+          print('Location permissions are denied');
           _showSnackBar('Location permissions are denied.');
-          setState(() {
-            _isLoadingLocation = false;
-          });
+          // Use default location and continue
+          _setDefaultLocation();
           return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
+        print('Location permissions are permanently denied');
         _showSnackBar('Location permissions are permanently denied.');
-        setState(() {
-          _isLoadingLocation = false;
-        });
+        // Use default location and continue
+        _setDefaultLocation();
         return;
       }
 
@@ -311,39 +303,15 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
               }
             } catch (e) {
               print('Last known position also failed: $e');
-
-              // Final fallback: Use default location (Kampala)
-              print('Using default location as fallback');
-              setState(() {
-                _driverLocation = LatLng(
-                  0.34540783865964797,
-                  32.54297125499706,
-                );
-                _isLoadingLocation = false;
-              });
-
-              // Update camera to default location
-              if (_controller.isCompleted) {
-                GoogleMapController controller = await _controller.future;
-                controller.animateCamera(
-                  CameraUpdate.newCameraPosition(
-                    CameraPosition(
-                      target: LatLng(0.34540783865964797, 32.54297125499706),
-                      zoom: 15,
-                    ),
-                  ),
-                );
-              }
-
-              _updateMarkers();
-              _updateDriverLocationInFirestore();
-              await _drawOptimalRouteSOM();
-              return; // Exit the function early
+              // Use default location as final fallback
+              _setDefaultLocation();
+              return;
             }
           }
         }
       }
 
+      // Successfully got location
       setState(() {
         _driverLocation = LatLng(position!.latitude, position.longitude);
         _isLoadingLocation = false;
@@ -381,10 +349,36 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       }
 
       _showSnackBar(errorMessage);
-      setState(() {
-        _isLoadingLocation = false;
+
+      // Always set default location as fallback
+      _setDefaultLocation();
+    }
+  }
+
+  // Helper method to set default location
+  void _setDefaultLocation() {
+    setState(() {
+      _driverLocation = LatLng(0.34540783865964797, 32.54297125499706);
+      _isLoadingLocation = false;
+    });
+
+    // Update camera to default location
+    if (_controller.isCompleted) {
+      _controller.future.then((controller) {
+        controller.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: LatLng(0.34540783865964797, 32.54297125499706),
+              zoom: 15,
+            ),
+          ),
+        );
       });
     }
+
+    _updateMarkers();
+    _updateDriverLocationInFirestore();
+    _drawOptimalRouteSOM();
   }
 
   // Update driver location in Firestore
@@ -594,9 +588,33 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   Future<void> _refreshData() async {
     setState(() {
       _isLoading = true;
+      _statusMessage = 'Refreshing...';
     });
-    await _loadDriverData();
-    await _getCurrentLocation();
+
+    try {
+      await _loadDriverData();
+      await _getCurrentLocation();
+
+      setState(() {
+        _isLoading = false;
+        _statusMessage = 'Refresh completed';
+      });
+
+      // Clear status message after a short delay
+      Timer(Duration(seconds: 2), () {
+        if (mounted) {
+          setState(() {
+            _statusMessage = '';
+          });
+        }
+      });
+    } catch (e) {
+      print('Error during refresh: $e');
+      setState(() {
+        _isLoading = false;
+        _statusMessage = 'Refresh failed: ${e.toString()}';
+      });
+    }
   }
 
   // Show snackbar message
@@ -655,11 +673,56 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     // Update markers with route order labels
     _updateMarkersWithRouteOrder(optimizedRoute.orderedStops);
 
+    // Create multiple polylines for better visualization
+    _allPolylines.clear();
+
+    // Main optimized route polyline
+    _allPolylines.add(
+      Polyline(
+        polylineId: PolylineId('optimal_som_route'),
+        points: routeCoords,
+        color: Colors.deepPurple,
+        width: 6,
+        geodesic: true,
+      ),
+    );
+
+    // Add segment polylines with different colors for each pickup
+    final List<Color> segmentColors = [
+      Colors.red,
+      Colors.orange,
+      Colors.yellow,
+      Colors.green,
+      Colors.blue,
+      Colors.indigo,
+      Colors.purple,
+      Colors.pink,
+      Colors.teal,
+      Colors.cyan,
+    ];
+
+    for (int i = 0; i < routeCoords.length - 1; i++) {
+      final colorIndex = i % segmentColors.length;
+      _allPolylines.add(
+        Polyline(
+          polylineId: PolylineId('route_segment_$i'),
+          points: [routeCoords[i], routeCoords[i + 1]],
+          color: segmentColors[colorIndex],
+          width: 4,
+          geodesic: true,
+        ),
+      );
+    }
+
     setState(() {
       // _allPolylines.clear(); // This line is removed as per the edit hint
-      // _allPolylines.add( // This line is removed as per the edit hint
-      //   Polyline( // This line is removed as per the edit hint
-      //     polylineId: PolylineId('optimal_som_route'), // This line is removed as per the edit hint
+      // _allPolylines.add(
+      //   // This line is removed as per the edit hint
+      //   Polyline(
+      //     // This line is removed as per the edit hint
+      //     polylineId: PolylineId(
+      //       'optimal_som_route',
+      //     ), // This line is removed as per the edit hint
       //     points: routeCoords, // This line is removed as per the edit hint
       //     color: Colors.deepPurple, // This line is removed as per the edit hint
       //     width: 5, // This line is removed as per the edit hint
@@ -759,19 +822,31 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Add a timeout to prevent infinite loading
+    Timer(Duration(seconds: 30), () {
+      if (mounted && _isLoading) {
+        print('Loading timeout reached, forcing completion');
+        setState(() {
+          _isLoading = false;
+          _statusMessage = 'Loading completed with timeout';
+        });
+      }
+    });
+
     _loadMarkerIcons();
     _loadDriverData();
     _getCurrentLocation();
 
     // Set up periodic refresh for passengers
-    Timer.periodic(Duration(minutes: 2), (timer) {
+    _passengerRefreshTimer = Timer.periodic(Duration(minutes: 2), (timer) {
       if (mounted) {
         _loadPassengers();
       }
     });
 
     // Set up frequent location updates for real-time tracking
-    Timer.periodic(Duration(seconds: 30), (timer) {
+    _locationUpdateTimer = Timer.periodic(Duration(seconds: 30), (timer) {
       if (mounted && _isOnline) {
         _getCurrentLocation();
       }
@@ -780,6 +855,24 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
   @override
   void dispose() {
+    // Cancel all timers
+    _passengerRefreshTimer?.cancel();
+    _locationUpdateTimer?.cancel();
+
+    // Dispose map controller properly
+    _mapController?.dispose();
+
+    // Clear any pending operations
+    if (_controller.isCompleted) {
+      _controller.future.then((controller) {
+        try {
+          controller.dispose();
+        } catch (e) {
+          print('Error disposing map controller: $e');
+        }
+      });
+    }
+
     super.dispose();
   }
 
@@ -809,6 +902,17 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
             icon: Icon(Icons.refresh),
             onPressed: _refreshData,
             tooltip: 'Refresh',
+          ),
+          IconButton(
+            icon: Icon(
+              _showRouteSummary ? Icons.visibility_off : Icons.visibility,
+            ),
+            onPressed: () {
+              setState(() {
+                _showRouteSummary = !_showRouteSummary;
+              });
+            },
+            tooltip: _showRouteSummary ? 'Hide Route' : 'Show Route',
           ),
         ],
       ),
@@ -972,21 +1076,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                             },
                             initialCameraPosition: _initialPosition,
                             markers: _allMarkers,
-                            polylines: _routeInfo != null
-                                ? {
-                                    Polyline(
-                                      polylineId: PolylineId('route'),
-                                      color: Colors.blue,
-                                      width: 5,
-                                      points: _routeInfo!.polylinePoints
-                                          .map(
-                                            (e) =>
-                                                LatLng(e.latitude, e.longitude),
-                                          )
-                                          .toList(),
-                                    ),
-                                  }
-                                : {},
+                            polylines: _allPolylines,
                             myLocationEnabled: true,
                             myLocationButtonEnabled: false,
                             zoomControlsEnabled: false,

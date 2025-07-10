@@ -28,16 +28,30 @@ class _SignInScreenState extends State<SignInScreen> {
       email: _emailController.text,
     );
 
+    _handleLoginResult(result);
+  }
+
+  void _handleLoginResult(Map<String, dynamic> result) async {
     if (result['status'] == 'Success') {
       print('Logging in was a success');
       String role = result['role'] ?? '';
+
+      // Reset loading state before navigation
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+
       _navigateBasedOnRole(role);
     } else {
-      showSnackBar(result['status'] ?? 'Login failed', context);
+      if (mounted) {
+        showSnackBar(result['status'] ?? 'Login failed', context);
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
-    setState(() {
-      _isLoading = false;
-    });
   }
 
   // method to navigate user to appropriate page after login success
@@ -87,10 +101,6 @@ class _SignInScreenState extends State<SignInScreen> {
         print('Unknown role: $role, showing error');
         if (mounted) {
           showSnackBar('Unknown user role: $role', context);
-          // Reset loading state since we're not navigating
-          setState(() {
-            _isLoading = false;
-          });
         }
         return;
     }
@@ -104,9 +114,6 @@ class _SignInScreenState extends State<SignInScreen> {
         // Handle navigation error
         if (mounted) {
           showSnackBar('Navigation failed. Please try again.', context);
-          setState(() {
-            _isLoading = false;
-          });
         }
       }
     }

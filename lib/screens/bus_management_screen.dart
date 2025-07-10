@@ -9,6 +9,7 @@ import 'package:smart_bus_mobility_platform1/models/admin_route_point.dart';
 import 'package:smart_bus_mobility_platform1/utils/directions_repository.dart';
 import 'package:smart_bus_mobility_platform1/utils/directions_model.dart';
 import 'package:smart_bus_mobility_platform1/widgets/map_zoom_controls.dart';
+import 'package:smart_bus_mobility_platform1/utils/marker_icon_utils.dart';
 
 class BusManagementScreen extends StatefulWidget {
   const BusManagementScreen({super.key});
@@ -965,9 +966,7 @@ class _BusManagementScreenState extends State<BusManagementScreen>
                                 infoWindow: InfoWindow(
                                   title: 'Start: $_pickedStartAddress',
                                 ),
-                                icon: BitmapDescriptor.defaultMarkerWithHue(
-                                  BitmapDescriptor.hueGreen,
-                                ),
+                                icon: MarkerIcons.startMarker,
                               ),
                               Marker(
                                 markerId: MarkerId('end'),
@@ -976,9 +975,7 @@ class _BusManagementScreenState extends State<BusManagementScreen>
                                   title:
                                       'Destination: $_pickedDestinationAddress',
                                 ),
-                                icon: BitmapDescriptor.defaultMarkerWithHue(
-                                  BitmapDescriptor.hueRed,
-                                ),
+                                icon: MarkerIcons.endMarker,
                               ),
                             },
                             myLocationEnabled: false,
@@ -989,9 +986,7 @@ class _BusManagementScreenState extends State<BusManagementScreen>
                           if (_isLoadingRoute)
                             const Center(child: CircularProgressIndicator()),
                           // Zoom controls
-                          MapZoomControls(
-                            mapController: _mapController,
-                          ),
+                          MapZoomControls(mapController: _mapController),
                         ],
                       ),
                     ),

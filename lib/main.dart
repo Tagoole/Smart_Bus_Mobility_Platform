@@ -23,13 +23,25 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
 
 void main() async {
+  // Configure error handling to prevent crashes
   BindingBase.debugZoneErrorsAreFatal = false;
+
+  // Initialize Flutter bindings
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Set preferred orientations
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
 
+  // Configure logging to reduce excessive output
+  if (kDebugMode) {
+    // Only show debug logs in debug mode
+    print('App starting in debug mode');
+  }
+
+  // Initialize Firebase based on platform
   if (kIsWeb) {
     await Firebase.initializeApp(
       options: FirebaseOptions(
@@ -51,6 +63,15 @@ void main() async {
       ),
     );
   }
+
+  // Add global error handler
+  FlutterError.onError = (FlutterErrorDetails details) {
+    if (kDebugMode) {
+      print('Flutter error: ${details.exception}');
+      print('Stack trace: ${details.stack}');
+    }
+    // Don't crash the app, just log the error
+  };
 
   runApp(MyApp());
 }
