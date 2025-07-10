@@ -38,7 +38,7 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
   void initState() {
     super.initState();
     _initializeDriver();
-    _getCurrentLocation();
+    // Location is now manual only - use the location button when needed
     _loadNotifications();
   }
 
@@ -47,7 +47,7 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         final driverDoc = await FirebaseFirestore.instance
-            .collection('drivers')
+            .collection('users')
             .doc(user.uid)
             .get();
 
@@ -155,11 +155,13 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         await FirebaseFirestore.instance
-            .collection('drivers')
+            .collection('users')
             .doc(user.uid)
             .update({
-              'latitude': position.latitude,
-              'longitude': position.longitude,
+              'currentLocation': {
+                'latitude': position.latitude,
+                'longitude': position.longitude,
+              },
               'lastUpdated': FieldValue.serverTimestamp(),
             });
 
@@ -179,7 +181,7 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         await FirebaseFirestore.instance
-            .collection('drivers')
+            .collection('users')
             .doc(user.uid)
             .update({
               'isOnline': !_isOnline,

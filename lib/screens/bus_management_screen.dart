@@ -990,7 +990,7 @@ class _BusManagementScreenState extends State<BusManagementScreen>
                         ],
                       ),
                     ),
-                  ),
+                ),
                 const SizedBox(height: 16),
                 _buildTextField(
                   controller: _fareController,

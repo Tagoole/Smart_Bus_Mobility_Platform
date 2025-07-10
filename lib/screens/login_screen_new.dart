@@ -445,19 +445,19 @@ class _SignInScreenNewState extends State<SignInScreenNew> {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             _buildSocialButton(
-              icon: 'Google.png',
+              icon: 'assets/images/Google.png',
               onPressed: () {
                 // TODO: Implement Google sign in
               },
             ),
             _buildSocialButton(
-              icon: 'facebook.png',
+              icon: 'assets/images/facebook.png',
               onPressed: () {
                 // TODO: Implement Facebook sign in
               },
             ),
             _buildSocialButton(
-              icon: 'apple.png',
+              icon: 'assets/images/apple.png',
               onPressed: () {
                 // TODO: Implement Apple sign in
               },

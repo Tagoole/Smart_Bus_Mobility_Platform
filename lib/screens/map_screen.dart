@@ -71,18 +71,18 @@ class _MapScreenState extends State<MapScreen> {
       body: Stack(
         children: [
           GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: _currentLocation,
-              zoom: 16,
-            ),
+        initialCameraPosition: CameraPosition(
+          target: _currentLocation,
+          zoom: 16,
+        ),
             myLocationEnabled:
                 false, // Disable default blue dot because we're showing custom marker
-            myLocationButtonEnabled: true,
+        myLocationButtonEnabled: true,
             zoomControlsEnabled: false,
-            markers: _markers,
-            onMapCreated: (GoogleMapController controller) {
-              _mapController = controller;
-            },
+        markers: _markers,
+        onMapCreated: (GoogleMapController controller) {
+          _mapController = controller;
+        },
           ),
           // Zoom controls
           MapZoomControls(mapController: _mapController),

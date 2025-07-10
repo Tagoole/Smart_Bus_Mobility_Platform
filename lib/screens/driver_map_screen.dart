@@ -21,6 +21,7 @@ import 'package:smart_bus_mobility_platform1/utils/directions_model.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:smart_bus_mobility_platform1/widgets/map_zoom_controls.dart';
 import 'package:smart_bus_mobility_platform1/utils/marker_icon_utils.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class DriverMapScreen extends StatefulWidget {
   const DriverMapScreen({super.key});
@@ -53,6 +54,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   LatLng? _driverLocation;
   BitmapDescriptor? _driverMarkerIcon;
   BitmapDescriptor? _passengerMarkerIcon;
+  final Map<String, BitmapDescriptor> _passengerIconCache = {};
   bool _isLoadingLocation = false;
   bool _isOnline = false;
 
@@ -72,9 +74,8 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   bool _showRouteSummary = false;
   final Set<Polyline> _allPolylines = {}; // Add this for multiple polylines
 
-  // Timers for periodic updates
+  // Timer for passenger data refresh
   Timer? _passengerRefreshTimer;
-  Timer? _locationUpdateTimer;
 
   Future<void> _loadMarkerIcons() async {
     try {
@@ -223,6 +224,25 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     }
   }
 
+  // Web-specific location permission check
+  Future<bool> _checkWebLocationPermission() async {
+    if (kIsWeb) {
+      try {
+        // For web, we'll try to get a position with a very short timeout
+        // to check if permission is granted
+        await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.low,
+          timeLimit: Duration(seconds: 3),
+        );
+        return true;
+      } catch (e) {
+        print('Web location permission check failed: $e');
+        return false;
+      }
+    }
+    return true;
+  }
+
   // Get driver's current location
   Future<void> _getCurrentLocation() async {
     setState(() {
@@ -261,6 +281,18 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         // Use default location and continue
         _setDefaultLocation();
         return;
+      }
+
+      // Additional web-specific permission check
+      if (kIsWeb) {
+        bool webPermissionGranted = await _checkWebLocationPermission();
+        if (!webPermissionGranted) {
+          _showSnackBar(
+            'Please allow location access in your browser settings and try again.',
+          );
+          _setDefaultLocation();
+          return;
+        }
       }
 
       // Try to get current position with different strategies
@@ -341,7 +373,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       String errorMessage = 'Error getting your location. ';
       if (e.toString().contains('Position update is unavailable')) {
         errorMessage +=
-            'Please check your browser location settings and try again.';
+            'Please check your browser location settings and try again. For web browsers, make sure to allow location access when prompted.';
       } else if (e.toString().contains('timeout')) {
         errorMessage += 'Location request timed out. Please try again.';
       } else {
@@ -381,39 +413,125 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     _drawOptimalRouteSOM();
   }
 
+  // Test location method for debugging
+  void _setTestLocation() {
+    setState(() {
+      _driverLocation = LatLng(0.3476, 32.5825); // Test coordinates in Kampala
+      _isLoadingLocation = false;
+    });
+
+    // Update camera to test location
+    if (_controller.isCompleted) {
+      _controller.future.then((controller) {
+        controller.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(target: LatLng(0.3476, 32.5825), zoom: 15),
+          ),
+        );
+      });
+    }
+
+    _updateMarkers();
+    _updateDriverLocationInFirestore();
+    _drawOptimalRouteSOM();
+
+    _showSnackBar('Test location set successfully!');
+  }
+
   // Update driver location in Firestore
   Future<void> _updateDriverLocationInFirestore() async {
     if (_driverLocation == null || _driverId == null) return;
 
     try {
-      // Update driver location in drivers collection
-      await FirebaseFirestore.instance.collection('drivers').doc(_driverId).set(
-        {
-          'currentLocation': {
-            'latitude': _driverLocation!.latitude,
-            'longitude': _driverLocation!.longitude,
-          },
-          'isOnline': _isOnline,
-          'lastUpdated': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      // Update driver location in users collection (where the driver document already exists)
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_driverId)
+          .update({
+            'currentLocation': {
+              'latitude': _driverLocation!.latitude,
+              'longitude': _driverLocation!.longitude,
+            },
+            'isOnline': _isOnline,
+            'lastUpdated': FieldValue.serverTimestamp(),
+            'assignedBusId': _driverBus?.busId,
+            'assignedBusPlate': _driverBus?.numberPlate,
+          });
+
+      print('Driver location updated successfully for driver: $_driverId');
 
       // Also update bus location if driver has an assigned bus
       if (_driverBus != null) {
-        await _busService.updateBusLocation(
-          _driverBus!.busId,
-          _driverLocation!.latitude,
-          _driverLocation!.longitude,
-        );
+        try {
+          await _busService.updateBusLocation(
+            _driverBus!.busId,
+            _driverLocation!.latitude,
+            _driverLocation!.longitude,
+          );
+          print(
+            'Bus location updated successfully for bus: ${_driverBus!.busId}',
+          );
+        } catch (busError) {
+          print('Error updating bus location: $busError');
+        }
       }
     } catch (e) {
-      print('Error updating driver/bus location: $e');
+      print('Error updating driver location: $e');
+      // If update fails, try to set the document with merge option
+      try {
+        await FirebaseFirestore.instance.collection('users').doc(_driverId).set(
+          {
+            'currentLocation': {
+              'latitude': _driverLocation!.latitude,
+              'longitude': _driverLocation!.longitude,
+            },
+            'isOnline': _isOnline,
+            'lastUpdated': FieldValue.serverTimestamp(),
+            'assignedBusId': _driverBus?.busId,
+            'assignedBusPlate': _driverBus?.numberPlate,
+          },
+          SetOptions(merge: true),
+        );
+        print('Driver location set successfully with merge option');
+      } catch (setError) {
+        print('Error setting driver location: $setError');
+      }
+    }
+  }
+
+  // Ensure driver document exists in Firestore
+  Future<void> _ensureDriverDocumentExists() async {
+    if (_driverId == null) return;
+
+    try {
+      // Check if driver document exists in users collection
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_driverId)
+          .get();
+
+      if (!doc.exists) {
+        // Create the driver document in users collection
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(_driverId)
+            .set({
+              'driverId': _driverId,
+              'driverName': _driverName,
+              'driverEmail': _driverEmail,
+              'isOnline': _isOnline,
+              'createdAt': FieldValue.serverTimestamp(),
+              'lastUpdated': FieldValue.serverTimestamp(),
+            });
+        print('Driver document created successfully');
+      }
+    } catch (e) {
+      print('Error ensuring driver document exists: $e');
     }
   }
 
   // Update all markers on the map
-  void _updateMarkers() {
+  void _updateMarkers() async {
     _allMarkers.clear();
 
     // Add driver location marker
@@ -436,19 +554,33 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     // Add passenger markers
     for (int i = 0; i < _passengers.length; i++) {
       final passenger = _passengers[i];
-      if (passenger['pickupLocation'] != null && _passengerMarkerIcon != null) {
+      if (passenger['pickupLocation'] != null) {
         final location = passenger['pickupLocation'];
         final latLng = LatLng(location['latitude'], location['longitude']);
+        final userName = passenger['userName'] ?? 'Passenger';
+        final userId = passenger['userId'] ?? 'unknown';
+
+        // Use cached icon if available, otherwise generate and cache it
+        BitmapDescriptor icon;
+        if (_passengerIconCache.containsKey(userId)) {
+          icon = _passengerIconCache[userId]!;
+        } else {
+          icon = await MarkerIconUtils.getLabeledMarkerIcon(
+            'images/passenger_icon.png',
+            userName,
+          );
+          _passengerIconCache[userId] = icon;
+        }
 
         _allMarkers.add(
           Marker(
             markerId: MarkerId('passenger_${passenger['userId']}'),
             position: latLng,
-            icon: _passengerMarkerIcon!,
+            icon: icon,
             anchor: Offset(0.5, 0.5), // Center the marker
             flat: true, // Keep marker flat (not tilted)
             infoWindow: InfoWindow(
-              title: 'Passenger ${i + 1}: ${passenger['userName']}',
+              title: 'Passenger ${i + 1}: $userName',
               snippet:
                   '${passenger['selectedSeats'].length} seats • ${passenger['pickupAddress']}',
             ),
@@ -593,11 +725,11 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
     try {
       await _loadDriverData();
-      await _getCurrentLocation();
+      // Location updates are manual only - use the location refresh button
 
       setState(() {
         _isLoading = false;
-        _statusMessage = 'Refresh completed';
+        _statusMessage = 'Data refreshed (location manual)';
       });
 
       // Clear status message after a short delay
@@ -676,7 +808,28 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     // Create multiple polylines for better visualization
     _allPolylines.clear();
 
-    // Main optimized route polyline
+    // Draw initial bus route (from start to destination) if bus data is available
+    if (_driverBus != null) {
+      try {
+        // Get the initial bus route coordinates
+        final initialRoute = await _getInitialBusRoute();
+        if (initialRoute.isNotEmpty) {
+          _allPolylines.add(
+            Polyline(
+              polylineId: PolylineId('initial_bus_route'),
+              points: initialRoute,
+              color: Colors.blue,
+              width: 4,
+              geodesic: true,
+            ),
+          );
+        }
+      } catch (e) {
+        print('Error drawing initial bus route: $e');
+      }
+    }
+
+    // Main optimized route polyline (driver to passengers)
     _allPolylines.add(
       Polyline(
         polylineId: PolylineId('optimal_som_route'),
@@ -732,6 +885,57 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
     // Show route summary
     _displayRouteSummary(totalDistance, optimizedRoute.orderedStops);
+  }
+
+  // Get initial bus route coordinates (from start to destination)
+  Future<List<LatLng>> _getInitialBusRoute() async {
+    if (_driverBus == null) return [];
+
+    try {
+      // Get coordinates for start and destination points
+      final startCoords = await _getCoordinatesForAddress(
+        _driverBus!.startPoint,
+      );
+      final destCoords = await _getCoordinatesForAddress(
+        _driverBus!.destination,
+      );
+
+      if (startCoords != null && destCoords != null) {
+        // Get route between start and destination
+        final directions = await DirectionsRepository().getDirections(
+          origin: startCoords,
+          destination: destCoords,
+        );
+
+        if (directions != null && directions.polylinePoints.isNotEmpty) {
+          return directions.polylinePoints
+              .map((point) => LatLng(point.latitude, point.longitude))
+              .toList();
+        }
+      }
+
+      // Fallback: return direct line between start and destination
+      if (startCoords != null && destCoords != null) {
+        return [startCoords, destCoords];
+      }
+    } catch (e) {
+      print('Error getting initial bus route: $e');
+    }
+
+    return [];
+  }
+
+  // Helper method to get coordinates for an address
+  Future<LatLng?> _getCoordinatesForAddress(String address) async {
+    try {
+      final locations = await locationFromAddress(address);
+      if (locations.isNotEmpty) {
+        return LatLng(locations.first.latitude, locations.first.longitude);
+      }
+    } catch (e) {
+      print('Error getting coordinates for address $address: $e');
+    }
+    return null;
   }
 
   // Calculate distance between two points in kilometers
@@ -836,7 +1040,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
     _loadMarkerIcons();
     _loadDriverData();
-    _getCurrentLocation();
+    // Location is now manual only - use the location refresh button or manual input
 
     // Set up periodic refresh for passengers
     _passengerRefreshTimer = Timer.periodic(Duration(minutes: 2), (timer) {
@@ -845,19 +1049,14 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       }
     });
 
-    // Set up frequent location updates for real-time tracking
-    _locationUpdateTimer = Timer.periodic(Duration(seconds: 30), (timer) {
-      if (mounted && _isOnline) {
-        _getCurrentLocation();
-      }
-    });
+    // Location updates are now manual only - no automatic polling
+    // Users can use the location refresh button or manual location input
   }
 
   @override
   void dispose() {
-    // Cancel all timers
+    // Cancel passenger refresh timer
     _passengerRefreshTimer?.cancel();
-    _locationUpdateTimer?.cancel();
 
     // Dispose map controller properly
     _mapController?.dispose();
@@ -1090,6 +1289,50 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
                           // Zoom controls
                           MapZoomControls(mapController: _mapController),
+
+                          // Location refresh button
+                          Positioned(
+                            bottom: 100,
+                            right: 16,
+                            child: FloatingActionButton(
+                              heroTag: "locationRefresh",
+                              onPressed: _isLoadingLocation
+                                  ? null
+                                  : _getCurrentLocation,
+                              backgroundColor: const Color(0xFF576238),
+                              child: _isLoadingLocation
+                                  ? SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
+                                      ),
+                                    )
+                                  : Icon(
+                                      Icons.my_location,
+                                      color: Colors.white,
+                                    ),
+                            ),
+                          ),
+
+                          // Test location button (for debugging)
+                          Positioned(
+                            bottom: 160,
+                            right: 16,
+                            child: FloatingActionButton(
+                              heroTag: "testLocation",
+                              onPressed: () => _setTestLocation(),
+                              backgroundColor: Colors.orange,
+                              child: Icon(
+                                Icons.location_on,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
 
                           // Route Summary Card
                           if (_showRouteSummary &&
