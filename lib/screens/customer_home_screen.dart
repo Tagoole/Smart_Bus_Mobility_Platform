@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:async';
+import 'dart:async' as async;
 
 class BusTrackingScreen extends StatefulWidget {
   const BusTrackingScreen({super.key});
@@ -15,8 +17,21 @@ class _BusTrackingScreenState extends State<BusTrackingScreen> {
   String? _username;
   bool _isLoadingUser = true;
 
+  // Automatic refresh timer
+  Timer? _refreshTimer;
+
   @override
   void initState() {
+    super.initState();
+    _fetchUsername();
+    
+    // Set up automatic refresh every 2 minutes
+    Timer.periodic(Duration(minutes: 2), (timer) {
+      if (mounted) {
+        _fetchUsername();
+        // Add other refresh logic here
+      }
+    });
     super.initState();
     _fetchUsername();
   }

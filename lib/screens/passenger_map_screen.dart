@@ -17,6 +17,7 @@ import 'package:smart_bus_mobility_platform1/utils/directions_repository.dart';
 import 'package:smart_bus_mobility_platform1/utils/directions_model.dart';
 import 'package:smart_bus_mobility_platform1/widgets/map_zoom_controls.dart';
 import 'package:smart_bus_mobility_platform1/utils/marker_icon_utils.dart';
+import 'package:smart_bus_mobility_platform1/utils/auto_refresh_service.dart';
 
 // return user info so tha checking role is ok
 
@@ -38,7 +39,8 @@ class PassengerMapScreen extends StatefulWidget {
 tarnsfer the latlng screen to an address
 
 */
-class _PassengerMapScreenState extends State<PassengerMapScreen> {
+class _PassengerMapScreenState extends State<PassengerMapScreen>
+    with AutoRefreshMixin {
   final Completer<GoogleMapController> _controller = Completer();
   GoogleMapController? _mapController;
   static final CameraPosition _initialPosition = CameraPosition(
@@ -63,6 +65,12 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   Directions? _routeInfo;
   Directions? _originalRouteInfo; // Original route from start to destination
   bool _isLoadingRoute = false;
+
+  // Automatic refresh mechanisms
+  Timer? _dataRefreshTimer;
+  Timer? _routeRefreshTimer;
+  StreamSubscription<QuerySnapshot>? _bookingSubscription;
+  StreamSubscription<DocumentSnapshot>? _busSubscription;
 
   // Load custom marker icons
   Future<void> _loadMarkerIcons() async {
@@ -263,11 +271,78 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
       setState(() {
         _originalRouteInfo = directions;
       });
+
+      // Focus camera on the route area
+      _focusCameraOnRoute();
     } catch (e) {
       print('Error fetching original route polyline: $e');
       setState(() {
         _originalRouteInfo = null;
       });
+    }
+  }
+
+  // Focus camera on the route area
+  void _focusCameraOnRoute() {
+    if (_originalRouteInfo == null ||
+        _originalRouteInfo!.polylinePoints.isEmpty)
+      return;
+
+    try {
+      // Calculate bounds of the route
+      double minLat = double.infinity;
+      double maxLat = -double.infinity;
+      double minLng = double.infinity;
+      double maxLng = -double.infinity;
+
+      for (var point in _originalRouteInfo!.polylinePoints) {
+        minLat = math.min(minLat, point.latitude);
+        maxLat = math.max(maxLat, point.latitude);
+        minLng = math.min(minLng, point.longitude);
+        maxLng = math.max(maxLng, point.longitude);
+      }
+
+      // Add some padding around the route
+      const padding = 0.01; // About 1km padding
+      minLat -= padding;
+      maxLat += padding;
+      minLng -= padding;
+      maxLng += padding;
+
+      // Calculate center point
+      final centerLat = (minLat + maxLat) / 2;
+      final centerLng = (minLng + maxLng) / 2;
+
+      // Calculate appropriate zoom level based on route size
+      final latDiff = maxLat - minLat;
+      final lngDiff = maxLng - minLng;
+      final maxDiff = math.max(latDiff, lngDiff);
+
+      double zoom = 14.0; // Default zoom
+      if (maxDiff > 0.1) {
+        zoom = 10.0; // Very large route
+      } else if (maxDiff > 0.05) {
+        zoom = 11.0; // Large route
+      } else if (maxDiff > 0.02) {
+        zoom = 12.0; // Medium route
+      } else if (maxDiff > 0.01) {
+        zoom = 13.0; // Small route
+      } else {
+        zoom = 14.0; // Very small route
+      }
+
+      // Animate camera to focus on route area
+      if (_controller.isCompleted) {
+        _controller.future.then((controller) {
+          controller.animateCamera(
+            CameraUpdate.newCameraPosition(
+              CameraPosition(target: LatLng(centerLat, centerLng), zoom: zoom),
+            ),
+          );
+        });
+      }
+    } catch (e) {
+      print('Error focusing camera on route: $e');
     }
   }
 
@@ -736,6 +811,10 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     _getCurrentLocation();
     _checkActiveBooking();
     _loadSavedPickupLocations();
+
+    // Set up automatic refresh mechanisms
+    _setupAutomaticRefresh();
+
     // If in pickup selection mode and bus is known, show route from start to destination
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (widget.isPickupSelection && _bookedBus != null) {
@@ -753,6 +832,112 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
         }
       }
     });
+  }
+
+  // Set up automatic refresh mechanisms
+  void _setupAutomaticRefresh() {
+    // Refresh all data every 2 minutes
+    Timer.periodic(Duration(minutes: 2), (timer) {
+      if (mounted) {
+        _refreshScreenData();
+      }
+    });
+
+    // Refresh routes every 5 minutes
+    Timer.periodic(Duration(minutes: 5), (timer) {
+      if (mounted) {
+        _refreshRoutes();
+      }
+    });
+
+    // Set up real-time booking monitoring
+    _setupBookingMonitoring();
+  }
+
+  // Set up real-time booking monitoring
+  void _setupBookingMonitoring() {
+    final userId = _getCurrentUserId();
+    if (userId != null) {
+      // Monitor active bookings in real-time
+      _bookingSubscription = FirebaseFirestore.instance
+          .collection('bookings')
+          .where('userId', isEqualTo: userId)
+          .where('status', isEqualTo: 'confirmed')
+          .snapshots()
+          .listen((snapshot) {
+            if (mounted) {
+              _handleBookingUpdates(snapshot);
+            }
+          });
+    }
+  }
+
+  // Handle booking updates from real-time stream
+  void _handleBookingUpdates(QuerySnapshot snapshot) {
+    if (snapshot.docs.isNotEmpty) {
+      final bookingData = snapshot.docs.first.data() as Map<String, dynamic>;
+      final busId = bookingData['busId'];
+
+      if (busId != null && _bookedBus?.busId != busId) {
+        // Booking changed, refresh bus data
+        _loadBusData(busId);
+      }
+    } else {
+      // No active bookings
+      setState(() {
+        _hasActiveBooking = false;
+        _bookedBus = null;
+      });
+    }
+  }
+
+  // Load bus data and set up real-time monitoring
+  Future<void> _loadBusData(String busId) async {
+    try {
+      // Cancel existing bus subscription
+      _busSubscription?.cancel();
+
+      // Set up real-time bus monitoring
+      _busSubscription = FirebaseFirestore.instance
+          .collection('buses')
+          .doc(busId)
+          .snapshots()
+          .listen((snapshot) {
+            if (mounted && snapshot.exists) {
+              final busData = BusModel.fromJson(snapshot.data()!, busId);
+              setState(() {
+                _bookedBus = busData;
+                _hasActiveBooking = true;
+              });
+
+              // Update bus location if available
+              if (snapshot.data()!['currentLocation'] != null) {
+                final location = snapshot.data()!['currentLocation'];
+                setState(() {
+                  _busLocation = LatLng(
+                    location['latitude'],
+                    location['longitude'],
+                  );
+                });
+                _updateMarkers();
+              }
+            }
+          });
+    } catch (e) {
+      print('Error loading bus data: $e');
+    }
+  }
+
+  // Refresh routes
+  Future<void> _refreshRoutes() async {
+    if (_bookedBus != null) {
+      await _fetchOriginalRoutePolyline();
+      if (_pickupLocation != null) {
+        final startLat = _bookedBus!.startLat ?? 0.0;
+        final startLng = _bookedBus!.startLng ?? 0.0;
+        await _fetchRoutePolyline(LatLng(startLat, startLng), _pickupLocation!);
+      }
+    }
   }
 
   @override
@@ -773,6 +958,14 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   void dispose() {
     // Cancel bus tracking timer
     _busTrackingTimer?.cancel();
+
+    // Cancel automatic refresh timers
+    _dataRefreshTimer?.cancel();
+    _routeRefreshTimer?.cancel();
+
+    // Cancel stream subscriptions
+    _bookingSubscription?.cancel();
+    _busSubscription?.cancel();
 
     // Dispose map controller properly
     _mapController?.dispose();
@@ -821,99 +1014,74 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
         onRefresh: _refreshScreenData,
         child: Column(
           children: [
-            // Bus tracking info card (only show if has active booking)
+            // Compact ETA display (only show if has active booking)
             if (_hasActiveBooking && _bookedBus != null)
-              Container(
-                margin: EdgeInsets.all(16),
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 8,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF576238),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.directions_bus,
-                            color: Colors.white,
-                            size: 30,
-                          ),
+              Positioned(
+                top: 16,
+                left: 16,
+                right: 16,
+                child: Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.green,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Your Bus is on the way!',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF111827),
-                                ),
+                        child: Icon(
+                          Icons.directions_bus,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Your Bus is on the way!',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
                               ),
-                              Text(
-                                _bookedBus!.numberPlate,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFF6B7280),
-                                ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'ETA: $_estimatedArrival',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
                               ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.green,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Text(
-                            'ETA: $_estimatedArrival',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
                             ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Icon(Icons.route, size: 16, color: Color(0xFF6B7280)),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            '${_bookedBus!.startPoint} → ${_bookedBus!.destination}',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF6B7280),
+                            SizedBox(height: 4),
+                            Text(
+                              '${_bookedBus!.startPoint} → ${_bookedBus!.destination}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.white.withValues(alpha: 0.9),
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
@@ -1058,7 +1226,11 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                     SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(Icons.info_outline, size: 16, color: Color(0xFF6B7280)),
+                        Icon(
+                          Icons.info_outline,
+                          size: 16,
+                          color: Color(0xFF6B7280),
+                        ),
                         SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -1084,7 +1256,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       blurRadius: 8,
                       offset: Offset(0, 4),
                     ),
@@ -1112,7 +1284,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                               widget.isPickupSelection)
                             Polyline(
                               polylineId: PolylineId('original_route'),
-                              color: Colors.blue,
+                              color: Colors.orange,
                               width: 4,
                               points: _originalRouteInfo!.polylinePoints
                                   .map((e) => LatLng(e.latitude, e.longitude))
@@ -1123,8 +1295,8 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                             Polyline(
                               polylineId: PolylineId('route'),
                               color: widget.isPickupSelection
-                                  ? Colors.green
-                                  : Colors.blue,
+                                  ? Colors.orange
+                                  : Colors.orange,
                               width: 5,
                               points: _routeInfo!.polylinePoints
                                   .map((e) => LatLng(e.latitude, e.longitude))
@@ -1155,7 +1327,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                       // Zoom controls
                       MapZoomControls(mapController: _mapController),
                       // Route legend (only show in pickup selection mode when routes are available)
-                      if (widget.isPickupSelection && 
+                      if (widget.isPickupSelection &&
                           (_originalRouteInfo != null || _routeInfo != null))
                         Positioned(
                           top: 16,
@@ -1193,8 +1365,10 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                                         width: 16,
                                         height: 3,
                                         decoration: BoxDecoration(
-                                          color: Colors.blue,
-                                          borderRadius: BorderRadius.circular(2),
+                                          color: Colors.orange,
+                                          borderRadius: BorderRadius.circular(
+                                            2,
+                                          ),
                                         ),
                                       ),
                                       SizedBox(width: 8),
@@ -1216,8 +1390,10 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                                         width: 16,
                                         height: 3,
                                         decoration: BoxDecoration(
-                                          color: Colors.green,
-                                          borderRadius: BorderRadius.circular(2),
+                                          color: Colors.orange,
+                                          borderRadius: BorderRadius.circular(
+                                            2,
+                                          ),
                                         ),
                                       ),
                                       SizedBox(width: 8),
@@ -1235,64 +1411,264 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                             ),
                           ),
                         ),
+                      // Bottom action bar - Google Maps style circular buttons
+                      Positioned(
+                        bottom: 16,
+                        left: 16,
+                        child: Column(
+                          children: [
+                            // My Location button
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.2),
+                                    blurRadius: 8,
+                                    offset: Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: IconButton(
+                                onPressed: _isLoadingLocation
+                                    ? null
+                                    : _getCurrentLocation,
+                                icon: _isLoadingLocation
+                                    ? SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                Colors.grey,
+                                              ),
+                                        ),
+                                      )
+                                    : Icon(
+                                        Icons.my_location,
+                                        color: Colors.grey[700],
+                                      ),
+                                tooltip: 'My Location',
+                                style: IconButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  padding: EdgeInsets.all(12),
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 12),
+                            // Book Bus button
+                            if (!widget.isPickupSelection)
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.blue,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.2,
+                                      ),
+                                      blurRadius: 8,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: IconButton(
+                                  onPressed: _navigateToBooking,
+                                  icon: Icon(
+                                    Icons.directions_bus,
+                                    color: Colors.white,
+                                  ),
+                                  tooltip: 'Book Bus',
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: Colors.blue,
+                                    padding: EdgeInsets.all(12),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+
+                      // ETA Display at bottom center (only show if has active booking)
+                      if (_hasActiveBooking && _bookedBus != null)
+                        Positioned(
+                          bottom: 16,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.green,
+                                borderRadius: BorderRadius.circular(25),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.3),
+                                    blurRadius: 12,
+                                    offset: Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.access_time,
+                                    size: 20,
+                                    color: Colors.white,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'ETA: $_estimatedArrival',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+
+                      // Route Information Display (only show if has active booking)
+                      if (_hasActiveBooking && _bookedBus != null)
+                        Positioned(
+                          bottom: 80,
+                          left: 16,
+                          right: 16,
+                          child: Container(
+                            padding: EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.2),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(
+                                        Icons.route,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Your Route',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF111827),
+                                            ),
+                                          ),
+                                          Text(
+                                            'Bus: ${_bookedBus!.numberPlate}',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Color(0xFF6B7280),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.location_on,
+                                      size: 16,
+                                      color: Colors.green,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'From: ${_bookedBus!.startPoint}',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Color(0xFF6B7280),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.location_on,
+                                      size: 16,
+                                      color: Colors.red,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'To: ${_bookedBus!.destination}',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Color(0xFF6B7280),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (_pickupLocation != null) ...[
+                                  SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.my_location,
+                                        size: 16,
+                                        color: Colors.orange,
+                                      ),
+                                      SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Pickup: Selected Location',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Color(0xFF6B7280),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
-              ),
-            ),
-
-            // Bottom action bar
-            Container(
-              margin: EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _isLoadingLocation
-                          ? null
-                          : _getCurrentLocation,
-                      icon: _isLoadingLocation
-                          ? SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.white,
-                                ),
-                              ),
-                            )
-                          : Icon(Icons.my_location),
-                      label: Text('My Location'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF576238),
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (!widget.isPickupSelection) ...[
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _navigateToBooking,
-                        icon: Icon(Icons.directions_bus),
-                        label: Text('Book Bus'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
               ),
             ),
           ],

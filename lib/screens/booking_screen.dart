@@ -12,6 +12,7 @@ import 'package:smart_bus_mobility_platform1/utils/directions_repository.dart';
 import 'package:smart_bus_mobility_platform1/utils/directions_model.dart';
 import 'package:smart_bus_mobility_platform1/widgets/map_zoom_controls.dart';
 import 'package:smart_bus_mobility_platform1/utils/marker_icon_utils.dart';
+import 'dart:async'; // Added for Timer and StreamSubscription
 
 void main() {
   runApp(const BusBooking());
@@ -77,6 +78,12 @@ class _FindBusScreenState extends State<FindBusScreen> {
 
   final BusService _busService = BusService();
 
+  // Automatic refresh mechanisms
+  Timer? _busRefreshTimer;
+  Timer? _bookingRefreshTimer;
+  StreamSubscription<QuerySnapshot>? _busSubscription;
+  StreamSubscription<QuerySnapshot>? _bookingSubscription;
+
   @override
   void initState() {
     super.initState();
@@ -84,6 +91,26 @@ class _FindBusScreenState extends State<FindBusScreen> {
     _checkActiveBookings();
     // Load all active buses for dropdown
     _loadAllActiveBuses();
+
+    // Set up automatic refresh
+    _setupAutoRefresh();
+  }
+
+  // Set up automatic refresh mechanisms
+  void _setupAutoRefresh() {
+    // Refresh bus availability every 3 minutes
+    Timer.periodic(Duration(minutes: 3), (timer) {
+      if (mounted) {
+        _loadAllActiveBuses();
+      }
+    });
+
+    // Refresh active bookings every 2 minutes
+    Timer.periodic(Duration(minutes: 2), (timer) {
+      if (mounted) {
+        _checkActiveBookings();
+      }
+    });
   }
 
   @override
@@ -369,45 +396,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
           childrenCount: childrenCount,
         ),
       ),
-    ).then((result) {
-      // Handle the result from seat selection
-      if (result != null && result is Map<String, dynamic>) {
-        // Seat selection was successful, handle the booking
-        _handleSeatSelectionResult(result, bus);
-      }
-    });
-  }
-
-  void _handleSeatSelectionResult(Map<String, dynamic> result, BusModel bus) {
-    // This will be called when user returns from seat selection
-    if (result['success'] == true) {
-      // Booking was successful
-      setState(() {
-        hasActiveBooking = true;
-        bookingId = result['bookingId'];
-        currentBooking = bus;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "Booking confirmed! Selected seats: ${result['selectedSeats'].join(', ')}",
-          ),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      // Optionally navigate to payment or booking confirmation screen
-      // Navigator.push(context, MaterialPageRoute(builder: (context) => PaymentScreen()));
-    } else {
-      // Booking failed
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Booking failed. Please try again."),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+    );
   }
 
   // Fetch route points for the selected bus
