@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -7,16 +6,16 @@ import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:smart_bus_mobility_platform1/models/location_model.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:smart_bus_mobility_platform1/screens/booking_screen.dart';
 import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:intl/intl.dart';
+import 'package:smart_bus_mobility_platform1/utils/directions_repository.dart';
+import 'package:smart_bus_mobility_platform1/utils/directions_model.dart';
+import 'package:smart_bus_mobility_platform1/widgets/map_zoom_controls.dart';
 
 // return user info so tha checking role is ok
 
@@ -35,6 +34,7 @@ tarnsfer the latlng screen to an address
 */
 class _PassengerMapScreenState extends State<PassengerMapScreen> {
   final Completer<GoogleMapController> _controller = Completer();
+  GoogleMapController? _mapController;
   static final CameraPosition _initialPosition = CameraPosition(
     target: LatLng(0.34540783865964797, 32.54297125499706),
     zoom: 14,
@@ -54,6 +54,8 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   String _estimatedArrival = 'Calculating...';
   bool _hasActiveBooking = false;
   Timer? _busTrackingTimer;
+  Directions? _routeInfo;
+  bool _isLoadingRoute = false;
 
   // Load custom marker icons with constant size
   Future<Uint8List> getImagesFromMarkers(String path, int width) async {
@@ -76,14 +78,14 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
         'images/passenger_icon.png',
         70, // Larger size for better visibility
       );
-      _pickupMarkerIcon = BitmapDescriptor.fromBytes(pickupIconData);
+      _pickupMarkerIcon = BitmapDescriptor.bytes(pickupIconData);
 
       // Load bus marker icon - constant size
       final Uint8List busIconData = await getImagesFromMarkers(
         'images/bus_icon.png',
         80, // Larger size for better visibility
       );
-      _busMarkerIcon = BitmapDescriptor.fromBytes(busIconData);
+      _busMarkerIcon = BitmapDescriptor.bytes(busIconData);
     } catch (e) {
       print('Error loading marker icons: $e');
       _pickupMarkerIcon = BitmapDescriptor.defaultMarkerWithHue(
@@ -186,21 +188,46 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
             _busLocation = newBusLocation;
           });
 
-          // Calculate ETA and route
+          // Calculate ETA and fetch route polyline
           await _calculateETAAndRoute();
+          await _fetchRoutePolyline(_busLocation!, _pickupLocation!);
           _updateMarkers();
         } else {
           // If no current location, use a default location or show message
           print('Bus location not available yet');
           setState(() {
             _estimatedArrival = 'Location unavailable';
+            _routeInfo = null;
           });
         }
       }
     } catch (e) {
       print('Error updating bus location: $e');
       setState(() {
-        _estimatedArrival = 'Error updating location';
+        _routeInfo = null;
+      });
+    }
+  }
+
+  /// Fetches the route polyline from Google Directions API and updates _routeInfo
+  Future<void> _fetchRoutePolyline(LatLng start, LatLng end) async {
+    setState(() {
+      _isLoadingRoute = true;
+    });
+    try {
+      final directions = await DirectionsRepository().getDirections(
+        origin: start,
+        destination: end,
+      );
+      setState(() {
+        _routeInfo = directions;
+        _isLoadingRoute = false;
+      });
+    } catch (e) {
+      print('Error fetching route polyline: $e');
+      setState(() {
+        _routeInfo = null;
+        _isLoadingRoute = false;
       });
     }
   }
@@ -706,7 +733,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       blurRadius: 8,
                       offset: Offset(0, 4),
                     ),
@@ -726,7 +753,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                           child: Icon(
                             Icons.directions_bus,
                             color: Colors.white,
-                            size: 24,
+                            size: 30,
                           ),
                         ),
                         SizedBox(width: 12),
@@ -872,17 +899,40 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: GoogleMap(
-                    onMapCreated: (GoogleMapController controller) {
-                      _controller.complete(controller);
-                    },
-                    initialCameraPosition: _initialPosition,
-                    markers: _allMarkers,
-                    myLocationEnabled: true,
-                    myLocationButtonEnabled: false,
-                    zoomControlsEnabled: false,
-                    mapToolbarEnabled: false,
-                    onTap: widget.isPickupSelection ? _addPickupLocation : null,
+                  child: Stack(
+                    children: [
+                      GoogleMap(
+                        onMapCreated: (GoogleMapController controller) {
+                          _controller.complete(controller);
+                          _mapController = controller;
+                        },
+                        initialCameraPosition: _initialPosition,
+                        markers: _allMarkers,
+                        myLocationEnabled: true,
+                        myLocationButtonEnabled: false,
+                        zoomControlsEnabled: false,
+                        mapToolbarEnabled: false,
+                        // Draw the route polyline if available
+                        polylines: _routeInfo != null
+                            ? {
+                                Polyline(
+                                  polylineId: PolylineId('route'),
+                                  color: Colors.blue,
+                                  width: 5,
+                                  points: _routeInfo!.polylinePoints
+                                      .map(
+                                        (e) => LatLng(e.latitude, e.longitude),
+                                      )
+                                      .toList(),
+                                ),
+                              }
+                            : {},
+                      ),
+                      if (_isLoadingRoute)
+                        const Center(child: CircularProgressIndicator()),
+                      // Zoom controls
+                      MapZoomControls(mapController: _mapController),
+                    ],
                   ),
                 ),
               ),

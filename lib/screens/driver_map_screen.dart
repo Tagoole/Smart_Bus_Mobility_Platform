@@ -16,6 +16,10 @@ import 'package:smart_bus_mobility_platform1/resources/bus_service.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:smart_bus_mobility_platform1/resources/map_service.dart' as som;
+import 'package:smart_bus_mobility_platform1/utils/directions_repository.dart';
+import 'package:smart_bus_mobility_platform1/utils/directions_model.dart';
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+import 'package:smart_bus_mobility_platform1/widgets/map_zoom_controls.dart';
 
 class DriverMapScreen extends StatefulWidget {
   const DriverMapScreen({super.key});
@@ -26,6 +30,7 @@ class DriverMapScreen extends StatefulWidget {
 
 class _DriverMapScreenState extends State<DriverMapScreen> {
   final Completer<GoogleMapController> _controller = Completer();
+  GoogleMapController? _mapController;
   static final CameraPosition _initialPosition = CameraPosition(
     target: LatLng(
       0.34540783865964797,
@@ -53,7 +58,8 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   // Passengers data
   List<Map<String, dynamic>> _passengers = [];
   final Set<Marker> _allMarkers = {};
-  final Set<Polyline> _allPolylines = {};
+  Directions? _routeInfo;
+  bool _isLoadingRoute = false;
 
   // UI state
   bool _isLoading = true;
@@ -339,7 +345,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       }
 
       setState(() {
-        _driverLocation = LatLng(position!.latitude, position!.longitude);
+        _driverLocation = LatLng(position!.latitude, position.longitude);
         _isLoadingLocation = false;
       });
 
@@ -358,9 +364,9 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       await _drawOptimalRouteSOM();
 
       print(
-        'Location updated successfully: ${position?.latitude}, ${position?.longitude}',
+        'Location updated successfully: ${position.latitude}, ${position.longitude}',
       );
-        } catch (e) {
+    } catch (e) {
       print('Error getting location: $e');
 
       // Show appropriate error message
@@ -507,70 +513,27 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     );
   }
 
-  // Add this function to fetch route polyline from Google Directions API
-  Future<List<LatLng>> _getRoutePolyline(LatLng start, LatLng end) async {
-    if (kIsWeb) {
-      // Web: Use straight line as fallback due to CORS restrictions
-      print('Running on web - using straight line polyline');
-      return [start, end];
-    } else {
-      // Mobile: Use Google Directions API
-      final apiKey =
-          'AIzaSyC2n6urW_4DUphPLUDaNGAW_VN53j0RP4s'; // <-- Replace with your API key
-      final url =
-          'https://maps.googleapis.com/maps/api/directions/json?origin=${start.latitude},${start.longitude}&destination=${end.latitude},${end.longitude}&key=$apiKey';
-
-      try {
-        final response = await http.get(Uri.parse(url));
-        if (response.statusCode == 200) {
-          final data = json.decode(response.body);
-          if (data['routes'] != null && data['routes'].isNotEmpty) {
-            final points = data['routes'][0]['overview_polyline']['points'];
-            return _decodePolyline(points);
-          } else {
-            // Fallback to straight line if no route found
-            return [start, end];
-          }
-        } else {
-          print('Directions API error: ${response.statusCode}');
-          return [start, end];
-        }
-      } catch (e) {
-        print('Error fetching directions: $e');
-        return [start, end];
-      }
+  /// Fetches the route polyline from Google Directions API and updates _routeInfo
+  Future<void> _fetchRoutePolyline(LatLng start, LatLng end) async {
+    setState(() {
+      _isLoadingRoute = true;
+    });
+    try {
+      final directions = await DirectionsRepository().getDirections(
+        origin: start,
+        destination: end,
+      );
+      setState(() {
+        _routeInfo = directions;
+        _isLoadingRoute = false;
+      });
+    } catch (e) {
+      print('Error fetching route polyline: $e');
+      setState(() {
+        _routeInfo = null;
+        _isLoadingRoute = false;
+      });
     }
-  }
-
-  // Polyline decoder
-  List<LatLng> _decodePolyline(String encoded) {
-    List<LatLng> polyline = [];
-    int index = 0, len = encoded.length;
-    int lat = 0, lng = 0;
-
-    while (index < len) {
-      int b, shift = 0, result = 0;
-      do {
-        b = encoded.codeUnitAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-      lat += dlat;
-
-      shift = 0;
-      result = 0;
-      do {
-        b = encoded.codeUnitAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-      lng += dlng;
-
-      polyline.add(LatLng(lat / 1E5, lng / 1E5));
-    }
-    return polyline;
   }
 
   // Add this function to draw all polylines automatically
@@ -585,27 +548,12 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
           location['latitude'],
           location['longitude'],
         );
-        try {
-          final polylinePoints = await _getRoutePolyline(
-            _driverLocation!,
-            passengerLatLng,
-          );
-          polylines.add(
-            Polyline(
-              polylineId: PolylineId('route_to_passenger_${polylineId++}'),
-              points: polylinePoints,
-              color: Colors.blue,
-              width: 5,
-            ),
-          );
-        } catch (e) {
-          print('Error fetching polyline for passenger: $e');
-        }
+        await _fetchRoutePolyline(_driverLocation!, passengerLatLng);
       }
     }
     setState(() {
-      _allPolylines.clear();
-      _allPolylines.addAll(polylines);
+      // _allPolylines.clear(); // This line is removed as per the edit hint
+      // _allPolylines.addAll(polylines); // This line is removed as per the edit hint
     });
   }
 
@@ -708,15 +656,15 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     _updateMarkersWithRouteOrder(optimizedRoute.orderedStops);
 
     setState(() {
-      _allPolylines.clear();
-      _allPolylines.add(
-        Polyline(
-          polylineId: PolylineId('optimal_som_route'),
-          points: routeCoords,
-          color: Colors.deepPurple,
-          width: 5,
-        ),
-      );
+      // _allPolylines.clear(); // This line is removed as per the edit hint
+      // _allPolylines.add( // This line is removed as per the edit hint
+      //   Polyline( // This line is removed as per the edit hint
+      //     polylineId: PolylineId('optimal_som_route'), // This line is removed as per the edit hint
+      //     points: routeCoords, // This line is removed as per the edit hint
+      //     color: Colors.deepPurple, // This line is removed as per the edit hint
+      //     width: 5, // This line is removed as per the edit hint
+      //   ), // This line is removed as per the edit hint
+      // ); // This line is removed as per the edit hint
     });
 
     // Show route summary
@@ -1020,10 +968,25 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                           GoogleMap(
                             onMapCreated: (GoogleMapController controller) {
                               _controller.complete(controller);
+                              _mapController = controller;
                             },
                             initialCameraPosition: _initialPosition,
                             markers: _allMarkers,
-                            polylines: _allPolylines,
+                            polylines: _routeInfo != null
+                                ? {
+                                    Polyline(
+                                      polylineId: PolylineId('route'),
+                                      color: Colors.blue,
+                                      width: 5,
+                                      points: _routeInfo!.polylinePoints
+                                          .map(
+                                            (e) =>
+                                                LatLng(e.latitude, e.longitude),
+                                          )
+                                          .toList(),
+                                    ),
+                                  }
+                                : {},
                             myLocationEnabled: true,
                             myLocationButtonEnabled: false,
                             zoomControlsEnabled: false,
@@ -1032,6 +995,11 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                               // Handle map tap if needed
                             },
                           ),
+                          if (_isLoadingRoute)
+                            const Center(child: CircularProgressIndicator()),
+
+                          // Zoom controls
+                          MapZoomControls(mapController: _mapController),
 
                           // Route Summary Card
                           if (_showRouteSummary &&

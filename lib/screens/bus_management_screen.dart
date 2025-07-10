@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
-import 'package:smart_bus_mobility_platform1/screens/passenger_map_screen.dart'; // Added import for PassengerMapScreen
+// Added import for PassengerMapScreen
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:smart_bus_mobility_platform1/screens/admin_map_picker_screen.dart';
 import 'package:smart_bus_mobility_platform1/models/admin_route_point.dart';
+import 'package:smart_bus_mobility_platform1/utils/directions_repository.dart';
+import 'package:smart_bus_mobility_platform1/utils/directions_model.dart';
+import 'package:smart_bus_mobility_platform1/widgets/map_zoom_controls.dart';
 
 class BusManagementScreen extends StatefulWidget {
   const BusManagementScreen({super.key});
@@ -61,6 +64,9 @@ class _BusManagementScreenState extends State<BusManagementScreen>
   String? _pickedStartAddress;
   LatLng? _pickedDestinationLatLng;
   String? _pickedDestinationAddress;
+  Directions? _routeInfo;
+  bool _isLoadingRoute = false;
+  GoogleMapController? _mapController;
 
   @override
   void initState() {
@@ -230,8 +236,12 @@ class _BusManagementScreenState extends State<BusManagementScreen>
         longitude: _pickedDestinationLatLng!.longitude,
         createdAt: now,
       );
-      await _firestore.collection('admin_route_points').add(startPoint.toJson());
-      await _firestore.collection('admin_route_points').add(destinationPoint.toJson());
+      await _firestore
+          .collection('admin_route_points')
+          .add(startPoint.toJson());
+      await _firestore
+          .collection('admin_route_points')
+          .add(destinationPoint.toJson());
 
       // Clear form
       _formKey.currentState!.reset();
@@ -319,7 +329,9 @@ class _BusManagementScreenState extends State<BusManagementScreen>
 
   Future<void> _pickAdminLocation({required bool isStart}) async {
     final markerColor = isStart ? Colors.green : Colors.red;
-    final instructions = isStart ? 'Pick the START location for this bus route' : 'Pick the DESTINATION for this bus route';
+    final instructions = isStart
+        ? 'Pick the START location for this bus route'
+        : 'Pick the DESTINATION for this bus route';
     final markerIcon = BitmapDescriptor.defaultMarkerWithHue(
       isStart ? BitmapDescriptor.hueGreen : BitmapDescriptor.hueRed,
     );
@@ -333,7 +345,10 @@ class _BusManagementScreenState extends State<BusManagementScreen>
         ),
       ),
     );
-    if (result != null && result is Map && result['location'] != null && result['address'] != null) {
+    if (result != null &&
+        result is Map &&
+        result['location'] != null &&
+        result['address'] != null) {
       final LatLng latLng = result['location'];
       final String address = result['address'];
       setState(() {
@@ -348,7 +363,35 @@ class _BusManagementScreenState extends State<BusManagementScreen>
     }
   }
 
-  Widget _buildAdminMapPickerButton({required String label, required String? address, required VoidCallback onTap, required Color color}) {
+  Future<void> _fetchRoutePolyline() async {
+    if (_pickedStartLatLng == null || _pickedDestinationLatLng == null) return;
+    setState(() {
+      _isLoadingRoute = true;
+    });
+    try {
+      final directions = await DirectionsRepository().getDirections(
+        origin: _pickedStartLatLng!,
+        destination: _pickedDestinationLatLng!,
+      );
+      setState(() {
+        _routeInfo = directions;
+        _isLoadingRoute = false;
+      });
+    } catch (e) {
+      print('Error fetching route polyline: $e');
+      setState(() {
+        _routeInfo = null;
+        _isLoadingRoute = false;
+      });
+    }
+  }
+
+  Widget _buildAdminMapPickerButton({
+    required String label,
+    required String? address,
+    required VoidCallback onTap,
+    required Color color,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -852,7 +895,9 @@ class _BusManagementScreenState extends State<BusManagementScreen>
                   children: [
                     Expanded(
                       child: _buildAdminMapPickerButton(
-                        label: _pickedStartAddress == null ? 'Set Start on Map' : 'Change Start Location',
+                        label: _pickedStartAddress == null
+                            ? 'Set Start on Map'
+                            : 'Change Start Location',
                         address: _pickedStartAddress,
                         onTap: () => _pickAdminLocation(isStart: true),
                         color: Colors.green,
@@ -861,7 +906,9 @@ class _BusManagementScreenState extends State<BusManagementScreen>
                     const SizedBox(width: 16),
                     Expanded(
                       child: _buildAdminMapPickerButton(
-                        label: _pickedDestinationAddress == null ? 'Set Destination on Map' : 'Change Destination',
+                        label: _pickedDestinationAddress == null
+                            ? 'Set Destination on Map'
+                            : 'Change Destination',
                         address: _pickedDestinationAddress,
                         onTap: () => _pickAdminLocation(isStart: false),
                         color: Colors.red,
@@ -869,6 +916,86 @@ class _BusManagementScreenState extends State<BusManagementScreen>
                     ),
                   ],
                 ),
+                if (_pickedStartLatLng != null &&
+                    _pickedDestinationLatLng != null)
+                  Container(
+                    height: 220,
+                    margin: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Stack(
+                        children: [
+                          GoogleMap(
+                            onMapCreated: (GoogleMapController controller) {
+                              _mapController = controller;
+                            },
+                            initialCameraPosition: CameraPosition(
+                              target: _pickedStartLatLng!,
+                              zoom: 12,
+                            ),
+                            polylines: _routeInfo != null
+                                ? {
+                                    Polyline(
+                                      polylineId: PolylineId('route'),
+                                      points: _routeInfo!.polylinePoints
+                                          .map(
+                                            (e) =>
+                                                LatLng(e.latitude, e.longitude),
+                                          )
+                                          .toList(),
+                                      color: Colors.blue,
+                                      width: 5,
+                                    ),
+                                  }
+                                : {},
+                            markers: {
+                              Marker(
+                                markerId: MarkerId('start'),
+                                position: _pickedStartLatLng!,
+                                infoWindow: InfoWindow(
+                                  title: 'Start: $_pickedStartAddress',
+                                ),
+                                icon: BitmapDescriptor.defaultMarkerWithHue(
+                                  BitmapDescriptor.hueGreen,
+                                ),
+                              ),
+                              Marker(
+                                markerId: MarkerId('end'),
+                                position: _pickedDestinationLatLng!,
+                                infoWindow: InfoWindow(
+                                  title:
+                                      'Destination: $_pickedDestinationAddress',
+                                ),
+                                icon: BitmapDescriptor.defaultMarkerWithHue(
+                                  BitmapDescriptor.hueRed,
+                                ),
+                              ),
+                            },
+                            myLocationEnabled: false,
+                            myLocationButtonEnabled: false,
+                            zoomControlsEnabled: false,
+                            mapToolbarEnabled: false,
+                          ),
+                          if (_isLoadingRoute)
+                            const Center(child: CircularProgressIndicator()),
+                          // Zoom controls
+                          MapZoomControls(
+                            mapController: _mapController,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 const SizedBox(height: 16),
                 _buildTextField(
                   controller: _fareController,

@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:smart_bus_mobility_platform1/widgets/map_zoom_controls.dart';
 
 class PassengerMapScreen extends StatefulWidget {
   const PassengerMapScreen({super.key});
@@ -13,6 +14,7 @@ class PassengerMapScreen extends StatefulWidget {
 
 class _PassengerMapScreenState extends State<PassengerMapScreen> {
   final Completer<GoogleMapController> _controller = Completer();
+  GoogleMapController? _mapController;
   static final CameraPosition _initialPosition = CameraPosition(
     target: LatLng(0.34540783865964797, 32.54297125499706),
     zoom: 14,
@@ -102,14 +104,24 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: GoogleMap(
-          initialCameraPosition: _initialPosition,
-          mapType: MapType.normal,
-          markers: myPolylinemarker,
-          polylines: _myPolyline,
-          onMapCreated: (GoogleMapController controller) {
-            _controller.complete(controller);
-          },
+        child: Stack(
+          children: [
+            GoogleMap(
+              initialCameraPosition: _initialPosition,
+              mapType: MapType.normal,
+              markers: myPolylinemarker,
+              polylines: _myPolyline,
+              zoomControlsEnabled: false,
+              onMapCreated: (GoogleMapController controller) {
+                _controller.complete(controller);
+                _mapController = controller;
+              },
+            ),
+            // Zoom controls
+            MapZoomControls(
+              mapController: _mapController,
+            ),
+          ],
         ),
       ),
       floatingActionButton: FloatingActionButton(

@@ -8,6 +8,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'passenger_map_screen.dart';
 import 'selectseat_screen.dart';
 import 'package:intl/intl.dart';
+import 'package:smart_bus_mobility_platform1/utils/directions_repository.dart';
+import 'package:smart_bus_mobility_platform1/utils/directions_model.dart';
+import 'package:smart_bus_mobility_platform1/widgets/map_zoom_controls.dart';
 
 void main() {
   runApp(const BusBooking());
@@ -62,6 +65,10 @@ class _FindBusScreenState extends State<FindBusScreen> {
   AdminRoutePoint? _startRoutePoint;
   AdminRoutePoint? _destinationRoutePoint;
   bool _isLoadingRoutePoints = false;
+
+  Directions? _routeInfo;
+  bool _isLoadingRoute = false;
+  GoogleMapController? _mapController;
 
   final TextEditingController _departureDateController =
       TextEditingController();
@@ -424,6 +431,28 @@ class _FindBusScreenState extends State<FindBusScreen> {
     }
   }
 
+  Future<void> _fetchRoutePolyline(LatLng start, LatLng end) async {
+    setState(() {
+      _isLoadingRoute = true;
+    });
+    try {
+      final directions = await DirectionsRepository().getDirections(
+        origin: start,
+        destination: end,
+      );
+      setState(() {
+        _routeInfo = directions;
+        _isLoadingRoute = false;
+      });
+    } catch (e) {
+      print('Error fetching route polyline: $e');
+      setState(() {
+        _routeInfo = null;
+        _isLoadingRoute = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -624,11 +653,15 @@ class _FindBusScreenState extends State<FindBusScreen> {
         selectedBus!.destinationLng != null) {
       start = LatLng(selectedBus!.startLat!, selectedBus!.startLng!);
       end = LatLng(selectedBus!.destinationLat!, selectedBus!.destinationLng!);
-      startLabel = 'Start';
-      endLabel = 'Destination';
+      startLabel = 'From: ${selectedBus!.startPoint}';
+      endLabel = 'To: ${selectedBus!.destination}';
     }
     if (start == null || end == null) {
       return SizedBox.shrink();
+    }
+    // Fetch the route polyline when both points are available
+    if (_routeInfo == null && !_isLoadingRoute) {
+      _fetchRoutePolyline(start, end);
     }
     return Container(
       height: 220,
@@ -645,38 +678,53 @@ class _FindBusScreenState extends State<FindBusScreen> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        child: GoogleMap(
-          initialCameraPosition: CameraPosition(target: start, zoom: 12),
-          polylines: {
-            Polyline(
-              polylineId: PolylineId('route'),
-              points: [start, end],
-              color: Colors.blue,
-              width: 5,
+        child: Stack(
+          children: [
+            GoogleMap(
+              onMapCreated: (GoogleMapController controller) {
+                _mapController = controller;
+              },
+              initialCameraPosition: CameraPosition(target: start, zoom: 12),
+              polylines: _routeInfo != null
+                  ? {
+                      Polyline(
+                        polylineId: PolylineId('route'),
+                        points: _routeInfo!.polylinePoints
+                            .map((e) => LatLng(e.latitude, e.longitude))
+                            .toList(),
+                        color: Colors.blue,
+                        width: 5,
+                      ),
+                    }
+                  : {},
+              markers: {
+                Marker(
+                  markerId: MarkerId('start'),
+                  position: start,
+                  infoWindow: InfoWindow(title: startLabel),
+                  icon: BitmapDescriptor.defaultMarkerWithHue(
+                    BitmapDescriptor.hueGreen,
+                  ),
+                ),
+                Marker(
+                  markerId: MarkerId('end'),
+                  position: end,
+                  infoWindow: InfoWindow(title: endLabel),
+                  icon: BitmapDescriptor.defaultMarkerWithHue(
+                    BitmapDescriptor.hueRed,
+                  ),
+                ),
+              },
+              myLocationEnabled: false,
+              myLocationButtonEnabled: false,
+              zoomControlsEnabled: false,
+              mapToolbarEnabled: false,
             ),
-          },
-          markers: {
-            Marker(
-              markerId: MarkerId('start'),
-              position: start,
-              infoWindow: InfoWindow(title: startLabel),
-              icon: BitmapDescriptor.defaultMarkerWithHue(
-                BitmapDescriptor.hueGreen,
-              ),
-            ),
-            Marker(
-              markerId: MarkerId('end'),
-              position: end,
-              infoWindow: InfoWindow(title: endLabel),
-              icon: BitmapDescriptor.defaultMarkerWithHue(
-                BitmapDescriptor.hueRed,
-              ),
-            ),
-          },
-          myLocationEnabled: false,
-          myLocationButtonEnabled: false,
-          zoomControlsEnabled: false,
-          mapToolbarEnabled: false,
+            if (_isLoadingRoute)
+              const Center(child: CircularProgressIndicator()),
+            // Zoom controls
+            MapZoomControls(mapController: _mapController),
+          ],
         ),
       ),
     );
@@ -745,6 +793,69 @@ class _FindBusScreenState extends State<FindBusScreen> {
           ),
           // Show the route map if a bus is selected
           _buildRouteMapSection(),
+
+          // Route Information Display
+          if (selectedBus != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8F9FA),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE9ECEF)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF576238),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.route,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Selected Route',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF6C757D),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${selectedBus!.startPoint} → ${selectedBus!.destination}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF212529),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${selectedBus!.vehicleModel} • ${selectedBus!.seatCapacity} seats',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF6C757D),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           const SizedBox(height: 20),
 
           // Trip Type Selection

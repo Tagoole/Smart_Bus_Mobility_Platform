@@ -4,6 +4,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'dart:async';
+import 'package:smart_bus_mobility_platform1/widgets/map_zoom_controls.dart';
 
 class BusDriverHomeScreen extends StatefulWidget {
   @override
@@ -647,6 +649,49 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
             ),
 
             // Live Map Section
+            Container(
+              margin: EdgeInsets.all(16),
+              height: 300,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.2),
+                    spreadRadius: 2,
+                    blurRadius: 5,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Stack(
+                  children: [
+                    _currentPosition != null
+                        ? GoogleMap(
+                            initialCameraPosition: CameraPosition(
+                              target: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+                              zoom: 15,
+                            ),
+                            onMapCreated: (GoogleMapController controller) {
+                              _mapController = controller;
+                            },
+                            markers: _markers,
+                            polylines: _polylines,
+                            myLocationEnabled: true,
+                            myLocationButtonEnabled: false,
+                            zoomControlsEnabled: false,
+                          )
+                        : Center(child: CircularProgressIndicator()),
+                    // Zoom controls
+                    if (_currentPosition != null)
+                      MapZoomControls(
+                        mapController: _mapController,
+                      ),
+                  ],
+                ),
+              ),
+            ),
 
             // Quick Actions Grid
             Container(
