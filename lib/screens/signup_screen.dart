@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+/*import 'package:flutter/material.dart';
 import 'package:smart_bus_mobility_platform1/resources/auth_service.dart';
 import 'package:smart_bus_mobility_platform1/routes/app_routes.dart';
 
@@ -161,7 +161,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withValues(alpha: 0.9),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -179,7 +179,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         width: 50,
                         height: 50,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           shape: BoxShape.circle,
                           image: const DecorationImage(
                             image: AssetImage('assets/images/bus2_sign_in.png'),
@@ -458,7 +458,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         border: Border.all(color: const Color(0xFF9CCB3E), width: 1),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF9CCB3E).withOpacity(0.2),
+            color: const Color(0xFF9CCB3E).withValues(alpha: 0.2),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -494,3 +494,4 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 }
+*/

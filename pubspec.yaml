@@ -19,8 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  #sdk: ^3.8.1
-  sdk: ">=2.12.0 <3.0.0"
+  sdk: ">=3.0.0 <4.0.0"
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -32,7 +31,7 @@ dependencies:
   flutter:
     sdk: flutter
   google_fonts: 
-  flutter_google_places: 
+  #flutter_google_places: 
 
   awesome_snackbar_content: 
 
@@ -46,13 +45,19 @@ dependencies:
   location:
 
   flutter_bloc: ^8.1.4
+  bloc: ^8.1.4
   flutter_spinkit:
   equatable: ^2.0.5
+  provider: ^6.1.1
   #flutter_polyline_points: ^2.1.0
 
   http: ^0.13.1
   flutter_secure_storage: ^9.0.0
   dio: 
+
+  # Google Places API dependencies
+  google_maps_webservice: ^0.0.20-nullsafety.5
+  flutter_google_places: ^0.3.0
 
   firebase_messaging: ^14.7.19
   firebase_auth: ^4.17.5

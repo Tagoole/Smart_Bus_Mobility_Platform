@@ -192,7 +192,7 @@ class _EmailVerificationSuccessScreenAnimatedState
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(
-              color: _darkGreen.withOpacity(0.1),
+              color: _darkGreen.withValues(alpha: 0.1),
               width: 2,
             ),
           ),
@@ -204,9 +204,9 @@ class _EmailVerificationSuccessScreenAnimatedState
           height: 130,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: _lightGreen.withOpacity(0.1),
+            color: _lightGreen.withValues(alpha: 0.1),
             border: Border.all(
-              color: _lightGreen.withOpacity(0.3),
+              color: _lightGreen.withValues(alpha: 0.3),
               width: 1,
             ),
           ),

@@ -173,7 +173,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF576238).withOpacity(0.3),
+                        color: const Color(0xFF576238).withValues(alpha: 0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -285,7 +285,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         gradient: LinearGradient(
           colors: [
             Colors.white,
-            const Color(0xFFF0EADC).withOpacity(0.2),
+            const Color(0xFFF0EADC).withValues(alpha: 0.2),
           ],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
@@ -294,7 +294,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -328,7 +328,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFD95D).withOpacity(0.1),
+              color: const Color(0xFFFFD95D).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(16),
             ),
             child: const Column(
@@ -457,9 +457,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  item['bgColor'].withOpacity(0.35),
+                  item['bgColor'].withValues(alpha: 0.35),
                   Colors.white,
-                  item['bgColor'].withOpacity(0.15),
+                  item['bgColor'].withValues(alpha: 0.15),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -467,7 +467,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: item['color'].withOpacity(0.18),
+                  color: item['color'].withValues(alpha: 0.18),
                   blurRadius: 18,
                   spreadRadius: 2,
                   offset: const Offset(0, 8),
@@ -484,14 +484,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: item['color'].withOpacity(0.4),
+                          color: item['color'].withValues(alpha: 0.4),
                           blurRadius: 18,
                           spreadRadius: 2,
                         ),
                       ],
                     ),
                     child: CircleAvatar(
-                      backgroundColor: item['bgColor'].withOpacity(0.18),
+                      backgroundColor: item['bgColor'].withValues(alpha: 0.18),
                       radius: 22,
                       child: Icon(
                         item['icon'],
@@ -514,7 +514,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                       letterSpacing: 1.2,
                       shadows: [
                         Shadow(
-                          color: item['color'].withOpacity(0.2),
+                          color: item['color'].withValues(alpha: 0.2),
                           blurRadius: 6,
                           offset: const Offset(0, 2),
                         ),
@@ -545,7 +545,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                       child: LinearProgressIndicator(
                         value: progress,
                         minHeight: 6,
-                        backgroundColor: item['color'].withOpacity(0.10),
+                        backgroundColor: item['color'].withValues(alpha: 0.10),
                         valueColor: AlwaysStoppedAnimation<Color>(item['color']),
                       ),
                     );
@@ -695,7 +695,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 : null,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.07),
+                color: Colors.black.withValues(alpha: 0.07),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -842,7 +842,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),

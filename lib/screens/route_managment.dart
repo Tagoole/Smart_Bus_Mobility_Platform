@@ -161,7 +161,7 @@ class _RouteManagementScreenState extends State<RouteManagementScreen> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.03),
+                        color: Colors.black.withValues(alpha: 0.03),
                         blurRadius: 8,
                         offset: const Offset(2, 0),
                       ),
@@ -229,7 +229,7 @@ class _RouteManagementScreenState extends State<RouteManagementScreen> {
                       if (provider.pickupPoints.isEmpty)
                         Positioned.fill(
                           child: Container(
-                            color: Colors.white.withOpacity(0.85),
+                            color: Colors.white.withValues(alpha: 0.85),
                             child: Center(
                               child: Card(
                                 elevation: 6,
@@ -710,7 +710,7 @@ class MapViewWidget extends StatelessWidget {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.12),
+                            color: Colors.black.withValues(alpha: 0.12),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -730,7 +730,7 @@ class MapViewWidget extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
+                            color: Colors.black.withValues(alpha: 0.08),
                             blurRadius: 4,
                           ),
                         ],

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+/*import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:smart_bus_mobility_platform1/resources/bus_service.dart';
 import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
@@ -524,7 +524,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Color(0xFFE0E0E0).withOpacity(0.1),
+            color: Color(0xFFE0E0E0).withValues(alpha: 0.1),
             spreadRadius: 1,
             blurRadius: 5,
             offset: const Offset(0, 2),
@@ -674,7 +674,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 8,
             offset: Offset(0, 4),
           ),
@@ -738,7 +738,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Color(0xFFE0E0E0).withOpacity(0.1),
+            color: Color(0xFFE0E0E0).withValues(alpha: 0.1),
             spreadRadius: 1,
             blurRadius: 5,
             offset: const Offset(0, 2),
@@ -1409,3 +1409,4 @@ class _FindBusScreenState extends State<FindBusScreen> {
     );
   }
 }
+*/

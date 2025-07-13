@@ -144,10 +144,10 @@ class _HomeScreenState extends State<HomeScreen>
                             width: 120,
                             height: 120,
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(30),
                               border: Border.all(
-                                color: Colors.white.withOpacity(0.3),
+                                color: Colors.white.withValues(alpha: 0.3),
                                 width: 2,
                               ),
                             ),
@@ -178,7 +178,7 @@ class _HomeScreenState extends State<HomeScreen>
                             'Optimize pickup routes with advanced TSP algorithms\nfor maximum efficiency and fuel savings',
                             style: TextStyle(
                               fontSize: 18,
-                              color: Colors.white.withOpacity(0.9),
+                              color: Colors.white.withValues(alpha: 0.9),
                               height: 1.5,
                             ),
                             textAlign: TextAlign.center,
@@ -206,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   borderRadius: BorderRadius.circular(30),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.2),
+                                      color: Colors.black.withValues(alpha: 0.2),
                                       blurRadius: 20,
                                       offset: const Offset(0, 10),
                                     ),
@@ -336,10 +336,10 @@ class _HomeScreenState extends State<HomeScreen>
             child: Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
+                color: Colors.white.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                 ),
               ),
               child: ClipRRect(
@@ -347,7 +347,7 @@ class _HomeScreenState extends State<HomeScreen>
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                   child: Container(
-                    color: Colors.white.withOpacity(0.05), // Add this for blur to show
+                    color: Colors.white.withValues(alpha: 0.05), // Add this for blur to show
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -355,7 +355,7 @@ class _HomeScreenState extends State<HomeScreen>
                           width: 64,
                           height: 64,
                           decoration: BoxDecoration(
-                            color: color.withOpacity(0.2),
+                            color: color.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Icon(
@@ -379,7 +379,7 @@ class _HomeScreenState extends State<HomeScreen>
                           description,
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white.withValues(alpha: 0.8),
                             height: 1.4,
                           ),
                           textAlign: TextAlign.center,
@@ -400,10 +400,10 @@ class _HomeScreenState extends State<HomeScreen>
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
@@ -465,7 +465,7 @@ class _HomeScreenState extends State<HomeScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -491,7 +491,7 @@ class _HomeScreenState extends State<HomeScreen>
             subtitle,
             style: TextStyle(
               fontSize: 12,
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withValues(alpha: 0.7),
             ),
             textAlign: TextAlign.center,
           ),
@@ -696,7 +696,7 @@ class _RouteOptimizerScreenState extends State<RouteOptimizerScreen>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             spreadRadius: 0,
             blurRadius: 20,
             offset: const Offset(0, 4),
@@ -775,7 +775,7 @@ class _RouteOptimizerScreenState extends State<RouteOptimizerScreen>
                               color: (_optimizedRoute.isNotEmpty
                                       ? Colors.green
                                       : Colors.red)
-                                  .withOpacity(0.3),
+                                  .withValues(alpha: 0.3),
                               blurRadius: 10,
                               spreadRadius: 2,
                             ),
@@ -874,7 +874,7 @@ class _RouteOptimizerScreenState extends State<RouteOptimizerScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             spreadRadius: 0,
             blurRadius: 10,
             offset: const Offset(0, 2),
@@ -945,7 +945,7 @@ class _RouteOptimizerScreenState extends State<RouteOptimizerScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             spreadRadius: 0,
             blurRadius: 10,
             offset: const Offset(0, 2),
@@ -1000,13 +1000,13 @@ class _RouteOptimizerScreenState extends State<RouteOptimizerScreen>
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isOptimized
-              ? Colors.green.withOpacity(0.05)
-              : Colors.grey.withOpacity(0.05),
+              ? Colors.green.withValues(alpha: 0.05)
+              : Colors.grey.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isOptimized
-                ? Colors.green.withOpacity(0.2)
-                : Colors.grey.withOpacity(0.2),
+                ? Colors.green.withValues(alpha: 0.2)
+                : Colors.grey.withValues(alpha: 0.2),
           ),
         ),
         child: Row(
@@ -1263,10 +1263,10 @@ class GlassmorphismCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(opacity),
+        color: Colors.white.withValues(alpha: opacity),
         borderRadius: borderRadius ?? BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withValues(alpha: 0.2),
         ),
       ),
       child: child,
@@ -1345,7 +1345,7 @@ class _EnhancedButtonState extends State<EnhancedButton>
                   colors: [
                     widget.backgroundColor ?? Theme.of(context).primaryColor,
                     (widget.backgroundColor ?? Theme.of(context).primaryColor)
-                        .withOpacity(0.8),
+                        .withValues(alpha: 0.8),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(12),
@@ -1353,7 +1353,7 @@ class _EnhancedButtonState extends State<EnhancedButton>
                   BoxShadow(
                     color: (widget.backgroundColor ??
                             Theme.of(context).primaryColor)
-                        .withOpacity(0.3),
+                        .withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),

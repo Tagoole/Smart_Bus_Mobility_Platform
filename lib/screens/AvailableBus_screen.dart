@@ -167,7 +167,7 @@ class _AvailableBus extends State<AvailableBus> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
@@ -233,12 +233,12 @@ class _AvailableBus extends State<AvailableBus> {
         color: const Color.fromARGB(255, 77, 78, 61), // Light cream/yellow
         borderRadius: BorderRadius.circular(28),
         border: Border.all(
-          color: const Color(0xFF004225).withOpacity(0.2),
+          color: const Color(0xFF004225).withValues(alpha: 0.2),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             spreadRadius: 1,
             blurRadius: 5,
             offset: const Offset(0, 2),

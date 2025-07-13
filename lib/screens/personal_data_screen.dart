@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+/*import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'nav_bar_screen.dart'; // Import your existing NavBarScreen
@@ -249,14 +249,14 @@ Navigator.pushReplacement(
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: Colors.yellow.withOpacity(0.4),
+                    color: Colors.yellow.withValues(alpha: 0.4),
                     blurRadius: 10,
                     spreadRadius: 3,
                   ),
                 ]
               : [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 5,
                     spreadRadius: 1,
                   ),
@@ -284,10 +284,10 @@ Navigator.pushReplacement(
       decoration: BoxDecoration(
         color: Colors.green[800],
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.yellow.withOpacity(0.3), width: 1),
+        border: Border.all(color: Colors.yellow.withValues(alpha: 0.3), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -345,7 +345,7 @@ Navigator.pushReplacement(
             colors: [
               const Color(0xFF004d00),
               const Color(0xFF006400),
-              const Color(0xFF808080).withOpacity(0.3),
+              const Color(0xFF808080).withValues(alpha: 0.3),
             ],
             stops: const [0.0, 0.6, 1.0],
           ),
@@ -361,7 +361,7 @@ Navigator.pushReplacement(
                   children: [
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         shape: BoxShape.circle,
                       ),
                       child: IconButton(
@@ -379,7 +379,7 @@ Navigator.pushReplacement(
                     ),
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         shape: BoxShape.circle,
                       ),
                       child: IconButton(
@@ -478,10 +478,10 @@ Navigator.pushReplacement(
                         Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(25),
                             border: Border.all(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                             ),
                           ),
                           child: Column(
@@ -571,11 +571,11 @@ Navigator.pushReplacement(
         margin: const EdgeInsets.all(16),
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
         decoration: BoxDecoration(
-          color: Colors.green.withOpacity(0.8),
+          color: Colors.green.withValues(alpha: 0.8),
           borderRadius: BorderRadius.circular(30),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.15),
+              color: Colors.black.withValues(alpha: 0.15),
               blurRadius: 15,
               offset: const Offset(0, -3),
             ),
@@ -612,3 +612,4 @@ Navigator.pushReplacement(
     super.dispose();
   }
 }
+*/

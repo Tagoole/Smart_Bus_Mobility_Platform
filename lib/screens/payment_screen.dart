@@ -57,11 +57,11 @@ class _PaymentScreen extends State<PaymentScreen> {
       margin: const EdgeInsets.all(20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -89,11 +89,11 @@ class _PaymentScreen extends State<PaymentScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(25),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -108,13 +108,13 @@ class _PaymentScreen extends State<PaymentScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 15),
                 decoration: BoxDecoration(
                   color: isManualSelected
-                      ? Colors.green.withOpacity(0.8)
+                      ? Colors.green.withValues(alpha: 0.8)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: isManualSelected
                       ? [
                           BoxShadow(
-                            color: Colors.green.withOpacity(0.5),
+                            color: Colors.green.withValues(alpha: 0.5),
                             blurRadius: 8,
                             offset: const Offset(0, 3),
                           ),
@@ -152,13 +152,13 @@ class _PaymentScreen extends State<PaymentScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 15),
                 decoration: BoxDecoration(
                   color: !isManualSelected
-                      ? Colors.green.withOpacity(0.8)
+                      ? Colors.green.withValues(alpha: 0.8)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: !isManualSelected
                       ? [
                           BoxShadow(
-                            color: Colors.green.withOpacity(0.5),
+                            color: Colors.green.withValues(alpha: 0.5),
                             blurRadius: 8,
                             offset: const Offset(0, 3),
                           ),
@@ -199,11 +199,11 @@ class _PaymentScreen extends State<PaymentScreen> {
       margin: const EdgeInsets.all(20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -254,12 +254,12 @@ class _PaymentScreen extends State<PaymentScreen> {
               decoration: BoxDecoration(
                 color: isMTNSelected
                     ? Colors.amber
-                    : Colors.amber.withOpacity(0.3),
+                    : Colors.amber.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(10),
                 boxShadow: isMTNSelected
                     ? [
                         BoxShadow(
-                          color: Colors.amber.withOpacity(0.5),
+                          color: Colors.amber.withValues(alpha: 0.5),
                           blurRadius: 8,
                           offset: const Offset(0, 3),
                         ),
@@ -287,12 +287,12 @@ class _PaymentScreen extends State<PaymentScreen> {
               decoration: BoxDecoration(
                 color: !isMTNSelected
                     ? Colors.redAccent
-                    : Colors.redAccent.withOpacity(0.3),
+                    : Colors.redAccent.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(10),
                 boxShadow: !isMTNSelected
                     ? [
                         BoxShadow(
-                          color: Colors.redAccent.withOpacity(0.5),
+                          color: Colors.redAccent.withValues(alpha: 0.5),
                           blurRadius: 8,
                           offset: const Offset(0, 3),
                         ),
@@ -319,7 +319,7 @@ class _PaymentScreen extends State<PaymentScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.3),
+        color: Colors.black.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.green, width: 2),
       ),
@@ -356,7 +356,7 @@ class _PaymentScreen extends State<PaymentScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 15),
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: Colors.green, width: 2),
           ),
@@ -377,7 +377,7 @@ class _PaymentScreen extends State<PaymentScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 15),
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: Colors.green, width: 2),
           ),
@@ -479,11 +479,11 @@ class _PaymentScreen extends State<PaymentScreen> {
       margin: const EdgeInsets.all(20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -523,7 +523,7 @@ class _PaymentScreen extends State<PaymentScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 15),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: Colors.green, width: 2),
             ),
@@ -580,7 +580,7 @@ class _PaymentScreen extends State<PaymentScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.3),
+        color: Colors.black.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.green, width: 2),
       ),

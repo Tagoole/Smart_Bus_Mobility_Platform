@@ -18,7 +18,8 @@ class Directions {
   /// Factory to create Directions from a Google Directions API response map.
   factory Directions.fromMap(Map<String, dynamic> map) {
     // Check if route is not available
-    if ((map['routes'] as List).isEmpty) return throw Exception('No routes found');
+    if ((map['routes'] as List).isEmpty)
+      return throw Exception('No routes found');
 
     // Get route information
     final data = Map<String, dynamic>.from(map['routes'][0]);
@@ -43,9 +44,9 @@ class Directions {
     return Directions(
       bounds: bounds,
       //polylinePoints:
-          //PolylinePoints().decodePolyline(data['overview_polyline']['points']),
+      //PolylinePoints().decodePolyline(data['overview_polyline']['points']),
       totalDistance: distance,
       totalDuration: duration,
     );
   }
-} 
+}

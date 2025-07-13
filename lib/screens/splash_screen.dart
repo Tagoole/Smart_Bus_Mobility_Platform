@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+/*import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -316,7 +316,7 @@ class _SplashScreenState extends State<SplashScreen>
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
@@ -392,7 +392,7 @@ class _SplashScreenState extends State<SplashScreen>
                   Shadow(
                     offset: Offset(3, 3),
                     blurRadius: 8,
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withValues(alpha: 0.2),
                   ),
                 ],
               ),
@@ -448,7 +448,7 @@ class _SplashScreenState extends State<SplashScreen>
                       border: Border.all(color: Colors.white, width: 3),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 15,
                           offset: Offset(0, 8),
                         ),
@@ -606,8 +606,8 @@ class _SplashScreenState extends State<SplashScreen>
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        Colors.white.withOpacity(0.9),
-                        Colors.white.withOpacity(0.7),
+                        Colors.white.withValues(alpha: 0.9),
+                        Colors.white.withValues(alpha: 0.7),
                       ],
                     ),
                     border: Border.all(
@@ -616,7 +616,7 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(
+                        color: Colors.black.withValues(alpha: 
                           isSelected ? 0.25 : 0.15,
                         ),
                         blurRadius: isSelected ? 30 : 20,
@@ -680,7 +680,7 @@ class _SplashScreenState extends State<SplashScreen>
             foreground: Paint()
               ..style = PaintingStyle.stroke
               ..strokeWidth = strokeWidth + 2
-              ..color = strokeColor.withOpacity(0.3),
+              ..color = strokeColor.withValues(alpha: 0.3),
           ),
         ),
         // Main stroke
@@ -700,7 +700,7 @@ class _SplashScreenState extends State<SplashScreen>
         // Fill with gradient effect
         ShaderMask(
           shaderCallback: (bounds) => LinearGradient(
-            colors: [fillColor, fillColor.withOpacity(0.8)],
+            colors: [fillColor, fillColor.withValues(alpha: 0.8)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ).createShader(bounds),
@@ -770,3 +770,4 @@ class DottedPathPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
+*/

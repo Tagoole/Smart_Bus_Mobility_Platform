@@ -246,9 +246,9 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
         height: 120,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: _lightCream.withOpacity(0.8),
+          color: _lightCream.withValues(alpha: 0.8),
           border: Border.all(
-            color: _darkGreen.withOpacity(0.2),
+            color: _darkGreen.withValues(alpha: 0.2),
             width: 2,
           ),
         ),
@@ -265,11 +265,11 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: _lightCream.withOpacity(0.9),
+        color: _lightCream.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -343,7 +343,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
             color: _lightYellow,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: _focusNodes[index].hasFocus ? _darkGreen : _darkGreen.withOpacity(0.3),
+              color: _focusNodes[index].hasFocus ? _darkGreen : _darkGreen.withValues(alpha: 0.3),
               width: 2,
             ),
           ),
@@ -389,7 +389,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       child: ElevatedButton(
         onPressed: _isButtonEnabled ? _onContinuePressed : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: _isButtonEnabled ? _darkGreen : _darkGreen.withOpacity(0.5),
+          backgroundColor: _isButtonEnabled ? _darkGreen : _darkGreen.withValues(alpha: 0.5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(28),
           ),

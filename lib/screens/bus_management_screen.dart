@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+/*import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
@@ -494,7 +494,7 @@ class _BusManagementScreenState extends State<BusManagementScreen>
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF576238).withOpacity(0.3),
+                    color: const Color(0xFF576238).withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),
@@ -614,7 +614,7 @@ class _BusManagementScreenState extends State<BusManagementScreen>
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -926,7 +926,7 @@ class _BusManagementScreenState extends State<BusManagementScreen>
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
+                          color: Colors.black.withValues(alpha: 0.08),
                           blurRadius: 8,
                           offset: Offset(0, 4),
                         ),
@@ -1176,3 +1176,4 @@ class _BusManagementScreenState extends State<BusManagementScreen>
     );
   }
 }
+*/
