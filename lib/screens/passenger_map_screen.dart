@@ -66,6 +66,10 @@ class _PassengerMapScreenState extends State<PassengerMapScreen>
   Directions? _originalRouteInfo; // Original route from start to destination
   bool _isLoadingRoute = false;
 
+  // Booking information for multiple pickup icons
+  int _adultCount = 1;
+  int _childrenCount = 0;
+
   // Automatic refresh mechanisms
   Timer? _dataRefreshTimer;
   Timer? _routeRefreshTimer;
@@ -134,6 +138,9 @@ class _PassengerMapScreenState extends State<PassengerMapScreen>
             setState(() {
               _bookedBus = BusModel.fromJson(busData, busId);
               _hasActiveBooking = true;
+              // Load booking information for multiple pickup icons
+              _adultCount = bookingData['adultCount'] ?? 1;
+              _childrenCount = bookingData['childrenCount'] ?? 0;
             });
 
             // Load pickup location from booking
@@ -578,28 +585,62 @@ class _PassengerMapScreenState extends State<PassengerMapScreen>
       );
     }
 
-    // Add pickup location marker
-    if (_pickupLocation != null && _pickupMarkerIcon != null) {
+    // Add bus start location marker (always show when bus is available)
+    if (_bookedBus != null &&
+        _bookedBus!.startLat != null &&
+        _bookedBus!.startLng != null) {
       _allMarkers.add(
         Marker(
-          markerId: MarkerId('pickup_location'),
-          position: _pickupLocation!,
-          icon: _pickupMarkerIcon!,
+          markerId: MarkerId('bus_start_location'),
+          position: LatLng(_bookedBus!.startLat!, _bookedBus!.startLng!),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
           anchor: Offset(0.5, 0.5), // Center the marker
           flat: true, // Keep marker flat (not tilted)
           infoWindow: InfoWindow(
-            title: 'Pickup Location',
-            snippet: widget.isPickupSelection
-                ? 'Tap to remove'
-                : 'Selected pickup point',
+            title: 'Bus Start Location',
+            snippet: _bookedBus!.startPoint.isNotEmpty
+                ? _bookedBus!.startPoint
+                : 'Bus starting point',
           ),
-          onTap: () => _removePickupLocation(),
         ),
       );
     }
 
+    // Add pickup location markers - multiple icons based on passenger count
+    if (_pickupLocation != null && _pickupMarkerIcon != null) {
+      final totalPassengers = _adultCount + _childrenCount;
+
+      // Create multiple markers based on total passenger count
+      for (int i = 0; i < totalPassengers; i++) {
+        // Slightly offset each marker to avoid overlap
+        final offset = i * 0.0001; // Small offset in degrees
+        final offsetLatLng = LatLng(
+          _pickupLocation!.latitude + offset,
+          _pickupLocation!.longitude + offset,
+        );
+
+        _allMarkers.add(
+          Marker(
+            markerId: MarkerId('pickup_location_$i'),
+            position: offsetLatLng,
+            icon: _pickupMarkerIcon!,
+            anchor: Offset(0.5, 0.5), // Center the marker
+            flat: true, // Keep marker flat (not tilted)
+            infoWindow: InfoWindow(
+              title: 'Pickup Location (${i + 1}/$totalPassengers)',
+              snippet: widget.isPickupSelection
+                  ? 'Tap to remove'
+                  : 'Selected pickup point',
+            ),
+            onTap: () => _removePickupLocation(),
+          ),
+        );
+      }
+    }
+
     // Add bus marker if tracking
     if (_busLocation != null && _busMarkerIcon != null && _bookedBus != null) {
+      final totalPassengers = _adultCount + _childrenCount;
       _allMarkers.add(
         Marker(
           markerId: MarkerId('bus_location'),
@@ -609,7 +650,8 @@ class _PassengerMapScreenState extends State<PassengerMapScreen>
           flat: true, // Keep marker flat (not tilted)
           infoWindow: InfoWindow(
             title: 'Your Bus',
-            snippet: '${_bookedBus!.numberPlate} • ETA: $_estimatedArrival',
+            snippet:
+                '${_bookedBus!.numberPlate} • ETA: $_estimatedArrival • $totalPassengers passengers',
           ),
         ),
       );
@@ -753,28 +795,69 @@ class _PassengerMapScreenState extends State<PassengerMapScreen>
         _pickupLocation!.longitude,
       );
 
-      String address = 'Selected Location';
+      String address;
       if (placemarks.isNotEmpty) {
         final placemark = placemarks.first;
-        final name = placemark.name ?? '';
-        final street = placemark.street ?? '';
-        final locality = placemark.locality ?? '';
-        final country = placemark.country ?? '';
-        address = [
-          name,
-          street,
-          locality,
-          country,
-        ].where((part) => part.isNotEmpty).join(', ');
-        if (address.isEmpty) address = 'Selected Location';
+
+        // Build a more comprehensive address
+        final addressParts = <String>[];
+
+        // Add name if available and meaningful
+        if (placemark.name != null &&
+            placemark.name!.isNotEmpty &&
+            placemark.name != placemark.street) {
+          addressParts.add(placemark.name!);
+        }
+
+        // Add street
+        if (placemark.street != null && placemark.street!.isNotEmpty) {
+          addressParts.add(placemark.street!);
+        }
+
+        // Add sublocality (neighborhood)
+        if (placemark.subLocality != null &&
+            placemark.subLocality!.isNotEmpty) {
+          addressParts.add(placemark.subLocality!);
+        }
+
+        // Add locality (city)
+        if (placemark.locality != null && placemark.locality!.isNotEmpty) {
+          addressParts.add(placemark.locality!);
+        }
+
+        // Add administrative area (state/province)
+        if (placemark.administrativeArea != null &&
+            placemark.administrativeArea!.isNotEmpty) {
+          addressParts.add(placemark.administrativeArea!);
+        }
+
+        // Add country
+        if (placemark.country != null && placemark.country!.isNotEmpty) {
+          addressParts.add(placemark.country!);
+        }
+
+        // Create the final address
+        if (addressParts.isNotEmpty) {
+          address = addressParts.join(', ');
+        } else {
+          // Fallback: use coordinates if no meaningful address found
+          address =
+              '${_pickupLocation!.latitude.toStringAsFixed(6)}, ${_pickupLocation!.longitude.toStringAsFixed(6)}';
+        }
+      } else {
+        // No placemarks found, use coordinates
+        address =
+            '${_pickupLocation!.latitude.toStringAsFixed(6)}, ${_pickupLocation!.longitude.toStringAsFixed(6)}';
       }
 
       Navigator.pop(context, {'location': _pickupLocation, 'address': address});
     } catch (e) {
       print('Error getting address: $e');
+      // Fallback to coordinates on error
       Navigator.pop(context, {
         'location': _pickupLocation,
-        'address': 'Selected Location',
+        'address':
+            '${_pickupLocation!.latitude.toStringAsFixed(6)}, ${_pickupLocation!.longitude.toStringAsFixed(6)}',
       });
     }
   }
@@ -928,7 +1011,10 @@ class _PassengerMapScreenState extends State<PassengerMapScreen>
                 if (_pickupLocation != null) {
                   final startLat = _bookedBus!.startLat ?? 0.0;
                   final startLng = _bookedBus!.startLng ?? 0.0;
-                  _fetchRoutePolyline(LatLng(startLat, startLng), _pickupLocation!);
+                  _fetchRoutePolyline(
+                    LatLng(startLat, startLng),
+                    _pickupLocation!,
+                  );
                 }
               }
             }
@@ -1073,7 +1159,10 @@ class _PassengerMapScreenState extends State<PassengerMapScreen>
                       ),
                     ),
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.green,
                         borderRadius: BorderRadius.circular(8),
@@ -1383,6 +1472,31 @@ class _PassengerMapScreenState extends State<PassengerMapScreen>
                                   ),
                                 ),
                                 SizedBox(height: 8),
+                                // Bus start location marker
+                                if (_bookedBus != null &&
+                                    _bookedBus!.startLat != null) ...[
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 12,
+                                        height: 12,
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Bus Start',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: Color(0xFF6B7280),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 4),
+                                ],
                                 if (_originalRouteInfo != null) ...[
                                   Row(
                                     children: [
@@ -1408,7 +1522,8 @@ class _PassengerMapScreenState extends State<PassengerMapScreen>
                                   ),
                                   SizedBox(height: 4),
                                 ],
-                                if (_routeInfo != null && widget.isPickupSelection) ...[
+                                if (_routeInfo != null &&
+                                    widget.isPickupSelection) ...[
                                   Row(
                                     children: [
                                       Container(
@@ -1432,7 +1547,8 @@ class _PassengerMapScreenState extends State<PassengerMapScreen>
                                     ],
                                   ),
                                 ],
-                                if (_routeInfo != null && _hasActiveBooking) ...[
+                                if (_routeInfo != null &&
+                                    _hasActiveBooking) ...[
                                   Row(
                                     children: [
                                       Container(

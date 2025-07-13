@@ -12,6 +12,7 @@ import 'package:smart_bus_mobility_platform1/screens/signup_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/passenger_map_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/splash_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/bus_management_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/nav_bar_screen.dart';
 
 class AppRoutes {
   static const String splashScreen = '/';
@@ -53,7 +54,7 @@ class AppRoutes {
       adminScreen: (context) => AdminDashboardScreen(),
       passengerHomeScreen: (context) => BusTrackingScreen(),
 
-      busDriverHomeScreen: (context) => BusDriverHomeScreen(),
+      busDriverHomeScreen: (context) => NavBarScreen(userRole: 'driver'),
       //coordinatetoAddressScreen: (context) => TransformLatLngToAddress(),
       //mountExampleScreen: (context) => const MountExampleScreen(),
       busManagementScreen: (context) => BusManagementScreen(),

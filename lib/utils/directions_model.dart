@@ -1,16 +1,16 @@
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+//import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 
 /// Model for Google Directions API response, including polyline points, bounds, distance, and duration.
 class Directions {
   final LatLngBounds bounds;
-  final List<PointLatLng> polylinePoints;
+  //final List<PointLatLng> polylinePoints;
   final String totalDistance;
   final String totalDuration;
 
   const Directions({
     required this.bounds,
-    required this.polylinePoints,
+    //required this.polylinePoints,
     required this.totalDistance,
     required this.totalDuration,
   });
@@ -42,8 +42,8 @@ class Directions {
 
     return Directions(
       bounds: bounds,
-      polylinePoints:
-          PolylinePoints().decodePolyline(data['overview_polyline']['points']),
+      //polylinePoints:
+          //PolylinePoints().decodePolyline(data['overview_polyline']['points']),
       totalDistance: distance,
       totalDuration: duration,
     );

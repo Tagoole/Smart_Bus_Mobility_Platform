@@ -11,7 +11,7 @@ import 'bus_driver_home_screen.dart';
 import 'driver_map_screen.dart';
 import 'admin_home_screen.dart';
 import 'ticket_screen.dart';
- // Add this import
+// Add this import
 
 // Navigation item model
 class NavBarItem {
@@ -64,12 +64,14 @@ class _NavBarScreenState extends State<NavBarScreen> {
       NavBarItem(
         icon: Icons.home,
         label: "Home",
-        screen: const BusTrackingScreen(), // Changed from PassengerMapScreen to BusTrackingScreen
+        screen:
+            const BusTrackingScreen(), // Changed from PassengerMapScreen to BusTrackingScreen
       ),
       NavBarItem(
         icon: Icons.location_on,
         label: "Map",
-        screen: const PassengerMapScreen(), // Keep this if you want a separate map screen
+        screen:
+            const PassengerMapScreen(), // Keep this if you want a separate map screen
       ),
       NavBarItem(
         icon: Icons.confirmation_number,
@@ -102,11 +104,20 @@ class _NavBarScreenState extends State<NavBarScreen> {
         screen: const DriverMapScreen(),
       ),
       NavBarItem(
+        icon: Icons.confirmation_number,
+        label: "Tickets",
+        screen: const TicketScreen(),
+      ),
+      NavBarItem(
         icon: Icons.settings,
         label: "Settings",
         screen: const SettingsScreen(),
       ),
-    
+      NavBarItem(
+        icon: Icons.person,
+        label: "Profile",
+        screen: const ProfileScreen(),
+      ),
     ];
   }
 

@@ -19,7 +19,8 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.8.1
+  #sdk: ^3.8.1
+  sdk: ">=2.12.0 <3.0.0"
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -31,6 +32,10 @@ dependencies:
   flutter:
     sdk: flutter
   google_fonts: 
+  flutter_google_places: 
+
+  awesome_snackbar_content: 
+
 
   animated_splash_screen: ^1.3.0
   page_transition:
@@ -43,9 +48,9 @@ dependencies:
   flutter_bloc: ^8.1.4
   flutter_spinkit:
   equatable: ^2.0.5
-  flutter_polyline_points: ^2.1.0
+  #flutter_polyline_points: ^2.1.0
 
-  http: ^1.2.1
+  http: ^0.13.1
   flutter_secure_storage: ^9.0.0
   dio: 
 
@@ -55,7 +60,6 @@ dependencies:
   firebase_storage: ^11.7.4
   cloud_firestore: ^4.17.2
 
-  flutter_svg: ^2.0.10+1
 
   # Image picker for camera and gallery
   image_picker: ^1.0.7

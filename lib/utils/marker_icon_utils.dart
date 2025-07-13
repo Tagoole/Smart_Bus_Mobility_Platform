@@ -101,7 +101,7 @@ class MarkerIconUtils {
           .endRecording()
           .toImage(size, (totalHeight).toInt());
       final ByteData? bytes = await finalImage.toByteData(format: ui.ImageByteFormat.png);
-      return BitmapDescriptor.fromBytes(bytes!.buffer.asUint8List());
+      return BitmapDescriptor.bytes(bytes!.buffer.asUint8List());
     } catch (e) {
       // Fallback to default marker
       return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
