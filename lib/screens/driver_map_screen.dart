@@ -4,7 +4,6 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:geocoding/geocoding.dart';
 import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
 import 'package:smart_bus_mobility_platform1/resources/bus_service.dart';
 import 'package:smart_bus_mobility_platform1/utils/marker_icon_utils.dart';
@@ -729,6 +728,8 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                             right: 16,
                             child: FloatingActionButton(
                               onPressed: _isLoadingLocation ? null : _getCurrentLocation,
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
                               child: _isLoadingLocation
                                 ? SizedBox(
                                     width: 20,
@@ -739,8 +740,6 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                                     ),
                                   )
                                 : Icon(Icons.my_location),
-                              backgroundColor: Colors.green,
-                              foregroundColor: Colors.white,
                             ),
                           ),
                         ],

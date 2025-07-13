@@ -58,14 +58,12 @@ dependencies:
   # Google Places API dependencies
   google_maps_webservice: ^0.0.20-nullsafety.5
   flutter_google_places: ^0.3.0
-  google_api_headers: ^1.6.0
 
   firebase_messaging: ^14.7.19
   firebase_auth: ^4.17.5
   firebase_core: ^2.31.1
   firebase_storage: ^11.7.4
   cloud_firestore: ^4.17.2
-
 
   # Image picker for camera and gallery
   image_picker: ^1.0.7
@@ -82,7 +80,6 @@ dependencies:
   # Internationalization
   intl: ^0.19.0
 
-
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -93,11 +90,10 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
-  # The "flutter_lints" package below contains a set of recommended lints to
-  # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
-  # package. See that file for information about deactivating specific lint
-  # rules and activating additional ones.
+
+# Dependency overrides to fix namespace issues
+dependency_overrides:
+  google_api_headers: ^4.5.5
 
 
 # For information on the generic Dart part of this file, see the

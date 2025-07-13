@@ -9,6 +9,8 @@ import 'package:smart_bus_mobility_platform1/widgets/map_zoom_controls.dart';
 import 'package:smart_bus_mobility_platform1/utils/marker_icon_utils.dart';
 
 class BusDriverHomeScreen extends StatefulWidget {
+  const BusDriverHomeScreen({super.key});
+
   @override
   _BusDriverHomeScreenState createState() => _BusDriverHomeScreenState();
 }
@@ -259,7 +261,7 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                     ),
                   ),
                 )
-                .toList(),
+                ,
           ],
         ),
       ),

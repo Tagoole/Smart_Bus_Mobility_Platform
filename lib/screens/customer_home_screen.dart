@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:geolocator/geolocator.dart';
 import 'dart:async';
-import 'dart:math';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:smart_bus_mobility_platform1/utils/utils.dart';
 
 class BusTrackingScreen extends StatefulWidget {
   const BusTrackingScreen({super.key});
@@ -16,7 +12,7 @@ class BusTrackingScreen extends StatefulWidget {
 
 class _BusTrackingScreenState extends State<BusTrackingScreen>
     with TickerProviderStateMixin {
-  int _selectedIndex = 0;
+  final int _selectedIndex = 0;
   bool _showActiveJourney = false;
   String? _username;
   bool _isLoadingUser = true;
@@ -469,7 +465,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
   Widget _buildQuickStats() {
     if (_userStats == null) return SizedBox.shrink();
 
-    return Container(
+    return SizedBox(
       height: 100,
       child: ListView(
         scrollDirection: Axis.horizontal,
@@ -755,7 +751,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
             ],
           ),
         ),
-        Container(
+        SizedBox(
           height: 100,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
@@ -830,7 +826,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
         ),
-        Container(
+        SizedBox(
           height: 120,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
@@ -1109,7 +1105,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
         ),
-        Container(
+        SizedBox(
           height: 60,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,

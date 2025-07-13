@@ -1,26 +1,9 @@
 import 'dart:io';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:smart_bus_mobility_platform1/routes/app_routes.dart';
-import 'package:smart_bus_mobility_platform1/screens/login_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/personal_data_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/search_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/signup_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/forgot_password_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/email_verification_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/forgot_password_screen2.dart';
-import 'package:smart_bus_mobility_platform1/screens/profile_screen.dart'
-    as profile;
-import 'package:smart_bus_mobility_platform1/screens/nav_bar_screen.dart';
 // REMOVED: import 'package:smart_bus_mobility_platform1/screens/passenger_map_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/login_screen_new.dart';
-import 'package:smart_bus_mobility_platform1/screens/payment_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/admin_home_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/customer_home_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/bus_driver_home_screen.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
 
 void main() async {

@@ -18,8 +18,9 @@ class Directions {
   /// Factory to create Directions from a Google Directions API response map.
   factory Directions.fromMap(Map<String, dynamic> map) {
     // Check if route is not available
-    if ((map['routes'] as List).isEmpty)
+    if ((map['routes'] as List).isEmpty) {
       return throw Exception('No routes found');
+    }
 
     // Get route information
     final data = Map<String, dynamic>.from(map['routes'][0]);

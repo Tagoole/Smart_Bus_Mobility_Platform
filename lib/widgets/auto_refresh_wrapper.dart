@@ -8,12 +8,12 @@ class AutoRefreshWrapper extends StatefulWidget {
   final bool enabled;
 
   const AutoRefreshWrapper({
-    Key? key,
+    super.key,
     required this.child,
     required this.onRefresh,
     this.refreshInterval = const Duration(minutes: 2),
     this.enabled = true,
-  }) : super(key: key);
+  });
 
   @override
   State<AutoRefreshWrapper> createState() => _AutoRefreshWrapperState();
