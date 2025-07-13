@@ -58,6 +58,7 @@ dependencies:
   # Google Places API dependencies
   google_maps_webservice: ^0.0.20-nullsafety.5
   flutter_google_places: ^0.3.0
+  google_api_headers: ^1.6.0
 
   firebase_messaging: ^14.7.19
   firebase_auth: ^4.17.5

@@ -521,7 +521,7 @@ packages:
     source: hosted
     version: "0.2.5"
   google_api_headers:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: google_api_headers
       sha256: b27a55935d5c51cedda8a925f5df8388cc327c94a47fef5a4335e8707e089878
