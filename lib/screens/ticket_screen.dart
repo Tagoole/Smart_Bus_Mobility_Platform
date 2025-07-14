@@ -187,8 +187,10 @@ class _TicketScreenState extends State<TicketScreen> {
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   itemCount: tickets.length,
                   itemBuilder: (context, index) {
-                    final ticket =
-                        tickets[index].data() as Map<String, dynamic>;
+                    final doc = tickets[index];
+                    final data = doc.data();
+                    if (data == null) return SizedBox.shrink();
+                    final ticket = data as Map<String, dynamic>;
                     return _buildTicketCard(ticket);
                   },
                 );
@@ -265,17 +267,15 @@ class _TicketScreenState extends State<TicketScreen> {
     );
   }
 
-  Widget _buildTicketCard(Map<String, dynamic> booking) {
-    final busData = booking['busData'] as Map<String, dynamic>;
-    final departureDate = booking['departureDate'] != null
-        ? (booking['departureDate'] as Timestamp).toDate()
-        : null;
-    final bookingTime = booking['bookingTime'] != null
-        ? (booking['bookingTime'] as Timestamp).toDate()
+  Widget _buildTicketCard(Map<String, dynamic> ticket) {
+    final price = ticket['price'] ?? 0;
+    final isPaid = ticket['isPaid'] ?? false;
+    final routeId = ticket['routeId'] ?? '';
+    final busId = ticket['busId'] ?? '';
+    final bookingId = ticket['bookingId'] ?? '';
+    final dateTime = ticket['dateTime'] is Timestamp
+        ? (ticket['dateTime'] as Timestamp).toDate()
         : DateTime.now();
-
-    final statusColor = _getStatusColor(booking['status'], departureDate);
-    final statusText = _getStatusText(booking['status'], departureDate);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -284,338 +284,26 @@ class _TicketScreenState extends State<TicketScreen> {
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: Colors.black.withOpacity(0.1),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
         ],
       ),
-      child: Column(
-        children: [
-          // Header with status
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.1),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(15),
-                topRight: Radius.circular(15),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.confirmation_number,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Ticket #${booking['bookingId'].substring(0, 8)}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        'Booked on ${formatDate(bookingTime)}',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    statusText,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Ticket details
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                // Route information
-                Row(
-                  children: [
-                    Icon(Icons.route, color: Colors.green[700], size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Route',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          Text(
-                            '${busData['startPoint'] ?? 'Unknown'} → ${busData['destination'] ?? 'Unknown'}',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-
-                // Bus information
-                Row(
-                  children: [
-                    Icon(
-                      Icons.directions_bus,
-                      color: Colors.green[700],
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Bus',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          Text(
-                            busData['numberPlate'] ?? 'Unknown Bus',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-
-                // Departure information
-                if (departureDate != null) ...[
-                  Row(
-                    children: [
-                      Icon(Icons.schedule, color: Colors.green[700], size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Departure',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            Text(
-                              formatDate(departureDate),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                ],
-
-                // Pickup location
-                if (booking['pickupAddress'] != null) ...[
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on,
-                        color: Colors.green[700],
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Pickup Location',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            Text(
-                              booking['pickupAddress'],
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                ],
-
-                // Seats and passengers
-                Row(
-                  children: [
-                    Icon(
-                      Icons.airline_seat_recline_normal,
-                      color: Colors.green[700],
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Seats & Passengers',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          Text(
-                            '${booking['selectedSeats']?.length ?? 1} seat(s) • ${booking['adultCount'] ?? 1} adult(s), ${booking['childrenCount'] ?? 0} child(ren)',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 16),
-
-                // Price
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.green[50],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.green[200]!),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Total Fare:',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green[700],
-                        ),
-                      ),
-                      Text(
-                        'UGX ${(booking['totalFare'] ?? 0.0).toStringAsFixed(0)}',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green[700],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Action buttons
-                if (booking['status'] == 'confirmed' &&
-                    departureDate != null &&
-                    departureDate.isAfter(DateTime.now())) ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _cancelBooking(booking['bookingId']),
-                          icon: const Icon(Icons.cancel),
-                          label: const Text('Cancel'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red,
-                            side: const BorderSide(color: Colors.red),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () => _viewTicketDetails(booking),
-                          icon: const Icon(Icons.visibility),
-                          label: const Text('View Details'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green[700],
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ] else ...[
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () => _viewTicketDetails(booking),
-                      icon: const Icon(Icons.visibility),
-                      label: const Text('View Details'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green[700],
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Ticket ID: $bookingId', style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text('Bus ID: $busId'),
+            Text('Route: $routeId'),
+            Text('Date: ${DateFormat('yyyy-MM-dd HH:mm').format(dateTime)}'),
+            Text('Price: UGX $price'),
+            Text('Paid: ${isPaid ? 'Yes' : 'No'}'),
+          ],
+        ),
       ),
     );
   }
