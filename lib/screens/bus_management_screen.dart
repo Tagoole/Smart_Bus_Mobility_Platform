@@ -883,6 +883,44 @@ class _BusManagementScreenState extends State<BusManagementScreen>
                           color: Color(0xFF576238),
                         ),
                       ),
+                      const Spacer(),
+                      if (bus.routePolyline != null &&
+                          bus.routePolyline!.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE8F5E8),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'Mapped',
+                            style: TextStyle(
+                              fontSize: 8,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF576238),
+                            ),
+                          ),
+                        ),
+                      if (bus.serviceAreaPolygon != null &&
+                          bus.serviceAreaPolygon!.isNotEmpty)
+                        Container(
+                          margin: const EdgeInsets.only(left: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF3C7),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'Service Area',
+                            style: TextStyle(
+                              fontSize: 8,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFFD97706),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 4),

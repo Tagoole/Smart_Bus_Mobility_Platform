@@ -22,6 +22,9 @@ class BusModel {
   final double? startLng;
   final double? destinationLat;
   final double? destinationLng;
+  final List<Map<String, dynamic>>? routePolyline; // Route polyline points
+  final List<Map<String, dynamic>>?
+      serviceAreaPolygon; // Service area polygon points
 
   BusModel({
     required this.busId,
@@ -43,6 +46,8 @@ class BusModel {
     this.startLng,
     this.destinationLat,
     this.destinationLng,
+    this.routePolyline,
+    this.serviceAreaPolygon,
   });
 
   factory BusModel.fromJson(Map<String, dynamic> json, String docId) {
@@ -102,6 +107,12 @@ class BusModel {
       startLng: (json['startLng'] as num?)?.toDouble(),
       destinationLat: (json['destinationLat'] as num?)?.toDouble(),
       destinationLng: (json['destinationLng'] as num?)?.toDouble(),
+      routePolyline: json['routePolyline'] != null
+          ? List<Map<String, dynamic>>.from(json['routePolyline'])
+          : null,
+      serviceAreaPolygon: json['serviceAreaPolygon'] != null
+          ? List<Map<String, dynamic>>.from(json['serviceAreaPolygon'])
+          : null,
     );
   }
 
@@ -125,6 +136,8 @@ class BusModel {
       'startLng': startLng,
       'destinationLat': destinationLat,
       'destinationLng': destinationLng,
+      'routePolyline': routePolyline,
+      'serviceAreaPolygon': serviceAreaPolygon,
     };
   }
 
@@ -149,6 +162,8 @@ class BusModel {
     double? startLng,
     double? destinationLat,
     double? destinationLng,
+    List<Map<String, dynamic>>? routePolyline,
+    List<Map<String, dynamic>>? serviceAreaPolygon,
   }) {
     return BusModel(
       busId: busId ?? this.busId,
@@ -170,6 +185,8 @@ class BusModel {
       startLng: startLng ?? this.startLng,
       destinationLat: destinationLat ?? this.destinationLat,
       destinationLng: destinationLng ?? this.destinationLng,
+      routePolyline: routePolyline ?? this.routePolyline,
+      serviceAreaPolygon: serviceAreaPolygon ?? this.serviceAreaPolygon,
     );
   }
 
@@ -194,5 +211,27 @@ class BusModel {
       );
     }
     return null;
+  }
+
+  // Helper method to get route polyline points as List<LatLng>
+  List<LatLng> getRoutePolylinePoints() {
+    if (routePolyline == null) return [];
+    return routePolyline!.map((point) {
+      return LatLng(
+        (point['lat'] as num).toDouble(),
+        (point['lng'] as num).toDouble(),
+      );
+    }).toList();
+  }
+
+  // Helper method to get service area polygon points as List<LatLng>
+  List<LatLng> getServiceAreaPolygonPoints() {
+    if (serviceAreaPolygon == null) return [];
+    return serviceAreaPolygon!.map((point) {
+      return LatLng(
+        (point['lat'] as num).toDouble(),
+        (point['lng'] as num).toDouble(),
+      );
+    }).toList();
   }
 }
