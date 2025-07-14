@@ -64,6 +64,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   Future<void> _loadMarkerIcons() async {
     try {
       _busMarkerIcon = await MarkerIcons.busIcon;
+      // Use the passenger icon for the user marker
       _userMarkerIcon = await MarkerIcons.passengerIcon;
     } catch (e) {
       print('Error loading marker icons: $e');

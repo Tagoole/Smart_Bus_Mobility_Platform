@@ -1,4 +1,4 @@
-/*import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'personal_data_screen.dart';
 import 'nav_bar_screen.dart';
@@ -594,4 +594,3 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // If profile tab (index 4), stay on current screen
   }
 }
-*/

@@ -28,7 +28,9 @@ class MarkerIconUtils {
       ui.FrameInfo frameInfo = await codec.getNextFrame();
       final Uint8List bytes = (await frameInfo.image.toByteData(
         format: ui.ImageByteFormat.png,
-      ))!.buffer.asUint8List();
+      ))!
+          .buffer
+          .asUint8List();
 
       return BitmapDescriptor.bytes(bytes);
     } catch (e) {
@@ -77,7 +79,8 @@ class MarkerIconUtils {
           fontWeight: FontWeight.bold,
           maxLines: 1,
         ),
-      )..pushStyle(ui.TextStyle(
+      )
+        ..pushStyle(ui.TextStyle(
           color: const ui.Color(0xFF222222),
           fontWeight: ui.FontWeight.bold,
         ))
@@ -88,19 +91,21 @@ class MarkerIconUtils {
 
       // Draw the icon image below the label
       final double iconTop = labelHeight;
-      final ui.Rect dstRect = ui.Rect.fromLTWH(0, iconTop, size.toDouble(), size.toDouble());
+      final ui.Rect dstRect =
+          ui.Rect.fromLTWH(0, iconTop, size.toDouble(), size.toDouble());
       canvas.drawImageRect(
         iconImage,
-        ui.Rect.fromLTWH(0, 0, iconImage.width.toDouble(), iconImage.height.toDouble()),
+        ui.Rect.fromLTWH(
+            0, 0, iconImage.width.toDouble(), iconImage.height.toDouble()),
         dstRect,
         ui.Paint(),
       );
 
       // End drawing and convert to image
-      final ui.Image finalImage = await recorder
-          .endRecording()
-          .toImage(size, (totalHeight).toInt());
-      final ByteData? bytes = await finalImage.toByteData(format: ui.ImageByteFormat.png);
+      final ui.Image finalImage =
+          await recorder.endRecording().toImage(size, (totalHeight).toInt());
+      final ByteData? bytes =
+          await finalImage.toByteData(format: ui.ImageByteFormat.png);
       return BitmapDescriptor.bytes(bytes!.buffer.asUint8List());
     } catch (e) {
       // Fallback to default marker
@@ -117,7 +122,8 @@ class MarkerIcons {
 
   /// Passenger icon for pickup locations
   static Future<BitmapDescriptor> get passengerIcon async =>
-      await MarkerIconUtils.getFixedSizeMarkerIcon('images/passenger_icon.png');
+      await MarkerIconUtils.getFixedSizeMarkerIcon(
+          'assets/images/passenger_icon.png');
 
   /// Start location marker (green)
   static BitmapDescriptor get startMarker =>

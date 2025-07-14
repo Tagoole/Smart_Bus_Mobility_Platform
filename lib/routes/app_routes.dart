@@ -1,11 +1,11 @@
-/*import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:smart_bus_mobility_platform1/screens/bus_driver_home_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/driver_map_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/admin_home_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/customer_home_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/email_verification_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/forgot_password_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/login_screen_new.dart';
+import 'package:smart_bus_mobility_platform1/screens/login_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/payment_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/profile_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/signup_screen.dart';
@@ -44,7 +44,7 @@ class AppRoutes {
       // Add more routes here
       splashScreen: (context) => const SplashScreen(),
       signUpScreen: (context) => SignUpScreen(),
-      loginScreen: (context) => SignInScreenNew(),
+      loginScreen: (context) => SignInScreen(),
       passengerMapScreen: (context) => PassengerMapScreen(),
       paymentScreen: (context) => PaymentScreen(),
       profileScreen: (context) => ProfileScreen(),
@@ -63,4 +63,4 @@ class AppRoutes {
   }
 }
 
-*/
+

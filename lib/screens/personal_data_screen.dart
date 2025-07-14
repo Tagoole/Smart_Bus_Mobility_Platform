@@ -1,4 +1,4 @@
-/*import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'nav_bar_screen.dart'; // Import your existing NavBarScreen
@@ -26,7 +26,8 @@ class PersonalData extends StatefulWidget {
 
 class _PersonalDataState extends State<PersonalData> {
   final _formKey = GlobalKey<FormState>();
-  final int _selectedIndex = 4; // Set to Profile index since this is profile data
+  final int _selectedIndex =
+      4; // Set to Profile index since this is profile data
 
   // Controllers for text fields
   final TextEditingController _nameController = TextEditingController();
@@ -223,10 +224,11 @@ class _PersonalDataState extends State<PersonalData> {
   void _onItemTapped(int index) {
     if (index != 4) {
       // If not profile tab, navigate to NavBarScreen
-Navigator.pushReplacement(
-  context,
-  MaterialPageRoute(builder: (context) => NavBarHelper.getNavBarForCurrentUser()),
-);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+            builder: (context) => NavBarHelper.getNavBarForCurrentUser()),
+      );
     }
     // If profile tab (index 4), stay on current screen
   }
@@ -284,7 +286,8 @@ Navigator.pushReplacement(
       decoration: BoxDecoration(
         color: Colors.green[800],
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.yellow.withValues(alpha: 0.3), width: 1),
+        border:
+            Border.all(color: Colors.yellow.withValues(alpha: 0.3), width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.1),
@@ -414,11 +417,13 @@ Navigator.pushReplacement(
                                 backgroundColor: Colors.grey[300],
                                 backgroundImage: _selectedImageFile != null
                                     ? FileImage(_selectedImageFile!)
-                                    : (_profileImageUrl != null
-                                          ? NetworkImage(_profileImageUrl!)
-                                          : null),
-                                child:
-                                    _selectedImageFile == null &&
+                                        as ImageProvider<Object>
+                                    : (_profileImageUrl != null &&
+                                            _profileImageUrl!.isNotEmpty
+                                        ? NetworkImage(_profileImageUrl!)
+                                            as ImageProvider<Object>
+                                        : null),
+                                child: _selectedImageFile == null &&
                                         _profileImageUrl == null
                                     ? Column(
                                         mainAxisAlignment:
@@ -612,4 +617,3 @@ Navigator.pushReplacement(
     super.dispose();
   }
 }
-*/

@@ -1,4 +1,4 @@
-/*import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:smart_bus_mobility_platform1/resources/auth_service.dart';
 import 'package:smart_bus_mobility_platform1/routes/app_routes.dart';
 
@@ -494,4 +494,4 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 }
-*/
+
