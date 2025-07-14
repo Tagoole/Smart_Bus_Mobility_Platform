@@ -845,14 +845,30 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // Left side seats (2 seats)
-          _buildSeatWidget(startSeat),
-          _buildSeatWidget(startSeat + 1),
+          Expanded(
+            flex: 2,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildSeatWidget(startSeat),
+                _buildSeatWidget(startSeat + 1),
+              ],
+            ),
+          ),
           // Aisle space
-          const SizedBox(width: 40),
+          const SizedBox(width: 20),
           // Right side seats (3 seats)
-          _buildSeatWidget(startSeat + 2),
-          _buildSeatWidget(startSeat + 3),
-          _buildSeatWidget(startSeat + 4),
+          Expanded(
+            flex: 3,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildSeatWidget(startSeat + 2),
+                _buildSeatWidget(startSeat + 3),
+                _buildSeatWidget(startSeat + 4),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -862,9 +878,9 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
     return GestureDetector(
       onTap: () => _toggleSeat(seatNumber),
       child: Container(
-        width: 45,
-        height: 45,
-        margin: const EdgeInsets.all(4),
+        width: 40,
+        height: 40,
+        margin: const EdgeInsets.all(2),
         decoration: BoxDecoration(
           color: _getSeatColor(seatNumber),
           border: Border.all(
@@ -873,7 +889,7 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
                 : Colors.transparent,
             width: 1,
           ),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.1),
@@ -888,7 +904,7 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
           style: TextStyle(
             color: _getSeatTextColor(seatNumber),
             fontWeight: FontWeight.bold,
-            fontSize: 12,
+            fontSize: 11,
           ),
         ),
       ),
