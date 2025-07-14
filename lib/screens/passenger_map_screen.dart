@@ -42,6 +42,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   final Set<Marker> _allMarkers = {};
   Set<Marker> _searchMarkers = {};
   final Mode _mode = Mode.overlay;
+  bool _isRefreshingBuses = false;
 
   // Remove FocusNode and listener
 
@@ -454,6 +455,19 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     );
   }
 
+  Future<void> _refreshAvailableBuses() async {
+    setState(() {
+      _isRefreshingBuses = true;
+    });
+    await _loadAvailableBuses();
+    setState(() {
+      _isRefreshingBuses = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Bus list refreshed!')),
+    );
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -559,6 +573,27 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                       ),
                     )
                   : const Icon(Icons.my_location),
+            ),
+          ),
+          // Refresh buses button
+          Positioned(
+            bottom: 16,
+            left: 16,
+            child: FloatingActionButton(
+              heroTag: 'refresh',
+              onPressed: _isRefreshingBuses ? null : _refreshAvailableBuses,
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              child: _isRefreshingBuses
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Icon(Icons.refresh),
             ),
           ),
         ],
