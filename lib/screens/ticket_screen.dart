@@ -84,8 +84,8 @@ class _TicketScreenState extends State<TicketScreen> {
                   booking['status'] == 'confirmed' &&
                   booking['departureDate'] != null &&
                   (booking['departureDate'] as Timestamp).toDate().isAfter(
-                    DateTime.now(),
-                  ),
+                        DateTime.now(),
+                      ),
             )
             .toList();
       case 'completed':
@@ -95,8 +95,8 @@ class _TicketScreenState extends State<TicketScreen> {
                   booking['status'] == 'completed' ||
                   (booking['departureDate'] != null &&
                       (booking['departureDate'] as Timestamp).toDate().isBefore(
-                        DateTime.now(),
-                      )),
+                            DateTime.now(),
+                          )),
             )
             .toList();
       case 'cancelled':
@@ -128,8 +128,7 @@ class _TicketScreenState extends State<TicketScreen> {
 
   String formatDate(DateTime date) {
     final daySuffix = _getDayOfMonthSuffix(date.day);
-    final formatted =
-        DateFormat('EEEE d').format(date) +
+    final formatted = DateFormat('EEEE d').format(date) +
         daySuffix +
         DateFormat(' MMMM, yyyy').format(date);
     return formatted;
@@ -153,6 +152,7 @@ class _TicketScreenState extends State<TicketScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Tickets'),
@@ -166,122 +166,34 @@ class _TicketScreenState extends State<TicketScreen> {
           ),
         ],
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.green[700]!, Colors.green[100]!, Colors.green[50]!],
-            stops: const [0.0, 0.3, 1.0],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Header Card
-              Container(
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(15),
-                      decoration: BoxDecoration(
-                        color: Colors.green[100],
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: Icon(
-                        Icons.confirmation_number,
-                        color: Colors.green[700],
-                        size: 40,
-                      ),
-                    ),
-                    const SizedBox(height: 15),
-                    Text(
-                      'My Tickets',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green[700],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'View and manage your booked tickets',
-                      style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 15),
-                    Text(
-                      '${_bookings.length} Total Tickets',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green[600],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Filter Buttons
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    Expanded(child: _buildFilterButton('all', 'All')),
-                    const SizedBox(width: 8),
-                    Expanded(child: _buildFilterButton('active', 'Active')),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildFilterButton('completed', 'Completed'),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildFilterButton('cancelled', 'Cancelled'),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Tickets List
-              Expanded(
-                child: _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.white,
-                          ),
-                        ),
-                      )
-                    : _filteredBookings.isEmpty
-                    ? _buildEmptyState()
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: _filteredBookings.length,
-                        itemBuilder: (context, index) {
-                          final booking = _filteredBookings[index];
-                          return _buildTicketCard(booking);
-                        },
-                      ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      body: user == null
+          ? Center(child: Text('Not logged in.'))
+          : StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('tickets')
+                  .where('userId', isEqualTo: user.uid)
+                  .orderBy('createdAt', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return _buildEmptyState();
+                }
+                final tickets = snapshot.data!.docs;
+                return ListView.builder(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  itemCount: tickets.length,
+                  itemBuilder: (context, index) {
+                    final ticket =
+                        tickets[index].data() as Map<String, dynamic>;
+                    return _buildTicketCard(ticket);
+                  },
+                );
+              },
+            ),
     );
   }
 
@@ -296,9 +208,8 @@ class _TicketScreenState extends State<TicketScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
         decoration: BoxDecoration(
-          color: isSelected
-              ? Colors.white
-              : Colors.white.withValues(alpha: 0.3),
+          color:
+              isSelected ? Colors.white : Colors.white.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected ? Colors.green[700]! : Colors.transparent,
@@ -349,22 +260,6 @@ class _TicketScreenState extends State<TicketScreen> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 20),
-          ElevatedButton.icon(
-            onPressed: () {
-              // Navigate to booking screen
-              Navigator.pushNamed(context, '/booking');
-            },
-            icon: const Icon(Icons.add),
-            label: const Text('Book a Ticket'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.green[700],
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(25),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -750,9 +645,9 @@ class _TicketScreenState extends State<TicketScreen> {
             .collection('bookings')
             .doc(bookingId)
             .update({
-              'status': 'cancelled',
-              'cancelledAt': FieldValue.serverTimestamp(),
-            });
+          'status': 'cancelled',
+          'cancelledAt': FieldValue.serverTimestamp(),
+        });
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

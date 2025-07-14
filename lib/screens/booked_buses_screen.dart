@@ -177,54 +177,64 @@ class _BookedBusesScreenState extends State<BookedBusesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
     return Scaffold(
       appBar: AppBar(
         title: Text('My Booked Buses'),
       ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _bookingsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(child: Text('No booked buses found.'));
-          }
-          final bookings = snapshot.data!;
-          return ListView.separated(
-            padding: EdgeInsets.all(16),
-            itemCount: bookings.length,
-            separatorBuilder: (context, index) => SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final booking = bookings[index];
-              return Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                child: ListTile(
-                  leading:
-                      Icon(Icons.directions_bus, color: Colors.green, size: 32),
-                  title: Text(
-                      '${booking['destination'] ?? booking['route'] ?? ''}'),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                          'Departure: ${_formatDateTime(booking['departureDate'])}'),
-                      if (booking['pickupLocation'] != null)
-                        Text(
-                            'Pickup: (${booking['pickupLocation']['latitude']?.toStringAsFixed(5)}, ${booking['pickupLocation']['longitude']?.toStringAsFixed(5)})'),
-                      Text('ETA: ${booking['eta'] ?? 'Calculating...'}'),
-                    ],
-                  ),
-                  trailing: Icon(Icons.arrow_forward_ios, size: 18),
-                  onTap: () => _showBookingDetails(context, booking),
-                ),
-              );
-            },
-          );
-        },
-      ),
+      body: user == null
+          ? Center(child: Text('Not logged in.'))
+          : StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('bookings')
+                  .where('userId', isEqualTo: user.uid)
+                  .where('departureDate', isGreaterThan: DateTime.now())
+                  .orderBy('departureDate')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(child: Text('No booked buses found.'));
+                }
+                final bookings = snapshot.data!.docs;
+                print(
+                    '[UI] Loaded ${bookings.length} bookings for Booked Buses screen.');
+                return ListView.separated(
+                  padding: EdgeInsets.all(16),
+                  itemCount: bookings.length,
+                  separatorBuilder: (context, index) => SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final booking =
+                        bookings[index].data() as Map<String, dynamic>;
+                    print(
+                        '[UI] Booked Buses ETA for booking: ${booking['eta']}');
+                    return Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      child: ListTile(
+                        leading: Icon(Icons.directions_bus,
+                            color: Colors.green, size: 32),
+                        title: Text(
+                            '${booking['destination'] ?? booking['route'] ?? ''}'),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                                'Departure: ${_formatDateTime(booking['departureDate'])}'),
+                            if (booking['pickupLocation'] != null)
+                              Text(
+                                  'Pickup: (${booking['pickupLocation']['latitude']?.toStringAsFixed(5)}, ${booking['pickupLocation']['longitude']?.toStringAsFixed(5)})'),
+                            Text('ETA: ${booking['eta'] ?? 'Calculating...'}'),
+                          ],
+                        ),
+                        trailing: Icon(Icons.arrow_forward_ios, size: 18),
+                        onTap: () => _showBookingDetails(context, booking),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
     );
   }
 }

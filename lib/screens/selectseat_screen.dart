@@ -274,6 +274,33 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
       _currentBookingId = docRef.id;
       _startLiveEtaUpdates();
 
+      // Create a ticket in the 'tickets' collection
+      try {
+        final ticketData = {
+          'userId': user.uid,
+          'busId': widget.busModel!.busId,
+          'routeId': widget.busModel!.routeId,
+          'bookingId': docRef.id,
+          'dateTime': widget.departureDate ?? DateTime.now(),
+          'price': totalFare,
+          'isPaid':
+              true, // Set to true if payment is complete, adjust as needed
+          'createdAt': FieldValue.serverTimestamp(),
+        };
+        await FirebaseFirestore.instance.collection('tickets').add(ticketData);
+        print('[Ticket] Ticket created for booking ${docRef.id}');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Your ticket has been created!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        print('[Ticket] Error creating ticket: $e');
+      }
+
       // Update bus available seats and bookedSeats
       final busRef = FirebaseFirestore.instance
           .collection('buses')
@@ -989,8 +1016,9 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
         .collection('buses')
         .doc(widget.busModel!.busId)
         .get();
-    if (!busDoc.exists || busDoc.data()?['currentLocation'] == null)
+    if (!busDoc.exists || busDoc.data()?['currentLocation'] == null) {
       return null;
+    }
     final location = busDoc.data()!['currentLocation'];
     final busLatLng = LatLng(location['latitude'], location['longitude']);
     final pickupLatLng = widget.pickupLocation!;

@@ -484,7 +484,14 @@ class _BusManagementScreenState extends State<BusManagementScreen>
         'status': 'active',
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
+        'currentLocation': {
+          'latitude': _startLatLng!.latitude,
+          'longitude': _startLatLng!.longitude,
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
       };
+      print(
+          '[Admin] Adding bus with startLat: ${_startLatLng!.latitude}, startLng: ${_startLatLng!.longitude}, currentLocation: ${_startLatLng!.latitude}, ${_startLatLng!.longitude}');
 
       await _firestore.collection('buses').add(busData);
 

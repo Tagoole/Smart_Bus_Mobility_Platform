@@ -68,12 +68,6 @@ class _NavBarScreenState extends State<NavBarScreen> {
             const BusTrackingScreen(), // Changed from PassengerMapScreen to BusTrackingScreen
       ),
       NavBarItem(
-        icon: Icons.location_on,
-        label: "Map",
-        screen:
-            const PassengerMapScreen(), // Keep this if you want a separate map screen
-      ),
-      NavBarItem(
         icon: Icons.confirmation_number,
         label: "Tickets",
         screen: const TicketScreen(),
@@ -235,10 +229,8 @@ class NavBarHelper {
     if (user != null) {
       // Get user role from Firestore
       return FutureBuilder<DocumentSnapshot>(
-        future: FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get(),
+        future:
+            FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
         builder: (context, snapshot) {
           if (snapshot.hasData && snapshot.data!.exists) {
             final userData = snapshot.data!.data() as Map<String, dynamic>;
@@ -300,4 +292,3 @@ class HomeScreen extends StatelessWidget {
     );
   }
 }
-

@@ -3,8 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import 'package:smart_bus_mobility_platform1/screens/passenger_map_screen.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:intl/intl.dart';
 import 'package:smart_bus_mobility_platform1/screens/booked_buses_screen.dart';
 
 class BusTrackingScreen extends StatefulWidget {
@@ -245,31 +243,145 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
   }
 
   Widget _buildBookedBusesSection() {
-    if (_recentBookings.isEmpty) return SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
-          child: Text('My Booked Buses',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        ),
-        ..._recentBookings.map((booking) => Card(
-              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: ListTile(
-                leading: Icon(Icons.directions_bus, color: Colors.green),
-                title: Text(booking['destination'] ?? booking['route'] ?? ''),
-                subtitle: Text('ETA: ${booking['eta'] ?? 'Calculating...'}'),
-                trailing: Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => BookedBusesScreen()),
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return SizedBox.shrink();
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('bookings')
+          .where('userId', isEqualTo: user.uid)
+          .orderBy('createdAt', descending: true)
+          .limit(5)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return SizedBox.shrink();
+        }
+        final bookings = snapshot.data!.docs;
+        print('[UI] Loaded ${bookings.length} bookings for dashboard.');
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
+              child: Text('My Booked Buses',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
+            SizedBox(
+              height: 160,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                itemCount: bookings.length,
+                separatorBuilder: (context, index) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  final doc = bookings[index];
+                  final booking = doc.data() as Map<String, dynamic>;
+                  print('[UI] Dashboard ETA for booking: ${booking['eta']}');
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => BookedBusesScreen()),
+                      );
+                    },
+                    child: Container(
+                      width: 240,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.directions_bus,
+                                    color: Colors.green, size: 28),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    booking['destination'] ??
+                                        booking['route'] ??
+                                        '',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'ETA: ${booking['eta'] ?? 'Calculating...'}',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            if (booking['pickupAddress'] != null)
+                              Text(
+                                'Pickup: ${booking['pickupAddress']}',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.black54,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            const Spacer(),
+                            Align(
+                              alignment: Alignment.bottomRight,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.green[50],
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.arrow_forward_ios,
+                                        size: 14, color: Colors.green[700]),
+                                    const SizedBox(width: 4),
+                                    const Text(
+                                      'Details',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.green,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   );
                 },
               ),
-            )),
-      ],
+            ),
+          ],
+        );
+      },
     );
   }
 

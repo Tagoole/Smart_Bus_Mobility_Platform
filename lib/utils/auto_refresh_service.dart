@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
+import 'package:smart_bus_mobility_platform1/utils/directions_repository.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class AutoRefreshService {
   static final AutoRefreshService _instance = AutoRefreshService._internal();
@@ -13,6 +15,7 @@ class AutoRefreshService {
   Timer? _bookingRefreshTimer;
   Timer? _locationRefreshTimer;
   Timer? _generalDataTimer;
+  Timer? _etaUpdateTimer;
 
   // Stream subscriptions
   StreamSubscription<QuerySnapshot>? _busSubscription;
@@ -26,7 +29,9 @@ class AutoRefreshService {
   VoidCallback? _onGeneralDataUpdate;
 
   // Start automatic refresh for bus data
-  void startBusRefresh({VoidCallback? onUpdate, Duration interval = const Duration(minutes: 2)}) {
+  void startBusRefresh(
+      {VoidCallback? onUpdate,
+      Duration interval = const Duration(minutes: 2)}) {
     _onBusDataUpdate = onUpdate;
     _busRefreshTimer?.cancel();
     _busRefreshTimer = Timer.periodic(interval, (timer) {
@@ -35,7 +40,9 @@ class AutoRefreshService {
   }
 
   // Start automatic refresh for booking data
-  void startBookingRefresh({VoidCallback? onUpdate, Duration interval = const Duration(minutes: 1)}) {
+  void startBookingRefresh(
+      {VoidCallback? onUpdate,
+      Duration interval = const Duration(minutes: 1)}) {
     _onBookingUpdate = onUpdate;
     _bookingRefreshTimer?.cancel();
     _bookingRefreshTimer = Timer.periodic(interval, (timer) {
@@ -44,7 +51,9 @@ class AutoRefreshService {
   }
 
   // Start automatic refresh for location data
-  void startLocationRefresh({VoidCallback? onUpdate, Duration interval = const Duration(seconds: 30)}) {
+  void startLocationRefresh(
+      {VoidCallback? onUpdate,
+      Duration interval = const Duration(seconds: 30)}) {
     _onLocationUpdate = onUpdate;
     _locationRefreshTimer?.cancel();
     _locationRefreshTimer = Timer.periodic(interval, (timer) {
@@ -53,12 +62,73 @@ class AutoRefreshService {
   }
 
   // Start general data refresh
-  void startGeneralDataRefresh({VoidCallback? onUpdate, Duration interval = const Duration(minutes: 5)}) {
+  void startGeneralDataRefresh(
+      {VoidCallback? onUpdate,
+      Duration interval = const Duration(minutes: 5)}) {
     _onGeneralDataUpdate = onUpdate;
     _generalDataTimer?.cancel();
     _generalDataTimer = Timer.periodic(interval, (timer) {
       _onGeneralDataUpdate?.call();
     });
+  }
+
+  // Start periodic ETA updates for all active bookings of the user
+  void startEtaUpdatesForUser(String userId,
+      {Duration interval = const Duration(seconds: 50)}) {
+    _etaUpdateTimer?.cancel();
+    _etaUpdateTimer = Timer.periodic(interval, (timer) async {
+      print('[ETA Update] Fetching active bookings for user: $userId');
+      final bookingsSnapshot = await FirebaseFirestore.instance
+          .collection('bookings')
+          .where('userId', isEqualTo: userId)
+          .where('status', isEqualTo: 'confirmed')
+          .get();
+      for (var doc in bookingsSnapshot.docs) {
+        final booking = doc.data();
+        final bookingId = doc.id;
+        final busId = booking['busId'];
+        final pickup = booking['pickupLocation'];
+        if (busId == null || pickup == null) {
+          print(
+              '[ETA Update] Skipping booking $bookingId: missing busId or pickupLocation');
+          continue;
+        }
+        // Fetch latest bus location
+        final busDoc = await FirebaseFirestore.instance
+            .collection('buses')
+            .doc(busId)
+            .get();
+        if (!busDoc.exists || busDoc.data()?['currentLocation'] == null) {
+          print(
+              '[ETA Update] Skipping booking $bookingId: bus location unavailable');
+          continue;
+        }
+        final busLoc = busDoc.data()!['currentLocation'];
+        final busLatLng = LatLng(busLoc['latitude'], busLoc['longitude']);
+        final pickupLatLng = LatLng(pickup['latitude'], pickup['longitude']);
+        print(
+            '[ETA Update] Calculating ETA for booking $bookingId (bus $busId)...');
+        final directions = await DirectionsRepository().getDirections(
+          origin: busLatLng,
+          destination: pickupLatLng,
+        );
+        final eta = directions?.totalDuration;
+        print('[ETA Update] ETA for booking $bookingId: $eta');
+        if (eta != null) {
+          await FirebaseFirestore.instance
+              .collection('bookings')
+              .doc(bookingId)
+              .update({'eta': eta, 'updatedAt': FieldValue.serverTimestamp()});
+          print('[ETA Update] ETA updated in Firestore for booking $bookingId');
+        }
+      }
+    });
+  }
+
+  // Stop periodic ETA updates
+  void stopEtaUpdates() {
+    _etaUpdateTimer?.cancel();
+    _etaUpdateTimer = null;
   }
 
   // Set up real-time bus monitoring
@@ -78,7 +148,8 @@ class AutoRefreshService {
   }
 
   // Set up real-time booking monitoring
-  void setupBookingMonitoring(String userId, Function(List<Map<String, dynamic>>) onBookingUpdate) {
+  void setupBookingMonitoring(
+      String userId, Function(List<Map<String, dynamic>>) onBookingUpdate) {
     _bookingSubscription?.cancel();
     _bookingSubscription = FirebaseFirestore.instance
         .collection('bookings')
@@ -96,7 +167,8 @@ class AutoRefreshService {
   }
 
   // Set up real-time user monitoring
-  void setupUserMonitoring(String userId, Function(Map<String, dynamic>) onUserUpdate) {
+  void setupUserMonitoring(
+      String userId, Function(Map<String, dynamic>) onUserUpdate) {
     _userSubscription?.cancel();
     _userSubscription = FirebaseFirestore.instance
         .collection('users')
@@ -115,7 +187,8 @@ class AutoRefreshService {
     _bookingRefreshTimer?.cancel();
     _locationRefreshTimer?.cancel();
     _generalDataTimer?.cancel();
-    
+    _etaUpdateTimer?.cancel();
+
     _busSubscription?.cancel();
     _bookingSubscription?.cancel();
     _userSubscription?.cancel();
@@ -183,4 +256,4 @@ mixin AutoRefreshMixin<T extends StatefulWidget> on State<T> {
   void stopAutoRefresh() {
     _refreshService.stopAllRefresh();
   }
-} 
+}

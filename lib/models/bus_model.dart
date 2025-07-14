@@ -15,9 +15,9 @@ class BusModel {
   final DateTime? departureTime;
   final DateTime? estimatedArrival;
   final Map<String, dynamic>?
-      bookedSeats; // Track booked seats: {seatNumber: userId}
+  bookedSeats; // Track booked seats: {seatNumber: userId}
   final Map<String, dynamic>?
-      currentLocation; // Track current bus location: {latitude, longitude}
+  currentLocation; // Track current bus location: {latitude, longitude}
   final double? startLat;
   final double? startLng;
   final double? destinationLat;

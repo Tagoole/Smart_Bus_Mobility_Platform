@@ -9,7 +9,7 @@ import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
 
 class BusRoutePreviewScreen extends StatefulWidget {
   final Map<String, dynamic> bus;
-  const BusRoutePreviewScreen({Key? key, required this.bus}) : super(key: key);
+  const BusRoutePreviewScreen({super.key, required this.bus});
 
   @override
   State<BusRoutePreviewScreen> createState() => _BusRoutePreviewScreenState();
