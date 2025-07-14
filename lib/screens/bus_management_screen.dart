@@ -112,14 +112,27 @@ class _BusManagementScreenState extends State<BusManagementScreen>
   Future<void> _loadBuses() async {
     try {
       final snapshot = await _firestore.collection('buses').get();
-      setState(() {
-        buses = snapshot.docs.map((doc) {
+      final List<BusModel> loadedBuses = [];
+
+      for (final doc in snapshot.docs) {
+        try {
           final data = doc.data();
-          return BusModel.fromJson(data, doc.id);
-        }).toList();
+          final bus = BusModel.fromJson(data, doc.id);
+          loadedBuses.add(bus);
+        } catch (e) {
+          print('Error parsing bus ${doc.id}: $e');
+          // Continue loading other buses even if one fails
+        }
+      }
+
+      setState(() {
+        buses = loadedBuses;
       });
     } catch (e) {
       print('Error loading buses: $e');
+      setState(() {
+        buses = [];
+      });
     }
   }
 
@@ -463,7 +476,9 @@ class _BusManagementScreenState extends State<BusManagementScreen>
                 .toList()
             : [],
         'fare': double.parse(_fareController.text.trim()),
-        'departureTime': _departureTimeController.text.trim(),
+        'departureTime': _departureTimeController.text.trim().isNotEmpty
+            ? _departureTimeController.text.trim()
+            : null,
         'seatCapacity': constantSeatCapacity,
         'availableSeats': constantSeatCapacity,
         'status': 'active',
@@ -1201,7 +1216,7 @@ class _BusManagementScreenState extends State<BusManagementScreen>
                                           _navigateToMapScreen('destination'),
                                       icon: const Icon(Icons.location_on,
                                           size: 18),
-                                      label: const Text('Select Destination'),
+                                      label: const Text('Select Stop'),
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: const Color(
                                             0xFFFF6B6B), // Light red
@@ -1665,7 +1680,7 @@ class _BusManagementScreenState extends State<BusManagementScreen>
                 _destinationController.text = address;
               }
             });
-            
+
             // Only fetch route and show preview if both locations are set
             if (_startLatLng != null && _destinationLatLng != null) {
               setState(() {

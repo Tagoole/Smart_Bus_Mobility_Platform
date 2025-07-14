@@ -15,9 +15,9 @@ class BusModel {
   final DateTime? departureTime;
   final DateTime? estimatedArrival;
   final Map<String, dynamic>?
-  bookedSeats; // Track booked seats: {seatNumber: userId}
+      bookedSeats; // Track booked seats: {seatNumber: userId}
   final Map<String, dynamic>?
-  currentLocation; // Track current bus location: {latitude, longitude}
+      currentLocation; // Track current bus location: {latitude, longitude}
   final double? startLat;
   final double? startLng;
   final double? destinationLat;
@@ -46,24 +46,56 @@ class BusModel {
   });
 
   factory BusModel.fromJson(Map<String, dynamic> json, String docId) {
+    // Helper function to safely parse dates
+    DateTime? parseDate(dynamic dateValue) {
+      if (dateValue == null) return null;
+
+      try {
+        // Handle Firestore Timestamp
+        if (dateValue is Map<String, dynamic> &&
+            dateValue.containsKey('_seconds')) {
+          final seconds = dateValue['_seconds'] as int;
+          final nanoseconds = dateValue['_nanoseconds'] as int? ?? 0;
+          return DateTime.fromMillisecondsSinceEpoch(
+              seconds * 1000 + (nanoseconds / 1000000).round());
+        }
+
+        // Handle string dates
+        if (dateValue is String) {
+          return DateTime.parse(dateValue);
+        }
+
+        // Handle DateTime objects
+        if (dateValue is DateTime) {
+          return dateValue;
+        }
+
+        // Handle numeric timestamps
+        if (dateValue is int) {
+          return DateTime.fromMillisecondsSinceEpoch(dateValue);
+        }
+
+        return null;
+      } catch (e) {
+        print('Error parsing date: $dateValue, Error: $e');
+        return null;
+      }
+    }
+
     return BusModel(
       busId: docId,
-      numberPlate: json['numberPlate'],
-      vehicleModel: json['vehicleModel'],
-      driverId: json['driverId'],
-      seatCapacity: json['seatCapacity'],
-      routeId: json['routeId'],
-      startPoint: json['startPoint'],
-      destination: json['destination'],
+      numberPlate: json['numberPlate'] ?? '',
+      vehicleModel: json['vehicleModel'] ?? '',
+      driverId: json['driverId'] ?? '',
+      seatCapacity: json['seatCapacity'] ?? 0,
+      routeId: json['routeId'] ?? '',
+      startPoint: json['startPoint'] ?? '',
+      destination: json['destination'] ?? '',
       isAvailable: json['isAvailable'] ?? true,
-      availableSeats: json['availableSeats'] ?? json['seatCapacity'],
-      fare: (json['fare'] as num).toDouble(),
-      departureTime: json['departureTime'] != null
-          ? DateTime.parse(json['departureTime'])
-          : null,
-      estimatedArrival: json['estimatedArrival'] != null
-          ? DateTime.parse(json['estimatedArrival'])
-          : null,
+      availableSeats: json['availableSeats'] ?? json['seatCapacity'] ?? 0,
+      fare: (json['fare'] as num?)?.toDouble() ?? 0.0,
+      departureTime: parseDate(json['departureTime']),
+      estimatedArrival: parseDate(json['estimatedArrival']),
       bookedSeats: json['bookedSeats'] ?? {},
       currentLocation: json['currentLocation'],
       startLat: (json['startLat'] as num?)?.toDouble(),
