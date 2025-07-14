@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:smart_bus_mobility_platform1/utils/marker_icon_utils.dart';
 import 'package:flutter_google_places/flutter_google_places.dart';
 import 'package:google_maps_webservice/places.dart';
+import 'package:smart_bus_mobility_platform1/screens/bus_route_preview_screen.dart';
 
 const kGoogleApiKey = 'AIzaSyC2n6urW_4DUphPLUDaNGAW_VN53j0RP4s';
 
@@ -200,7 +201,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
               snippet:
                   '${bus['startPoint'] ?? 'Unknown'} → ${bus['destination'] ?? 'Unknown'}',
             ),
-            onTap: () => _showBusDetails(bus),
+            onTap: () => _showBusDetailsScreen(context, bus),
           ),
         );
       }
@@ -384,9 +385,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                               Text('Bus: ${bus['numberPlate'] ?? 'Unknown'}'),
                           trailing:
                               const Icon(Icons.arrow_forward_ios, size: 16),
-                          onTap: () {
-                            _showBusDetailsSheet(context, bus);
-                          },
+                          onTap: () => _showBusDetailsScreen(context, bus),
                         ),
                       );
                     },
@@ -446,9 +445,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                   ),
                   subtitle: Text('Bus: ${bus['numberPlate']}'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () {
-                    _showBusDetailsSheet(context, bus);
-                  },
+                  onTap: () => _showBusDetailsScreen(context, bus),
                 ),
               );
             },
@@ -605,79 +602,125 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   }
 }
 
-void _showBusDetailsSheet(BuildContext context, Map<String, dynamic> bus) {
-  showModalBottomSheet(
+void _showBusDetailsScreen(BuildContext context, Map<String, dynamic> bus) {
+  showDialog(
     context: context,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
-    builder: (context) => Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    builder: (context) => Dialog(
+      insetPadding: EdgeInsets.all(16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Container(
+        width: double.infinity,
+        height: MediaQuery.of(context).size.height * 0.75,
+        padding: EdgeInsets.all(24),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.directions_bus, color: Colors.green, size: 32),
-              SizedBox(width: 12),
-              Text(
-                '${bus['startPoint']} → ${bus['destination']}',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              Row(
+                children: [
+                  Icon(Icons.directions_bus, color: Colors.green, size: 32),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      '${bus['startPoint'] ?? 'Unknown'} → ${bus['destination'] ?? 'Unknown'}',
+                      style:
+                          TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 16),
+              Text('Bus Plate: ${bus['numberPlate'] ?? 'N/A'}',
+                  style: TextStyle(fontSize: 16)),
+              Text('Driver: ${bus['driverId'] ?? 'N/A'}',
+                  style: TextStyle(fontSize: 16)),
+              Text('Vehicle Model: ${bus['vehicleModel'] ?? 'N/A'}',
+                  style: TextStyle(fontSize: 16)),
+              Text('Available Seats: ${bus['availableSeats'] ?? 'N/A'}',
+                  style: TextStyle(fontSize: 16)),
+              Text('Fare: UGX ${bus['fare'] ?? 'N/A'}',
+                  style: TextStyle(fontSize: 16)),
+              Text('Route ID: ${bus['routeId'] ?? 'N/A'}',
+                  style: TextStyle(fontSize: 16)),
+              Text('Status: ${bus['status'] ?? 'N/A'}',
+                  style: TextStyle(fontSize: 16)),
+              SizedBox(height: 16),
+              if (bus['routePolyline'] != null &&
+                  bus['routePolyline'] is List &&
+                  (bus['routePolyline'] as List).isNotEmpty)
+                Container(
+                  height: 200,
+                  margin: EdgeInsets.only(top: 8),
+                  child: GoogleMap(
+                    initialCameraPosition: CameraPosition(
+                      target: LatLng(
+                        (bus['routePolyline'][0]['lat'] ?? 0.0) as double,
+                        (bus['routePolyline'][0]['lng'] ?? 0.0) as double,
+                      ),
+                      zoom: 13,
+                    ),
+                    polylines: {
+                      Polyline(
+                        polylineId: PolylineId('route'),
+                        color: Colors.green,
+                        width: 5,
+                        points: (bus['routePolyline'] as List)
+                            .map<LatLng>((p) => LatLng(p['lat'], p['lng']))
+                            .toList(),
+                      ),
+                    },
+                    markers: {
+                      Marker(
+                        markerId: MarkerId('start'),
+                        position: LatLng(
+                          (bus['routePolyline'][0]['lat'] ?? 0.0) as double,
+                          (bus['routePolyline'][0]['lng'] ?? 0.0) as double,
+                        ),
+                        infoWindow: InfoWindow(title: 'Start'),
+                      ),
+                      Marker(
+                        markerId: MarkerId('end'),
+                        position: LatLng(
+                          (bus['routePolyline'].last['lat'] ?? 0.0) as double,
+                          (bus['routePolyline'].last['lng'] ?? 0.0) as double,
+                        ),
+                        infoWindow: InfoWindow(title: 'Destination'),
+                      ),
+                    },
+                    zoomControlsEnabled: false,
+                    myLocationButtonEnabled: false,
+                    liteModeEnabled: true,
+                  ),
+                ),
+              SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: Text('Close'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => BusRoutePreviewScreen(
+                            bus: bus,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Text('Preview Route'),
+                  ),
+                ],
               ),
             ],
           ),
-          SizedBox(height: 12),
-          Text('Bus Plate: ${bus['numberPlate'] ?? 'N/A'}'),
-          Text('Driver: ${bus['driverName'] ?? 'N/A'}'),
-          Text('Available Seats: ${bus['availableSeats'] ?? 'N/A'}'),
-          if (bus['polyline'] != null && bus['polyline'] is List)
-            Container(
-              height: 180,
-              margin: EdgeInsets.only(top: 16),
-              child: GoogleMap(
-                initialCameraPosition: CameraPosition(
-                  target: LatLng(
-                    (bus['polyline'][0]['latitude'] ?? 0.0) as double,
-                    (bus['polyline'][0]['longitude'] ?? 0.0) as double,
-                  ),
-                  zoom: 12,
-                ),
-                polylines: {
-                  Polyline(
-                    polylineId: PolylineId('route'),
-                    color: Colors.green,
-                    width: 5,
-                    points: (bus['polyline'] as List)
-                        .map<LatLng>(
-                            (p) => LatLng(p['latitude'], p['longitude']))
-                        .toList(),
-                  ),
-                },
-                markers: {
-                  Marker(
-                    markerId: MarkerId('start'),
-                    position: LatLng(
-                      (bus['polyline'][0]['latitude'] ?? 0.0) as double,
-                      (bus['polyline'][0]['longitude'] ?? 0.0) as double,
-                    ),
-                    infoWindow: InfoWindow(title: 'Start'),
-                  ),
-                  Marker(
-                    markerId: MarkerId('end'),
-                    position: LatLng(
-                      (bus['polyline'].last['latitude'] ?? 0.0) as double,
-                      (bus['polyline'].last['longitude'] ?? 0.0) as double,
-                    ),
-                    infoWindow: InfoWindow(title: 'Destination'),
-                  ),
-                },
-                zoomControlsEnabled: false,
-                myLocationButtonEnabled: false,
-                liteModeEnabled: true,
-              ),
-            ),
-        ],
+        ),
       ),
     ),
   );
