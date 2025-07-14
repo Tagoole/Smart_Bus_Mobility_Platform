@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
 import 'package:smart_bus_mobility_platform1/models/location_model.dart';
+import 'package:smart_bus_mobility_platform1/utils/directions_repository.dart';
 
 enum SeatStatus { available, selected, reserved }
 
@@ -62,6 +63,14 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
   bool isLoading = true;
   BusModel? currentBusData;
 
+  // Add local state for adults/children
+  late int adultCount;
+  late int childrenCount;
+
+  // Add timer for live ETA updates
+  Timer? _etaTimer;
+  String? _currentBookingId;
+
   @override
   void initState() {
     super.initState();
@@ -69,13 +78,17 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
     toCity = widget.destination ?? 'Colombo';
     fromPlace = 'Originating Place';
     toPlace = 'Destination Place';
+    adultCount = widget.adultCount;
+    childrenCount = widget.childrenCount;
     _initializeSeats();
     _loadBusData();
+    _prefillBookingData();
   }
 
   @override
   void dispose() {
     _busSubscription?.cancel();
+    _etaTimer?.cancel();
     super.dispose();
   }
 
@@ -100,19 +113,19 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
         .doc(widget.busModel!.busId)
         .snapshots()
         .listen((snapshot) {
-          if (snapshot.exists) {
-            final busData = BusModel.fromJson(snapshot.data()!, snapshot.id);
-            setState(() {
-              currentBusData = busData;
-              _updateSeatStatus(busData);
-              isLoading = false;
-            });
-          } else {
-            setState(() {
-              isLoading = false;
-            });
-          }
+      if (snapshot.exists) {
+        final busData = BusModel.fromJson(snapshot.data()!, snapshot.id);
+        setState(() {
+          currentBusData = busData;
+          _updateSeatStatus(busData);
+          isLoading = false;
         });
+      } else {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    });
   }
 
   void _updateSeatStatus(BusModel busData) {
@@ -222,10 +235,10 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
       }
 
       // Calculate total fare
-      final totalFare =
-          widget.busModel!.fare * (widget.adultCount + widget.childrenCount);
+      final totalFare = widget.busModel!.fare * (adultCount + childrenCount);
 
       // Save booking to Firestore
+      final eta = await _calculateAndSaveETA();
       final bookingData = {
         'userId': user.uid,
         'bus': widget.busModel!.toJson(),
@@ -245,18 +258,21 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
         'returnDate': widget.returnDate != null
             ? Timestamp.fromDate(widget.returnDate!)
             : null,
-        'adultCount': widget.adultCount,
-        'childrenCount': widget.childrenCount,
+        'adultCount': adultCount,
+        'childrenCount': childrenCount,
         'selectedSeats': selectedSeats.toList(),
         'totalFare': totalFare,
         'status': 'confirmed',
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
+        'eta': eta,
       };
 
       final docRef = await FirebaseFirestore.instance
           .collection('bookings')
           .add(bookingData);
+      _currentBookingId = docRef.id;
+      _startLiveEtaUpdates();
 
       // Update bus available seats and bookedSeats
       final busRef = FirebaseFirestore.instance
@@ -279,8 +295,7 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
       }
 
       await busRef.update({
-        'availableSeats':
-            (busSnapshot.data()?['availableSeats'] ??
+        'availableSeats': (busSnapshot.data()?['availableSeats'] ??
                 widget.busModel!.seatCapacity) -
             selectedSeats.length,
         'bookedSeats': bookedSeats,
@@ -313,7 +328,6 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
 
       // Show success popup and redirect to customer dashboard
       _showBookingSuccessDialog(docRef.id, selectedSeats.toList(), totalFare);
-
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -328,7 +342,8 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
     }
   }
 
-  void _showBookingSuccessDialog(String bookingId, List<int> selectedSeats, double totalFare) {
+  void _showBookingSuccessDialog(
+      String bookingId, List<int> selectedSeats, double totalFare) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -365,7 +380,7 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                
+
                 // Success Title
                 const Text(
                   'Booking Successful!',
@@ -376,7 +391,7 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Booking Details
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -388,15 +403,18 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
                   child: Column(
                     children: [
                       _buildDetailRow('Booking ID', bookingId.substring(0, 8)),
-                      _buildDetailRow('Route', '${widget.origin} → ${widget.destination}'),
+                      _buildDetailRow(
+                          'Route', '${widget.origin} → ${widget.destination}'),
                       _buildDetailRow('Seats', selectedSeats.join(', ')),
-                      _buildDetailRow('Total Fare', '\$${totalFare.toStringAsFixed(2)}'),
-                      _buildDetailRow('Bus', widget.busModel?.numberPlate ?? ''),
+                      _buildDetailRow(
+                          'Total Fare', '\$${totalFare.toStringAsFixed(2)}'),
+                      _buildDetailRow(
+                          'Bus', widget.busModel?.numberPlate ?? ''),
                     ],
                   ),
                 ),
                 const SizedBox(height: 24),
-                
+
                 // Action Button
                 SizedBox(
                   width: double.infinity,
@@ -715,9 +733,11 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
                                   children: [
                                     // Header showing seat arrangement
                                     Padding(
-                                      padding: const EdgeInsets.only(bottom: 16.0),
+                                      padding:
+                                          const EdgeInsets.only(bottom: 16.0),
                                       child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           Container(
                                             padding: const EdgeInsets.symmetric(
@@ -726,7 +746,8 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
                                             ),
                                             decoration: BoxDecoration(
                                               color: Colors.blue[50],
-                                              borderRadius: BorderRadius.circular(8),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                             ),
                                             child: const Text(
                                               '2 + 3 Seater',
@@ -916,5 +937,67 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
         ),
       ],
     );
+  }
+
+  Future<void> _prefillBookingData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || widget.busModel == null) return;
+    final snapshot = await FirebaseFirestore.instance
+        .collection('bookings')
+        .where('userId', isEqualTo: user.uid)
+        .where('busId', isEqualTo: widget.busModel!.busId)
+        .where('status', isEqualTo: 'confirmed')
+        .orderBy('createdAt', descending: true)
+        .limit(1)
+        .get();
+    if (snapshot.docs.isNotEmpty) {
+      final booking = snapshot.docs.first.data();
+      setState(() {
+        selectedSeats =
+            Set<int>.from((booking['selectedSeats'] ?? []).cast<int>());
+        // Pre-fill adults/children if not already set
+        if (adultCount == 1 && booking['adultCount'] != null) {
+          adultCount = booking['adultCount'];
+        }
+        if (childrenCount == 0 && booking['childrenCount'] != null) {
+          childrenCount = booking['childrenCount'];
+        }
+      });
+    }
+  }
+
+  Future<String?> _calculateAndSaveETA() async {
+    if (widget.busModel == null || widget.pickupLocation == null) return null;
+    // Get bus's current location from Firestore
+    final busDoc = await FirebaseFirestore.instance
+        .collection('buses')
+        .doc(widget.busModel!.busId)
+        .get();
+    if (!busDoc.exists || busDoc.data()?['currentLocation'] == null)
+      return null;
+    final location = busDoc.data()!['currentLocation'];
+    final busLatLng = LatLng(location['latitude'], location['longitude']);
+    final pickupLatLng = widget.pickupLocation!;
+    final directions = await DirectionsRepository().getDirections(
+      origin: busLatLng,
+      destination: pickupLatLng,
+    );
+    final eta = directions?.totalDuration;
+    return eta;
+  }
+
+  // Start periodic ETA updates every 50 seconds
+  void _startLiveEtaUpdates() {
+    _etaTimer?.cancel();
+    if (_currentBookingId == null) return;
+    _etaTimer = Timer.periodic(Duration(seconds: 50), (_) async {
+      final eta = await _calculateAndSaveETA();
+      if (eta != null) {
+        await FirebaseFirestore.instance
+            .collection('bookings')
+            .doc(_currentBookingId)
+            .update({'eta': eta, 'updatedAt': FieldValue.serverTimestamp()});
+      }
+    });
   }
 }

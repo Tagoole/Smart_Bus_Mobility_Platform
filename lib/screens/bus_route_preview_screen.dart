@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:smart_bus_mobility_platform1/screens/booked_buses_screen.dart';
 
 class BusRoutePreviewScreen extends StatefulWidget {
   final Map<String, dynamic> bus;
@@ -21,36 +25,48 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
   }
 
   List<LatLng> get polygonPoints {
-    final poly = widget.bus['serviceAreaPolygon'] as List?;
-    if (poly == null) return [];
-    return poly.map((p) => LatLng(p['lat'], p['lng'])).toList();
+    // Use the first and last points of the polyline as start and destination
+    final points = polylinePoints;
+    if (points.length < 2) return [];
+    final start = points.first;
+    final end = points.last;
+    // Find min/max lat/lng
+    final minLat =
+        start.latitude < end.latitude ? start.latitude : end.latitude;
+    final maxLat =
+        start.latitude > end.latitude ? start.latitude : end.latitude;
+    final minLng =
+        start.longitude < end.longitude ? start.longitude : end.longitude;
+    final maxLng =
+        start.longitude > end.longitude ? start.longitude : end.longitude;
+    // Add a small padding to make the rectangle a bit larger
+    const padding = 0.005; // ~500m
+    return [
+      LatLng(minLat - padding, minLng - padding), // bottom left
+      LatLng(minLat - padding, maxLng + padding), // bottom right
+      LatLng(maxLat + padding, maxLng + padding), // top right
+      LatLng(maxLat + padding, minLng - padding), // top left
+    ];
   }
 
   bool isWithinPolygon(LatLng point) {
-    final polygon = polygonPoints;
-    if (polygon.length < 3) return false;
-    int i, j = polygon.length - 1;
-    bool oddNodes = false;
-    for (i = 0; i < polygon.length; i++) {
-      if ((polygon[i].longitude < point.longitude && polygon[j].longitude >= point.longitude ||
-          polygon[j].longitude < point.longitude && polygon[i].longitude >= point.longitude) &&
-          (polygon[i].latitude <= point.latitude || polygon[j].latitude <= point.latitude)) {
-        if (polygon[i].latitude + (point.longitude - polygon[i].longitude) /
-                (polygon[j].longitude - polygon[i].longitude) *
-                (polygon[j].latitude - polygon[i].latitude) <
-            point.latitude) {
-          oddNodes = !oddNodes;
-        }
-      }
-      j = i;
-    }
-    return oddNodes;
+    final rect = polygonPoints;
+    if (rect.length != 4) return false;
+    final minLat = rect[0].latitude;
+    final maxLat = rect[2].latitude;
+    final minLng = rect[0].longitude;
+    final maxLng = rect[1].longitude;
+    return point.latitude >= minLat &&
+        point.latitude <= maxLat &&
+        point.longitude >= minLng &&
+        point.longitude <= maxLng;
   }
 
   void _onMapTap(LatLng latLng) {
     if (polygonPoints.isNotEmpty && !isWithinPolygon(latLng)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Pickup must be within the service area polygon.')),
+        SnackBar(
+            content: Text('Pickup must be within the service area polygon.')),
       );
       return;
     }
@@ -58,6 +74,78 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
       _selectedPickup = latLng;
     });
   }
+
+  void _savePickupAndShowBus() async {
+    if (_selectedPickup == null) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please login to book a bus')),
+      );
+      return;
+    }
+    final bus = widget.bus;
+    final busId = bus['busId'] ?? bus['id'];
+    final driverId = bus['driverId'];
+    final startLat = bus['startLat'];
+    final startLng = bus['startLng'];
+    try {
+      await FirebaseFirestore.instance.collection('bookings').add({
+        'userId': user.uid,
+        'busId': busId,
+        'driverId': driverId,
+        'pickupLocation': {
+          'latitude': _selectedPickup!.latitude,
+          'longitude': _selectedPickup!.longitude,
+        },
+        'bookingTime': FieldValue.serverTimestamp(),
+        'status': 'confirmed',
+      });
+      setState(() {
+        _showBusMarker = true;
+        _busStartLatLng = (startLat != null && startLng != null)
+            ? LatLng(startLat, startLng)
+            : null;
+      });
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Column(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green, size: 48),
+              SizedBox(height: 12),
+              Text('Booking Confirmed!',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Text(
+              'Your pickup location has been saved and your bus is booked.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+                Navigator.of(context).pop(); // Close preview screen
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => BookedBusesScreen()),
+                );
+              },
+              child: Text('View My Bookings'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error saving booking: $e')),
+      );
+    }
+  }
+
+  bool _showBusMarker = false;
+  LatLng? _busStartLatLng;
 
   @override
   Widget build(BuildContext context) {
@@ -74,7 +162,8 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
               decoration: InputDecoration(
                 hintText: 'Search for a pickup location...',
                 suffixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
               onSubmitted: (value) async {
                 // Optionally implement search using geocoding APIs
@@ -89,7 +178,9 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
             child: GoogleMap(
               onMapCreated: (controller) => _mapController = controller,
               initialCameraPosition: CameraPosition(
-                target: polylinePoints.isNotEmpty ? polylinePoints[0] : LatLng(0, 0),
+                target: polylinePoints.isNotEmpty
+                    ? polylinePoints[0]
+                    : LatLng(0, 0),
                 zoom: 13,
               ),
               polylines: {
@@ -118,6 +209,14 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
                     position: _selectedPickup!,
                     infoWindow: InfoWindow(title: 'Pickup Location'),
                   ),
+                if (_showBusMarker && _busStartLatLng != null)
+                  Marker(
+                    markerId: MarkerId('bus_start'),
+                    position: _busStartLatLng!,
+                    infoWindow: InfoWindow(title: 'Bus Start Point'),
+                    icon: BitmapDescriptor.defaultMarkerWithHue(
+                        BitmapDescriptor.hueBlue),
+                  ),
               },
               onTap: _onMapTap,
               myLocationButtonEnabled: true,
@@ -128,9 +227,7 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context, _selectedPickup);
-                },
+                onPressed: _savePickupAndShowBus,
                 child: Text('Confirm Pickup Location'),
               ),
             ),
@@ -138,4 +235,4 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
       ),
     );
   }
-} 
+}

@@ -244,6 +244,35 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
     }
   }
 
+  Widget _buildBookedBusesSection() {
+    if (_recentBookings.isEmpty) return SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
+          child: Text('My Booked Buses',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        ),
+        ..._recentBookings.map((booking) => Card(
+              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: ListTile(
+                leading: Icon(Icons.directions_bus, color: Colors.green),
+                title: Text(booking['destination'] ?? booking['route'] ?? ''),
+                subtitle: Text('ETA: ${booking['eta'] ?? 'Calculating...'}'),
+                trailing: Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => BookedBusesScreen()),
+                  );
+                },
+              ),
+            )),
+      ],
+    );
+  }
+
   Widget _buildMainContent() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -305,7 +334,8 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                           );
                         },
                         icon: Icon(Icons.directions_bus, color: Colors.white),
-                        label: Text('Track Bus', style: TextStyle(fontSize: 16)),
+                        label:
+                            Text('Track Bus', style: TextStyle(fontSize: 16)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue[700],
                           foregroundColor: Colors.white,
@@ -323,6 +353,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
             ),
           ),
         ),
+        _buildBookedBusesSection(),
         // --- End New Buttons Section ---
       ],
     );

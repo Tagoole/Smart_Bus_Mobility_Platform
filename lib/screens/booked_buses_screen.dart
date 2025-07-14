@@ -204,9 +204,19 @@ class _BookedBusesScreenState extends State<BookedBusesScreen> {
                 child: ListTile(
                   leading:
                       Icon(Icons.directions_bus, color: Colors.green, size: 32),
-                  title: Text('${booking['route'] ?? ''}'),
-                  subtitle: Text(
-                      'Departure: ${_formatDateTime(booking['departureDate'])}'),
+                  title: Text(
+                      '${booking['destination'] ?? booking['route'] ?? ''}'),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                          'Departure: ${_formatDateTime(booking['departureDate'])}'),
+                      if (booking['pickupLocation'] != null)
+                        Text(
+                            'Pickup: (${booking['pickupLocation']['latitude']?.toStringAsFixed(5)}, ${booking['pickupLocation']['longitude']?.toStringAsFixed(5)})'),
+                      Text('ETA: ${booking['eta'] ?? 'Calculating...'}'),
+                    ],
+                  ),
                   trailing: Icon(Icons.arrow_forward_ios, size: 18),
                   onTap: () => _showBookingDetails(context, booking),
                 ),
