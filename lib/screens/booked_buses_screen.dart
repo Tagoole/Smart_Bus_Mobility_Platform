@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import 'package:smart_bus_mobility_platform1/utils/marker_icon_utils.dart';
 
 class BookedBusesScreen extends StatefulWidget {
+  const BookedBusesScreen({super.key});
+
   @override
   _BookedBusesScreenState createState() => _BookedBusesScreenState();
 }

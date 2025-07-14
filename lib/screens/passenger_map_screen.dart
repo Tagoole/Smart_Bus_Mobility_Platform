@@ -40,7 +40,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   // Bus data
   List<Map<String, dynamic>> _availableBuses = [];
   final Set<Marker> _allMarkers = {};
-  Set<Marker> _searchMarkers = {};
+  final Set<Marker> _searchMarkers = {};
   final Mode _mode = Mode.overlay;
   bool _isRefreshingBuses = false;
 
@@ -136,7 +136,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     try {
       final busesSnapshot = await FirebaseFirestore.instance
           .collection('buses')
-          .where('isAvailable', isEqualTo: true)
+          .where('status', isEqualTo: 'active')
           .get();
 
       final List<Map<String, dynamic>> buses = [];
@@ -147,6 +147,13 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
           ...busData,
         });
       }
+
+      // Debug print: print all fetched buses
+      print('--- Fetched Buses (${buses.length}) ---');
+      for (var bus in buses) {
+        print(bus);
+      }
+      print('-------------------------------');
 
       setState(() {
         _availableBuses = buses;
@@ -314,23 +321,96 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     _searchMarkers.add(Marker(
       markerId: const MarkerId("search_result"),
       position: LatLng(lat, lng),
+      icon: _userMarkerIcon ??
+          BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
       infoWindow: InfoWindow(title: detail.result.name),
     ));
     setState(() {});
     final controller = _mapController ?? await _controller.future;
     controller
         .animateCamera(CameraUpdate.newLatLngZoom(LatLng(lat, lng), 14.0));
-    _showAvailableBusesSheet(detail.result.name);
+    showAllAvailableBusesSheet();
+  }
+
+  void showAllAvailableBusesSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.directions_bus, size: 32, color: Colors.grey[400]),
+                  const SizedBox(width: 12),
+                  const Text('All available buses:',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (_availableBuses.isEmpty) const Text('No buses available.'),
+              if (_availableBuses.isNotEmpty)
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: _availableBuses.length,
+                    itemBuilder: (context, index) {
+                      final bus = _availableBuses[index];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 0, vertical: 4),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: Colors.green[100],
+                            child: const Icon(Icons.directions_bus,
+                                color: Colors.green),
+                          ),
+                          title: Text(
+                            '${bus['startPoint'] ?? 'Unknown'} → ${bus['destination'] ?? 'Unknown'}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle:
+                              Text('Bus: ${bus['numberPlate'] ?? 'Unknown'}'),
+                          trailing:
+                              const Icon(Icons.arrow_forward_ios, size: 16),
+                          onTap: () {
+                            _showBusDetailsSheet(context, bus);
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _showAvailableBusesSheet(String placeName) {
-    // Filter buses whose destination or startPoint contains the place name (case-insensitive)
     final filteredBuses = _availableBuses.where((bus) {
       final dest = (bus['destination'] ?? '').toString().toLowerCase();
       final start = (bus['startPoint'] ?? '').toString().toLowerCase();
       final query = placeName.toLowerCase();
       return dest.contains(query) || start.contains(query);
     }).toList();
+
+    if (filteredBuses.isEmpty) {
+      showAllAvailableBusesSheet();
+      return;
+    }
 
     showModalBottomSheet(
       context: context,
@@ -339,84 +419,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
-        if (filteredBuses.isEmpty) {
-          // Group all available buses by destination
-          final busesByDestination = <String, List<Map<String, dynamic>>>{};
-          for (var bus in _availableBuses) {
-            final dest = (bus['destination'] ?? '').toString();
-            if (dest.isEmpty) continue;
-            busesByDestination.putIfAbsent(dest, () => []).add(bus);
-          }
-          return Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.directions_bus,
-                        size: 32, color: Colors.grey[400]),
-                    const SizedBox(width: 12),
-                    const Text('No buses found for this region.',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.w600)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const Text('All available buses:',
-                    style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-                const SizedBox(height: 8),
-                if (busesByDestination.isEmpty)
-                  const Text('No buses available.'),
-                if (busesByDestination.isNotEmpty)
-                  Expanded(
-                    child: ListView(
-                      shrinkWrap: true,
-                      children: busesByDestination.entries.expand((entry) {
-                        final dest = entry.key;
-                        final buses = entry.value;
-                        return [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            child: Text(dest,
-                                style: const TextStyle(
-                                    fontSize: 15, fontWeight: FontWeight.bold)),
-                          ),
-                          ...buses.map((bus) => Card(
-                                margin: const EdgeInsets.symmetric(
-                                    horizontal: 0, vertical: 4),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: ListTile(
-                                  leading: CircleAvatar(
-                                    backgroundColor: Colors.green[100],
-                                    child: const Icon(Icons.directions_bus,
-                                        color: Colors.green),
-                                  ),
-                                  title: Text(
-                                    '${bus['startPoint']} → ${bus['destination']}',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                  subtitle: Text('Bus: ${bus['numberPlate']}'),
-                                  trailing: const Icon(Icons.arrow_forward_ios,
-                                      size: 16),
-                                  onTap: () {
-                                    // To be implemented: show bus details sheet
-                                  },
-                                ),
-                              )),
-                        ];
-                      }).toList(),
-                    ),
-                  ),
-              ],
-            ),
-          );
-        }
         return DraggableScrollableSheet(
           expand: false,
           initialChildSize: 0.5,
@@ -445,7 +447,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                   subtitle: Text('Bus: ${bus['numberPlate']}'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
-                    // To be implemented: show bus details sheet
+                    _showBusDetailsSheet(context, bus);
                   },
                 ),
               );
@@ -601,4 +603,82 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
       ),
     );
   }
+}
+
+void _showBusDetailsSheet(BuildContext context, Map<String, dynamic> bus) {
+  showModalBottomSheet(
+    context: context,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (context) => Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.directions_bus, color: Colors.green, size: 32),
+              SizedBox(width: 12),
+              Text(
+                '${bus['startPoint']} → ${bus['destination']}',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          SizedBox(height: 12),
+          Text('Bus Plate: ${bus['numberPlate'] ?? 'N/A'}'),
+          Text('Driver: ${bus['driverName'] ?? 'N/A'}'),
+          Text('Available Seats: ${bus['availableSeats'] ?? 'N/A'}'),
+          if (bus['polyline'] != null && bus['polyline'] is List)
+            Container(
+              height: 180,
+              margin: EdgeInsets.only(top: 16),
+              child: GoogleMap(
+                initialCameraPosition: CameraPosition(
+                  target: LatLng(
+                    (bus['polyline'][0]['latitude'] ?? 0.0) as double,
+                    (bus['polyline'][0]['longitude'] ?? 0.0) as double,
+                  ),
+                  zoom: 12,
+                ),
+                polylines: {
+                  Polyline(
+                    polylineId: PolylineId('route'),
+                    color: Colors.green,
+                    width: 5,
+                    points: (bus['polyline'] as List)
+                        .map<LatLng>(
+                            (p) => LatLng(p['latitude'], p['longitude']))
+                        .toList(),
+                  ),
+                },
+                markers: {
+                  Marker(
+                    markerId: MarkerId('start'),
+                    position: LatLng(
+                      (bus['polyline'][0]['latitude'] ?? 0.0) as double,
+                      (bus['polyline'][0]['longitude'] ?? 0.0) as double,
+                    ),
+                    infoWindow: InfoWindow(title: 'Start'),
+                  ),
+                  Marker(
+                    markerId: MarkerId('end'),
+                    position: LatLng(
+                      (bus['polyline'].last['latitude'] ?? 0.0) as double,
+                      (bus['polyline'].last['longitude'] ?? 0.0) as double,
+                    ),
+                    infoWindow: InfoWindow(title: 'Destination'),
+                  ),
+                },
+                zoomControlsEnabled: false,
+                myLocationButtonEnabled: false,
+                liteModeEnabled: true,
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
 }

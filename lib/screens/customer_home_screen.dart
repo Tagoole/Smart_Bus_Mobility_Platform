@@ -17,7 +17,7 @@ class BusTrackingScreen extends StatefulWidget {
 class _BusTrackingScreenState extends State<BusTrackingScreen>
     with TickerProviderStateMixin {
   final int _selectedIndex = 0;
-  bool _showActiveJourney = false;
+  final bool _showActiveJourney = false;
   String? _username;
   bool _isLoadingUser = true;
   bool _showDropdown = false; // Add dropdown state

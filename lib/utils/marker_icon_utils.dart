@@ -6,7 +6,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 /// This ensures all markers have consistent size regardless of zoom level
 class MarkerIconUtils {
   /// Fixed size for all marker icons (48x48 pixels)
-  static const int markerSize = 48;
+  static const int markerSize = 30;
 
   /// Loads a marker icon from assets with fixed size
   ///
@@ -34,6 +34,10 @@ class MarkerIconUtils {
 
       return BitmapDescriptor.bytes(bytes);
     } catch (e) {
+      print('-----------------------------------------');
+      print('Failed to load marker icon: '
+          'assetPath=$assetPath, error=$e');
+      print('-----------------------------------------');
       // Fallback to default marker
       return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
     }
@@ -118,7 +122,8 @@ class MarkerIconUtils {
 class MarkerIcons {
   /// Bus icon for driver and bus markers
   static Future<BitmapDescriptor> get busIcon async =>
-      await MarkerIconUtils.getFixedSizeMarkerIcon('images/bus_icon.png');
+      await MarkerIconUtils.getFixedSizeMarkerIcon(
+          'assets/images/bus_icon.png');
 
   /// Passenger icon for pickup locations
   static Future<BitmapDescriptor> get passengerIcon async =>
