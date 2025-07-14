@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:smart_bus_mobility_platform1/screens/booked_buses_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/selectseat_screen.dart';
+import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
 
 class BusRoutePreviewScreen extends StatefulWidget {
   final Map<String, dynamic> bus;
@@ -122,17 +124,32 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
             ],
           ),
           content: Text(
-              'Your pickup location has been saved and your bus is booked.'),
+              'Your pickup location has been saved and your bus is booked. Proceed to select the number of people and seats.'),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop(); // Close dialog
                 Navigator.of(context).pop(); // Close preview screen
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => BookedBusesScreen()),
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => SelectSeatScreen(
+                      origin: bus['startPoint'],
+                      destination: bus['destination'],
+                      busProvider: bus['vehicleModel'] ?? '',
+                      plateNumber: bus['numberPlate'] ?? '',
+                      busModel: BusModel.fromJson(
+                          bus, bus['busId'] ?? bus['id'] ?? ''),
+                      pickupLocation: _selectedPickup,
+                      pickupAddress: '',
+                      departureDate: null,
+                      returnDate: null,
+                      adultCount: 1,
+                      childrenCount: 0,
+                    ),
+                  ),
                 );
               },
-              child: Text('View My Bookings'),
+              child: Text('Continue'),
             ),
           ],
         ),
