@@ -43,11 +43,16 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   Set<Marker> _searchMarkers = {};
   final Mode _mode = Mode.overlay;
 
+  // Remove FocusNode and listener
+
   @override
   void initState() {
     super.initState();
     _initializeMap();
+    // No searchController listener needed
   }
+
+  // Remove _onSearchChanged and FocusNode logic
 
   Future<void> _initializeMap() async {
     await _loadMarkerIcons();
@@ -313,6 +318,140 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     final controller = _mapController ?? await _controller.future;
     controller
         .animateCamera(CameraUpdate.newLatLngZoom(LatLng(lat, lng), 14.0));
+    _showAvailableBusesSheet(detail.result.name);
+  }
+
+  void _showAvailableBusesSheet(String placeName) {
+    // Filter buses whose destination or startPoint contains the place name (case-insensitive)
+    final filteredBuses = _availableBuses.where((bus) {
+      final dest = (bus['destination'] ?? '').toString().toLowerCase();
+      final start = (bus['startPoint'] ?? '').toString().toLowerCase();
+      final query = placeName.toLowerCase();
+      return dest.contains(query) || start.contains(query);
+    }).toList();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        if (filteredBuses.isEmpty) {
+          // Group all available buses by destination
+          final busesByDestination = <String, List<Map<String, dynamic>>>{};
+          for (var bus in _availableBuses) {
+            final dest = (bus['destination'] ?? '').toString();
+            if (dest.isEmpty) continue;
+            busesByDestination.putIfAbsent(dest, () => []).add(bus);
+          }
+          return Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.directions_bus,
+                        size: 32, color: Colors.grey[400]),
+                    const SizedBox(width: 12),
+                    const Text('No buses found for this region.',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text('All available buses:',
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                const SizedBox(height: 8),
+                if (busesByDestination.isEmpty)
+                  const Text('No buses available.'),
+                if (busesByDestination.isNotEmpty)
+                  Expanded(
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: busesByDestination.entries.expand((entry) {
+                        final dest = entry.key;
+                        final buses = entry.value;
+                        return [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: Text(dest,
+                                style: const TextStyle(
+                                    fontSize: 15, fontWeight: FontWeight.bold)),
+                          ),
+                          ...buses.map((bus) => Card(
+                                margin: const EdgeInsets.symmetric(
+                                    horizontal: 0, vertical: 4),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: Colors.green[100],
+                                    child: const Icon(Icons.directions_bus,
+                                        color: Colors.green),
+                                  ),
+                                  title: Text(
+                                    '${bus['startPoint']} → ${bus['destination']}',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                  subtitle: Text('Bus: ${bus['numberPlate']}'),
+                                  trailing: const Icon(Icons.arrow_forward_ios,
+                                      size: 16),
+                                  onTap: () {
+                                    // To be implemented: show bus details sheet
+                                  },
+                                ),
+                              )),
+                        ];
+                      }).toList(),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        }
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.5,
+          minChildSize: 0.3,
+          maxChildSize: 0.9,
+          builder: (context, scrollController) => ListView.builder(
+            controller: scrollController,
+            itemCount: filteredBuses.length,
+            itemBuilder: (context, index) {
+              final bus = filteredBuses[index];
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.green[100],
+                    child:
+                        const Icon(Icons.directions_bus, color: Colors.green),
+                  ),
+                  title: Text(
+                    '${bus['startPoint']} → ${bus['destination']}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text('Bus: ${bus['numberPlate']}'),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    // To be implemented: show bus details sheet
+                  },
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -340,51 +479,64 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
           ),
           if (_isLoadingLocation)
             const Center(child: CircularProgressIndicator()),
-          // Search field overlay
+          // Search bar-style button overlay
           Positioned(
             top: 40,
             left: 16,
             right: 16,
-            child: Material(
-              elevation: 4,
-              borderRadius: BorderRadius.circular(24),
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search for places...',
-                  prefixIcon: const Icon(Icons.search),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding:
-                      const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
+            child: GestureDetector(
+              onTap: () async {
+                Prediction? p = await PlacesAutocomplete.show(
+                  context: context,
+                  apiKey: kGoogleApiKey,
+                  mode: _mode,
+                  language: 'en',
+                  strictbounds: false,
+                  types: [""],
+                  decoration: InputDecoration(
+                    hintText: 'Search for places...',
+                    filled: true,
+                    fillColor: Colors.white,
+                    prefixIcon: const Icon(Icons.search),
+                    contentPadding:
+                        const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
+                  components: [Component(Component.country, "ug")],
+                );
+                if (p != null) {
+                  await _displayPrediction(p);
+                }
+              },
+              child: Container(
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                onSubmitted: (value) async {
-                  if (value.isNotEmpty) {
-                    Prediction? p = await PlacesAutocomplete.show(
-                      context: context,
-                      apiKey: kGoogleApiKey,
-                      mode: _mode,
-                      language: 'en',
-                      strictbounds: false,
-                      types: [""],
-                      decoration: InputDecoration(
-                        hintText: 'Search',
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: const BorderSide(color: Colors.white),
-                        ),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 12),
+                    const Icon(Icons.search, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Search for places...',
+                        style: TextStyle(color: Colors.grey, fontSize: 16),
                       ),
-                      components: [Component(Component.country, "ug")],
-                    );
-                    if (p != null) {
-                      await _displayPrediction(p);
-                    }
-                  }
-                },
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
