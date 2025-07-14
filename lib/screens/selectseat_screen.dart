@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
 import 'package:smart_bus_mobility_platform1/models/location_model.dart';
 import 'package:smart_bus_mobility_platform1/utils/directions_repository.dart';
+import 'package:smart_bus_mobility_platform1/screens/nav_bar_screen.dart';
 
 enum SeatStatus { available, selected, reserved }
 
@@ -448,10 +449,13 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.of(context).pop(); // Close dialog
-                      // Navigate to customer dashboard
-                      Navigator.of(context).pushNamedAndRemoveUntil(
-                        '/passenger',
-                        (Route<dynamic> route) => false,
+                      // Navigate to NavBarScreen with navbar
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(
+                          builder: (_) => NavBarScreen(
+                              userRole: 'passenger', initialTab: 0),
+                        ),
+                        (route) => false,
                       );
                     },
                     style: ElevatedButton.styleFrom(

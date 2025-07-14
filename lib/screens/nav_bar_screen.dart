@@ -24,20 +24,22 @@ class NavBarItem {
 
 class NavBarScreen extends StatefulWidget {
   final String userRole;
+  final int initialTab;
 
-  const NavBarScreen({super.key, required this.userRole});
+  const NavBarScreen({super.key, required this.userRole, this.initialTab = 0});
 
   @override
   State<NavBarScreen> createState() => _NavBarScreenState();
 }
 
 class _NavBarScreenState extends State<NavBarScreen> {
-  int _selectedIndex = 0;
+  late int _selectedIndex;
   late List<NavBarItem> _navigationItems;
 
   @override
   void initState() {
     super.initState();
+    _selectedIndex = widget.initialTab;
     _initializeNavigationItems();
   }
 

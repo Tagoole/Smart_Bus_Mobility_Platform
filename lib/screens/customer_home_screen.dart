@@ -531,24 +531,11 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                       ),
                 SizedBox(height: 4),
                 Text(
-                  'Where are we heading today?',
+                  'Where to, Captain? 🚌🧭',
                   style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   overflow: TextOverflow.ellipsis,
                 ),
                 SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(Icons.location_on, size: 16, color: Colors.orange),
-                    SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        '24°C, Kampala',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
               ],
             ),
           ),
