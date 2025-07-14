@@ -230,14 +230,14 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   // Search functionality
   void _performSearch(String query) async {
     if (query.isEmpty) {
-      setState(() {
+        setState(() {
         _searchResults = [];
         _isSearching = false;
       });
       return;
     }
 
-    setState(() {
+      setState(() {
       _isSearching = true;
     });
 
@@ -253,13 +253,13 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                destination.contains(queryLower);
       }).toList();
 
-      setState(() {
+              setState(() {
         _searchResults = filteredBuses;
         _isSearching = false;
       });
     } catch (e) {
       print('Error performing search: $e');
-      setState(() {
+                setState(() {
         _isSearching = false;
       });
     }
@@ -280,10 +280,10 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
         foregroundColor: Colors.white,
       ),
       body: Column(
-        children: [
+          children: [
           // Search bar
-          Container(
-            padding: EdgeInsets.all(16),
+              Container(
+                padding: EdgeInsets.all(16),
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
@@ -327,68 +327,68 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                     },
                   );
                 },
+                ),
               ),
-            ),
 
-          // Map
-          Expanded(
-            child: Container(
+            // Map
+            Expanded(
+              child: Container(
               margin: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 8,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Stack(
-                  children: [
-                    GoogleMap(
-                      onMapCreated: (GoogleMapController controller) {
-                        _controller.complete(controller);
-                        _mapController = controller;
-                      },
-                      initialCameraPosition: _initialPosition,
-                      markers: _allMarkers,
-                      myLocationEnabled: true,
-                      myLocationButtonEnabled: false,
-                      zoomControlsEnabled: false,
-                      mapToolbarEnabled: false,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Stack(
+                    children: [
+                      GoogleMap(
+                        onMapCreated: (GoogleMapController controller) {
+                          _controller.complete(controller);
+                          _mapController = controller;
+                        },
+                        initialCameraPosition: _initialPosition,
+                        markers: _allMarkers,
+                        myLocationEnabled: true,
+                        myLocationButtonEnabled: false,
+                        zoomControlsEnabled: false,
+                        mapToolbarEnabled: false,
                     ),
                     if (_isLoadingLocation)
                       Center(child: CircularProgressIndicator()),
                     
                     // My location button
-                    Positioned(
-                      bottom: 16,
-                      right: 16,
+                      Positioned(
+                        bottom: 16,
+                        right: 16,
                       child: FloatingActionButton(
                         onPressed: _isLoadingLocation ? null : _getCurrentLocation,
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
                         child: _isLoadingLocation
-                          ? SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
+                                    ? SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
                                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
                             )
                           : Icon(Icons.my_location),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
+                                    ),
+                                  ],
+                                ),
+                                  ),
+                                ),
+                              ),
+                          ],
       ),
     );
   }

@@ -229,9 +229,9 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
       // Get current position with high accuracy
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: Duration(seconds: 10),
-      );
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        );
 
       setState(() {
         _driverLocation = LatLng(position.latitude, position.longitude);
@@ -731,19 +731,19 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                               backgroundColor: Colors.green,
                               foregroundColor: Colors.white,
                               child: _isLoadingLocation
-                                ? SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
+                                        ? SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
                                       valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                     ),
                                   )
                                 : Icon(Icons.my_location),
                             ),
-                          ),
-                        ],
-                      ),
+                                      ),
+                                    ],
+                                  ),
                     ),
                   ),
                 ),

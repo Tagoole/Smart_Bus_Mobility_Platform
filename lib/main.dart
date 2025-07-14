@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:smart_bus_mobility_platform1/screens/bus_management_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/search_screen.dart';
 // REMOVED: import 'package:smart_bus_mobility_platform1/screens/passenger_map_screen.dart';
 import 'package:flutter/services.dart';
@@ -71,7 +72,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData.light().copyWith(
         scaffoldBackgroundColor: Colors.blueGrey,
       ),
-      home: SearchPlacesScreen(),
+      home: BusManagementScreen(),
       //routes: {
       //  ...AppRoutes.getRoutes(), // Spread your existing routes
       //  '/': (context) => StreamBuilder(
