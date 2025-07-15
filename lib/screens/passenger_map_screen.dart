@@ -7,6 +7,9 @@ import 'package:smart_bus_mobility_platform1/utils/marker_icon_utils.dart';
 import 'package:flutter_google_places/flutter_google_places.dart';
 import 'package:google_maps_webservice/places.dart';
 import 'package:smart_bus_mobility_platform1/screens/bus_route_preview_screen.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
 
 const kGoogleApiKey = 'AIzaSyC2n6urW_4DUphPLUDaNGAW_VN53j0RP4s';
 
@@ -44,14 +47,55 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   final Set<Marker> _searchMarkers = {};
   final Mode _mode = Mode.overlay;
   bool _isRefreshingBuses = false;
+  Set<Polyline> _routePolylines = {};
+
+  // Example: Replace with actual logic to get these
+  LatLng? _busLocation; // Set this to the selected bus's current location
+  LatLng? _pickupLocation; // Set this to the selected pickup location
 
   // Remove FocusNode and listener
+  StreamSubscription<QuerySnapshot>? _bookingSubscription;
 
   @override
   void initState() {
     super.initState();
     _initializeMap();
+    _listenToBookings();
     // No searchController listener needed
+  }
+
+  void _listenToBookings() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    _bookingSubscription = FirebaseFirestore.instance
+        .collection('bookings')
+        .where('userId', isEqualTo: user.uid)
+        .where('status', isEqualTo: 'confirmed')
+        .orderBy('createdAt', descending: true)
+        .limit(1)
+        .snapshots()
+        .listen((snapshot) async {
+      if (snapshot.docs.isNotEmpty) {
+        final booking = snapshot.docs.first.data();
+        if (booking['pickupLocation'] != null && booking['busId'] != null) {
+          final pickup = booking['pickupLocation'];
+          final busId = booking['busId'];
+          // Get bus's current location from Firestore
+          final busDoc = await FirebaseFirestore.instance
+              .collection('buses')
+              .doc(busId)
+              .get();
+          if (busDoc.exists && busDoc.data()?['currentLocation'] != null) {
+            final busLoc = busDoc.data()!['currentLocation'];
+            setState(() {
+              _pickupLocation = LatLng(pickup['latitude'], pickup['longitude']);
+              _busLocation = LatLng(busLoc['latitude'], busLoc['longitude']);
+            });
+            _drawRoutePolyline();
+          }
+        }
+      }
+    });
   }
 
   // Remove _onSearchChanged and FocusNode logic
@@ -468,9 +512,60 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     );
   }
 
+  Future<void> _drawRoutePolyline() async {
+    if (_busLocation == null || _pickupLocation == null) return;
+    final url =
+        'https://maps.googleapis.com/maps/api/directions/json?origin=${_busLocation!.latitude},${_busLocation!.longitude}&destination=${_pickupLocation!.latitude},${_pickupLocation!.longitude}&mode=driving&key=$kGoogleApiKey';
+    final response = await http.get(Uri.parse(url));
+    final data = json.decode(response.body);
+    if (data['routes'] != null && data['routes'].isNotEmpty) {
+      final points = _decodePolyline(
+        data['routes'][0]['overview_polyline']['points'],
+      );
+      setState(() {
+        _routePolylines = {
+          Polyline(
+            polylineId: PolylineId('route'),
+            points: points,
+            color: Colors.blue,
+            width: 5,
+          ),
+        };
+      });
+    }
+  }
+
+  List<LatLng> _decodePolyline(String encoded) {
+    List<LatLng> polyline = [];
+    int index = 0, len = encoded.length;
+    int lat = 0, lng = 0;
+    while (index < len) {
+      int b, shift = 0, result = 0;
+      do {
+        b = encoded.codeUnitAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+      lat += dlat;
+      shift = 0;
+      result = 0;
+      do {
+        b = encoded.codeUnitAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+      lng += dlng;
+      polyline.add(LatLng(lat / 1E5, lng / 1E5));
+    }
+    return polyline;
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
+    _bookingSubscription?.cancel();
     super.dispose();
   }
 
@@ -490,6 +585,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
             myLocationButtonEnabled: false,
             zoomControlsEnabled: false,
             mapToolbarEnabled: false,
+            polylines: _routePolylines,
           ),
           if (_isLoadingLocation)
             const Center(child: CircularProgressIndicator()),
@@ -594,6 +690,18 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                       ),
                     )
                   : const Icon(Icons.refresh),
+            ),
+          ),
+          // Sample button to trigger polyline drawing (for demo)
+          Positioned(
+            bottom: 90,
+            right: 16,
+            child: FloatingActionButton(
+              heroTag: 'draw_route',
+              onPressed: _drawRoutePolyline,
+              backgroundColor: Colors.orange,
+              child: const Icon(Icons.alt_route),
+              tooltip: 'Draw route from bus to pickup',
             ),
           ),
         ],

@@ -51,115 +51,21 @@ class _BookedBusesScreenState extends State<BookedBusesScreen> {
   void _showBookingDetails(
       BuildContext context, Map<String, dynamic> booking) async {
     final busId = booking['busId'];
-    final bus = await _fetchBus(busId);
     final pickupLocation = booking['pickupLocation'];
     BitmapDescriptor? passengerIcon;
     if (pickupLocation != null) {
       passengerIcon = await MarkerIcons.passengerIcon;
     }
-    if (bus == null) {
-      showModalBottomSheet(
-        context: context,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        builder: (context) => Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
-              const SizedBox(height: 16),
-              const Text('Bus details not found.',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ],
-          ),
-        ),
-      );
-      return;
-    }
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.directions_bus, color: Colors.green, size: 32),
-                SizedBox(width: 12),
-                Text(
-                  '${bus['startPoint']} → ${bus['destination']}',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            SizedBox(height: 12),
-            Text('Bus Plate: ${bus['numberPlate'] ?? 'N/A'}'),
-            Text('Departure: ${_formatDateTime(booking['departureDate'])}'),
-            if (bus['polyline'] != null && bus['polyline'] is List)
-              Container(
-                height: 180,
-                margin: EdgeInsets.only(top: 16),
-                child: GoogleMap(
-                  initialCameraPosition: CameraPosition(
-                    target: LatLng(
-                      (bus['polyline'][0]['latitude'] ?? 0.0) as double,
-                      (bus['polyline'][0]['longitude'] ?? 0.0) as double,
-                    ),
-                    zoom: 12,
-                  ),
-                  polylines: {
-                    Polyline(
-                      polylineId: PolylineId('route'),
-                      color: Colors.green,
-                      width: 5,
-                      points: (bus['polyline'] as List)
-                          .map<LatLng>(
-                              (p) => LatLng(p['latitude'], p['longitude']))
-                          .toList(),
-                    ),
-                  },
-                  markers: {
-                    Marker(
-                      markerId: MarkerId('start'),
-                      position: LatLng(
-                        (bus['polyline'][0]['latitude'] ?? 0.0) as double,
-                        (bus['polyline'][0]['longitude'] ?? 0.0) as double,
-                      ),
-                      infoWindow: InfoWindow(title: 'Start'),
-                    ),
-                    Marker(
-                      markerId: MarkerId('end'),
-                      position: LatLng(
-                        (bus['polyline'].last['latitude'] ?? 0.0) as double,
-                        (bus['polyline'].last['longitude'] ?? 0.0) as double,
-                      ),
-                      infoWindow: InfoWindow(title: 'Destination'),
-                    ),
-                    if (pickupLocation != null && passengerIcon != null)
-                      Marker(
-                        markerId: MarkerId('pickup'),
-                        position: LatLng(
-                          pickupLocation['latitude'] as double,
-                          pickupLocation['longitude'] as double,
-                        ),
-                        icon: passengerIcon,
-                        infoWindow: InfoWindow(title: 'Your Pickup Location'),
-                      ),
-                  },
-                  zoomControlsEnabled: false,
-                  myLocationButtonEnabled: false,
-                  liteModeEnabled: true,
-                ),
-              ),
-          ],
-        ),
+      builder: (context) => _LiveBusDetailsSheet(
+        busId: busId,
+        booking: booking,
+        passengerIcon: passengerIcon,
       ),
     );
   }
@@ -236,5 +142,161 @@ class _BookedBusesScreenState extends State<BookedBusesScreen> {
               },
             ),
     );
+  }
+}
+
+class _LiveBusDetailsSheet extends StatefulWidget {
+  final String busId;
+  final Map<String, dynamic> booking;
+  final BitmapDescriptor? passengerIcon;
+  const _LiveBusDetailsSheet(
+      {required this.busId, required this.booking, this.passengerIcon});
+
+  @override
+  State<_LiveBusDetailsSheet> createState() => _LiveBusDetailsSheetState();
+}
+
+class _LiveBusDetailsSheetState extends State<_LiveBusDetailsSheet> {
+  Map<String, dynamic>? _bus;
+  Map<String, dynamic>? _currentLocation;
+  late Stream<DocumentSnapshot> _busStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _busStream = FirebaseFirestore.instance
+        .collection('buses')
+        .doc(widget.busId)
+        .snapshots();
+    _busStream.listen((doc) {
+      if (doc.exists) {
+        setState(() {
+          _bus = doc.data() as Map<String, dynamic>?;
+          _currentLocation = _bus?['currentLocation'];
+        });
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bus = _bus;
+    final pickupLocation = widget.booking['pickupLocation'];
+    final passengerIcon = widget.passengerIcon;
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.directions_bus, color: Colors.green, size: 32),
+                SizedBox(width: 12),
+                Text(
+                  bus != null
+                      ? '${bus['startPoint']} → ${bus['destination']}'
+                      : 'Loading...',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            SizedBox(height: 12),
+            Text('Bus Plate: ${bus?['numberPlate'] ?? 'N/A'}'),
+            Text(
+                'Departure: ${_formatDateTime(widget.booking['departureDate'])}'),
+            if (bus != null)
+              Container(
+                height: 220,
+                margin: EdgeInsets.only(top: 16),
+                child: GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: _currentLocation != null
+                        ? LatLng(_currentLocation!['latitude'] ?? 0.0,
+                            _currentLocation!['longitude'] ?? 0.0)
+                        : (bus['polyline'] != null &&
+                                bus['polyline'] is List &&
+                                (bus['polyline'] as List).isNotEmpty)
+                            ? LatLng(bus['polyline'][0]['latitude'] ?? 0.0,
+                                bus['polyline'][0]['longitude'] ?? 0.0)
+                            : LatLng(0, 0),
+                    zoom: 13,
+                  ),
+                  polylines: bus['polyline'] != null && bus['polyline'] is List
+                      ? {
+                          Polyline(
+                            polylineId: PolylineId('route'),
+                            color: Colors.green,
+                            width: 5,
+                            points: (bus['polyline'] as List)
+                                .map<LatLng>((p) =>
+                                    LatLng(p['latitude'], p['longitude']))
+                                .toList(),
+                          ),
+                        }
+                      : {},
+                  markers: {
+                    if (_currentLocation != null)
+                      Marker(
+                        markerId: MarkerId('bus_live'),
+                        position: LatLng(_currentLocation!['latitude'] ?? 0.0,
+                            _currentLocation!['longitude'] ?? 0.0),
+                        icon: BitmapDescriptor.defaultMarkerWithHue(
+                            BitmapDescriptor.hueBlue),
+                        infoWindow: InfoWindow(title: 'Live Bus Location'),
+                      ),
+                    if (bus != null &&
+                        bus['polyline'] != null &&
+                        bus['polyline'] is List &&
+                        (bus['polyline'] as List).isNotEmpty)
+                      Marker(
+                        markerId: MarkerId('start'),
+                        position: LatLng(bus['polyline'][0]['latitude'] ?? 0.0,
+                            bus['polyline'][0]['longitude'] ?? 0.0),
+                        infoWindow: InfoWindow(title: 'Start'),
+                      ),
+                    if (bus != null &&
+                        bus['polyline'] != null &&
+                        bus['polyline'] is List &&
+                        (bus['polyline'] as List).isNotEmpty)
+                      Marker(
+                        markerId: MarkerId('end'),
+                        position: LatLng(
+                            bus['polyline'].last['latitude'] ?? 0.0,
+                            bus['polyline'].last['longitude'] ?? 0.0),
+                        infoWindow: InfoWindow(title: 'Destination'),
+                      ),
+                    if (pickupLocation != null && passengerIcon != null)
+                      Marker(
+                        markerId: MarkerId('pickup'),
+                        position: LatLng(
+                          pickupLocation['latitude'] as double,
+                          pickupLocation['longitude'] as double,
+                        ),
+                        icon: passengerIcon,
+                        infoWindow: InfoWindow(title: 'Your Pickup Location'),
+                      ),
+                  },
+                  zoomControlsEnabled: false,
+                  myLocationButtonEnabled: false,
+                  liteModeEnabled: true,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDateTime(dynamic date) {
+    if (date is Timestamp) {
+      return DateFormat('MMM d, yyyy – HH:mm').format(date.toDate());
+    } else if (date is DateTime) {
+      return DateFormat('MMM d, yyyy – HH:mm').format(date);
+    } else if (date is String) {
+      return date;
+    }
+    return '';
   }
 }
