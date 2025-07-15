@@ -45,6 +45,25 @@ class _LiveBusDetailsSheetState extends State<LiveBusDetailsSheet> {
     final bus = _bus;
     final pickupLocation = widget.booking['pickupLocation'];
     final passengerIcon = widget.passengerIcon;
+    final eta = widget.booking['eta'];
+    
+    // Prepare polyline between bus and pickup location
+    List<LatLng> busToPickupPolyline = [];
+    if (_currentLocation != null && pickupLocation != null) {
+      busToPickupPolyline = [
+        LatLng(_currentLocation!['latitude'] ?? 0.0, _currentLocation!['longitude'] ?? 0.0),
+        LatLng(pickupLocation['latitude'] as double, pickupLocation['longitude'] as double),
+      ];
+    }
+
+    // Determine initial camera position
+    LatLng initialCameraTarget = LatLng(0, 0);
+    if (_currentLocation != null) {
+      initialCameraTarget = LatLng(_currentLocation!['latitude'] ?? 0.0, _currentLocation!['longitude'] ?? 0.0);
+    } else if (pickupLocation != null) {
+      initialCameraTarget = LatLng(pickupLocation['latitude'] as double, pickupLocation['longitude'] as double);
+    }
+
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: SingleChildScrollView(
@@ -66,35 +85,28 @@ class _LiveBusDetailsSheetState extends State<LiveBusDetailsSheet> {
             ),
             SizedBox(height: 12),
             Text('Bus Plate: ${bus?['numberPlate'] ?? 'N/A'}'),
-            Text(
-                'Departure: ${_formatDateTime(widget.booking['departureDate'])}'),
-            if (bus != null)
+            Text('Departure:  ${_formatDateTime(widget.booking['departureDate'])}'),
+            if (eta != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0, bottom: 8.0),
+                child: Text('ETA: $eta', style: TextStyle(fontSize: 16, color: Colors.blueGrey, fontWeight: FontWeight.w600)),
+              ),
+            if (_currentLocation != null && pickupLocation != null)
               Container(
                 height: 220,
                 margin: EdgeInsets.only(top: 16),
                 child: GoogleMap(
                   initialCameraPosition: CameraPosition(
-                    target: _currentLocation != null
-                        ? LatLng(_currentLocation!['latitude'] ?? 0.0,
-                            _currentLocation!['longitude'] ?? 0.0)
-                        : (bus['polyline'] != null &&
-                                bus['polyline'] is List &&
-                                (bus['polyline'] as List).isNotEmpty)
-                            ? LatLng(bus['polyline'][0]['latitude'] ?? 0.0,
-                                bus['polyline'][0]['longitude'] ?? 0.0)
-                            : LatLng(0, 0),
+                    target: initialCameraTarget,
                     zoom: 13,
                   ),
-                  polylines: bus['polyline'] != null && bus['polyline'] is List
+                  polylines: busToPickupPolyline.length == 2
                       ? {
                           Polyline(
-                            polylineId: PolylineId('route'),
+                            polylineId: PolylineId('bus_to_pickup'),
                             color: Colors.green,
                             width: 5,
-                            points: (bus['polyline'] as List)
-                                .map<LatLng>((p) =>
-                                    LatLng(p['latitude'], p['longitude']))
-                                .toList(),
+                            points: busToPickupPolyline,
                           ),
                         }
                       : {},
@@ -107,27 +119,6 @@ class _LiveBusDetailsSheetState extends State<LiveBusDetailsSheet> {
                         icon: BitmapDescriptor.defaultMarkerWithHue(
                             BitmapDescriptor.hueBlue),
                         infoWindow: InfoWindow(title: 'Live Bus Location'),
-                      ),
-                    if (bus != null &&
-                        bus['polyline'] != null &&
-                        bus['polyline'] is List &&
-                        (bus['polyline'] as List).isNotEmpty)
-                      Marker(
-                        markerId: MarkerId('start'),
-                        position: LatLng(bus['polyline'][0]['latitude'] ?? 0.0,
-                            bus['polyline'][0]['longitude'] ?? 0.0),
-                        infoWindow: InfoWindow(title: 'Start'),
-                      ),
-                    if (bus != null &&
-                        bus['polyline'] != null &&
-                        bus['polyline'] is List &&
-                        (bus['polyline'] as List).isNotEmpty)
-                      Marker(
-                        markerId: MarkerId('end'),
-                        position: LatLng(
-                            bus['polyline'].last['latitude'] ?? 0.0,
-                            bus['polyline'].last['longitude'] ?? 0.0),
-                        infoWindow: InfoWindow(title: 'Destination'),
                       ),
                     if (pickupLocation != null && passengerIcon != null)
                       Marker(
@@ -144,6 +135,11 @@ class _LiveBusDetailsSheetState extends State<LiveBusDetailsSheet> {
                   myLocationButtonEnabled: false,
                   liteModeEnabled: true,
                 ),
+              ),
+            if (_currentLocation == null || pickupLocation == null)
+              Padding(
+                padding: const EdgeInsets.only(top: 16.0),
+                child: Text('Bus or pickup location not available for map preview.', style: TextStyle(color: Colors.red)),
               ),
           ],
         ),
