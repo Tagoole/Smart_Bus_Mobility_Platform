@@ -123,34 +123,45 @@ class _BookedBusesScreenState extends State<BookedBusesScreen> {
                   itemBuilder: (context, index) {
                     final booking =
                         bookings[index].data() as Map<String, dynamic>;
-                    print('[DEBUG] Booking tapped: ${booking['busId']}');
-                    return Card(
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      child: ListTile(
-                        leading: Icon(Icons.directions_bus,
-                            color: Colors.green, size: 32),
-                        title: Text(
-                            '${booking['destination'] ?? booking['route'] ?? ''}'),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                                'Departure: ${_formatDateTime(booking['departureDate'])}'),
-                            if (booking['pickupLocation'] != null)
-                              Text(
-                                  'Pickup: (${booking['pickupLocation']['latitude']?.toStringAsFixed(5)}, ${booking['pickupLocation']['longitude']?.toStringAsFixed(5)})'),
-                            Text('ETA: ${booking['eta'] ?? 'Calculating...'}'),
-                          ],
-                        ),
-                        trailing: Icon(Icons.arrow_forward_ios, size: 18),
-                        onTap: () {
-                          print(
-                              '[DEBUG] Booking details tapped for busId: ${booking['busId']}');
-                          _showBookingDetails(context, booking);
-                        },
-                      ),
+                    print('[DEBUG] Booking tapped:  ${booking['busId']}');
+                    return FutureBuilder<Map<String, dynamic>?>(
+                      future: _fetchBus(booking['busId']),
+                      builder: (context, busSnapshot) {
+                        final bus = busSnapshot.data;
+                        return Card(
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          child: ListTile(
+                            leading: Icon(Icons.directions_bus,
+                                color: Colors.green, size: 32),
+                            title: Text(
+                                '${booking['destination'] ?? booking['route'] ?? ''}'),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Departure:  ${_formatDateTime(booking['departureDate'])}'),
+                                if (booking['pickupLocation'] != null)
+                                  Text(
+                                      'Pickup: (${booking['pickupLocation']['latitude']?.toStringAsFixed(5)}, ${booking['pickupLocation']['longitude']?.toStringAsFixed(5)})'),
+                                Text('ETA: ${booking['eta'] ?? 'Calculating...'}'),
+                                if (bus != null)
+                                  Text('Bus Plate: ${bus['numberPlate'] ?? 'N/A'}'),
+                                if (bus != null && bus['driverName'] != null)
+                                  Text('Driver: ${bus['driverName']}'),
+                                if (booking['totalFare'] != null)
+                                  Text('Fare: UGX ${booking['totalFare']}'),
+                              ],
+                            ),
+                            trailing: Icon(Icons.arrow_forward_ios, size: 18),
+                            onTap: () {
+                              print(
+                                  '[DEBUG] Booking details tapped for busId: ${booking['busId']}');
+                              _showBookingDetails(context, booking);
+                            },
+                          ),
+                        );
+                      },
                     );
                   },
                 );
