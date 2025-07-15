@@ -4,6 +4,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import 'package:smart_bus_mobility_platform1/screens/passenger_map_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/booked_buses_screen.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:smart_bus_mobility_platform1/utils/marker_icon_utils.dart';
+import 'package:smart_bus_mobility_platform1/widgets/live_bus_details_sheet.dart';
 
 class BusTrackingScreen extends StatefulWidget {
   const BusTrackingScreen({super.key});
@@ -280,10 +283,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                   print('[UI] Dashboard ETA for booking: ${booking['eta']}');
                   return GestureDetector(
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => BookedBusesScreen()),
-                      );
+                      _showBookingDetails(context, booking);
                     },
                     child: Container(
                       width: 240,
@@ -438,10 +438,19 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () {
+                          print('[DEBUG] Track Bus button pressed');
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                                content: Text('Navigating to Booked Buses...')),
+                          );
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => BookedBusesScreen(),
+                              builder: (context) {
+                                print(
+                                    '[DEBUG] Navigating to BookedBusesScreen');
+                                return BookedBusesScreen();
+                              },
                             ),
                           );
                         },
@@ -628,6 +637,31 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  void _showBookingDetails(
+      BuildContext context, Map<String, dynamic> booking) async {
+    final busId = booking['busId'];
+    final pickupLocation = booking['pickupLocation'];
+    BitmapDescriptor? passengerIcon;
+    if (pickupLocation != null) {
+      // Optionally load a custom marker icon if you have one
+      try {
+        passengerIcon = await MarkerIcons.passengerIcon;
+      } catch (_) {}
+    }
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => LiveBusDetailsSheet(
+        busId: busId,
+        booking: booking,
+        passengerIcon: passengerIcon,
       ),
     );
   }

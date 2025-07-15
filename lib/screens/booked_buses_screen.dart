@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:smart_bus_mobility_platform1/utils/marker_icon_utils.dart';
+import 'package:smart_bus_mobility_platform1/widgets/live_bus_details_sheet.dart';
 
 class BookedBusesScreen extends StatefulWidget {
   const BookedBusesScreen({super.key});
@@ -62,7 +63,7 @@ class _BookedBusesScreenState extends State<BookedBusesScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) => _LiveBusDetailsSheet(
+      builder: (context) => LiveBusDetailsSheet(
         busId: busId,
         booking: booking,
         passengerIcon: passengerIcon,
@@ -83,6 +84,8 @@ class _BookedBusesScreenState extends State<BookedBusesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    print(
+        '[DEBUG] BookedBusesScreen build called--------------------------------------------------------------');
     final user = FirebaseAuth.instance.currentUser;
     return Scaffold(
       appBar: AppBar(
@@ -98,12 +101,21 @@ class _BookedBusesScreenState extends State<BookedBusesScreen> {
                   .orderBy('departureDate')
                   .snapshots(),
               builder: (context, snapshot) {
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                if (snapshot.hasError) {
+                  print('[DEBUG] Error loading bookings: ${snapshot.error}');
+                  return Center(child: Text('Error loading bookings.'));
+                }
+                if (!snapshot.hasData) {
+                  print('[DEBUG] Waiting for bookings data...');
+                  return Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.data!.docs.isEmpty) {
+                  print('[DEBUG] No booked buses found.');
                   return Center(child: Text('No booked buses found.'));
                 }
                 final bookings = snapshot.data!.docs;
                 print(
-                    '[UI] Loaded ${bookings.length} bookings for Booked Buses screen.');
+                    '[DEBUG] Loaded ${bookings.length} bookings for Booked Buses screen.');
                 return ListView.separated(
                   padding: EdgeInsets.all(16),
                   itemCount: bookings.length,
@@ -111,8 +123,7 @@ class _BookedBusesScreenState extends State<BookedBusesScreen> {
                   itemBuilder: (context, index) {
                     final booking =
                         bookings[index].data() as Map<String, dynamic>;
-                    print(
-                        '[UI] Booked Buses ETA for booking: ${booking['eta']}');
+                    print('[DEBUG] Booking tapped: ${booking['busId']}');
                     return Card(
                       elevation: 2,
                       shape: RoundedRectangleBorder(
@@ -134,7 +145,11 @@ class _BookedBusesScreenState extends State<BookedBusesScreen> {
                           ],
                         ),
                         trailing: Icon(Icons.arrow_forward_ios, size: 18),
-                        onTap: () => _showBookingDetails(context, booking),
+                        onTap: () {
+                          print(
+                              '[DEBUG] Booking details tapped for busId: ${booking['busId']}');
+                          _showBookingDetails(context, booking);
+                        },
                       ),
                     );
                   },
@@ -142,161 +157,5 @@ class _BookedBusesScreenState extends State<BookedBusesScreen> {
               },
             ),
     );
-  }
-}
-
-class _LiveBusDetailsSheet extends StatefulWidget {
-  final String busId;
-  final Map<String, dynamic> booking;
-  final BitmapDescriptor? passengerIcon;
-  const _LiveBusDetailsSheet(
-      {required this.busId, required this.booking, this.passengerIcon});
-
-  @override
-  State<_LiveBusDetailsSheet> createState() => _LiveBusDetailsSheetState();
-}
-
-class _LiveBusDetailsSheetState extends State<_LiveBusDetailsSheet> {
-  Map<String, dynamic>? _bus;
-  Map<String, dynamic>? _currentLocation;
-  late Stream<DocumentSnapshot> _busStream;
-
-  @override
-  void initState() {
-    super.initState();
-    _busStream = FirebaseFirestore.instance
-        .collection('buses')
-        .doc(widget.busId)
-        .snapshots();
-    _busStream.listen((doc) {
-      if (doc.exists) {
-        setState(() {
-          _bus = doc.data() as Map<String, dynamic>?;
-          _currentLocation = _bus?['currentLocation'];
-        });
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bus = _bus;
-    final pickupLocation = widget.booking['pickupLocation'];
-    final passengerIcon = widget.passengerIcon;
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.directions_bus, color: Colors.green, size: 32),
-                SizedBox(width: 12),
-                Text(
-                  bus != null
-                      ? '${bus['startPoint']} → ${bus['destination']}'
-                      : 'Loading...',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            SizedBox(height: 12),
-            Text('Bus Plate: ${bus?['numberPlate'] ?? 'N/A'}'),
-            Text(
-                'Departure: ${_formatDateTime(widget.booking['departureDate'])}'),
-            if (bus != null)
-              Container(
-                height: 220,
-                margin: EdgeInsets.only(top: 16),
-                child: GoogleMap(
-                  initialCameraPosition: CameraPosition(
-                    target: _currentLocation != null
-                        ? LatLng(_currentLocation!['latitude'] ?? 0.0,
-                            _currentLocation!['longitude'] ?? 0.0)
-                        : (bus['polyline'] != null &&
-                                bus['polyline'] is List &&
-                                (bus['polyline'] as List).isNotEmpty)
-                            ? LatLng(bus['polyline'][0]['latitude'] ?? 0.0,
-                                bus['polyline'][0]['longitude'] ?? 0.0)
-                            : LatLng(0, 0),
-                    zoom: 13,
-                  ),
-                  polylines: bus['polyline'] != null && bus['polyline'] is List
-                      ? {
-                          Polyline(
-                            polylineId: PolylineId('route'),
-                            color: Colors.green,
-                            width: 5,
-                            points: (bus['polyline'] as List)
-                                .map<LatLng>((p) =>
-                                    LatLng(p['latitude'], p['longitude']))
-                                .toList(),
-                          ),
-                        }
-                      : {},
-                  markers: {
-                    if (_currentLocation != null)
-                      Marker(
-                        markerId: MarkerId('bus_live'),
-                        position: LatLng(_currentLocation!['latitude'] ?? 0.0,
-                            _currentLocation!['longitude'] ?? 0.0),
-                        icon: BitmapDescriptor.defaultMarkerWithHue(
-                            BitmapDescriptor.hueBlue),
-                        infoWindow: InfoWindow(title: 'Live Bus Location'),
-                      ),
-                    if (bus != null &&
-                        bus['polyline'] != null &&
-                        bus['polyline'] is List &&
-                        (bus['polyline'] as List).isNotEmpty)
-                      Marker(
-                        markerId: MarkerId('start'),
-                        position: LatLng(bus['polyline'][0]['latitude'] ?? 0.0,
-                            bus['polyline'][0]['longitude'] ?? 0.0),
-                        infoWindow: InfoWindow(title: 'Start'),
-                      ),
-                    if (bus != null &&
-                        bus['polyline'] != null &&
-                        bus['polyline'] is List &&
-                        (bus['polyline'] as List).isNotEmpty)
-                      Marker(
-                        markerId: MarkerId('end'),
-                        position: LatLng(
-                            bus['polyline'].last['latitude'] ?? 0.0,
-                            bus['polyline'].last['longitude'] ?? 0.0),
-                        infoWindow: InfoWindow(title: 'Destination'),
-                      ),
-                    if (pickupLocation != null && passengerIcon != null)
-                      Marker(
-                        markerId: MarkerId('pickup'),
-                        position: LatLng(
-                          pickupLocation['latitude'] as double,
-                          pickupLocation['longitude'] as double,
-                        ),
-                        icon: passengerIcon,
-                        infoWindow: InfoWindow(title: 'Your Pickup Location'),
-                      ),
-                  },
-                  zoomControlsEnabled: false,
-                  myLocationButtonEnabled: false,
-                  liteModeEnabled: true,
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _formatDateTime(dynamic date) {
-    if (date is Timestamp) {
-      return DateFormat('MMM d, yyyy – HH:mm').format(date.toDate());
-    } else if (date is DateTime) {
-      return DateFormat('MMM d, yyyy – HH:mm').format(date);
-    } else if (date is String) {
-      return date;
-    }
-    return '';
   }
 }

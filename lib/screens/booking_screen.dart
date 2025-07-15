@@ -1,4 +1,4 @@
-/*import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:smart_bus_mobility_platform1/resources/bus_service.dart';
 import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
@@ -200,8 +200,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
   String formatDateFull(DateTime date) {
     // Full format for when there's enough space
     final daySuffix = _getDayOfMonthSuffix(date.day);
-    final formatted =
-        DateFormat('EEEE d').format(date) +
+    final formatted = DateFormat('EEEE d').format(date) +
         daySuffix +
         DateFormat(' MMMM, yyyy').format(date);
     return formatted;
@@ -228,10 +227,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => PassengerMapScreen(
-          isPickupSelection: true,
-          selectedBus: selectedBus, // Pass the selected bus
-        ),
+        builder: (context) => PassengerMapScreen(),
       ),
     );
 
@@ -286,13 +282,13 @@ class _FindBusScreenState extends State<FindBusScreen> {
           .collection('bookings')
           .doc(bookingId)
           .update({
-            'pickupLocation': {
-              'latitude': pickupLocation!.latitude,
-              'longitude': pickupLocation!.longitude,
-            },
-            'pickupAddress': pickupAddress,
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
+        'pickupLocation': {
+          'latitude': pickupLocation!.latitude,
+          'longitude': pickupLocation!.longitude,
+        },
+        'pickupAddress': pickupAddress,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -498,13 +494,10 @@ class _FindBusScreenState extends State<FindBusScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (hasActiveBooking) _buildActiveBookingSection(),
-                if (!hasActiveBooking) _buildSearchSection(),
+                // Only show the search section and booking flow, not existing bookings
+                _buildSearchSection(),
                 const SizedBox(height: 20),
-                if (showBusList && !hasActiveBooking)
-                  _buildAvailableBusesList(),
-                if (!showBusList && !hasActiveBooking)
-                  _buildUpcomingTicketSection(),
+                if (showBusList) _buildAvailableBusesList(),
               ],
             ),
           ),
@@ -689,18 +682,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
                 _mapController = controller;
               },
               initialCameraPosition: CameraPosition(target: start, zoom: 12),
-              polylines: _routeInfo != null
-                  ? {
-                      Polyline(
-                        polylineId: PolylineId('route'),
-                        points: _routeInfo!.polylinePoints
-                            .map((e) => LatLng(e.latitude, e.longitude))
-                            .toList(),
-                        color: Colors.blue,
-                        width: 5,
-                      ),
-                    }
-                  : {},
+              polylines: {}, // Polyline drawing disabled due to missing polylinePoints in Directions
               markers: {
                 Marker(
                   markerId: MarkerId('start'),
@@ -865,9 +847,8 @@ class _FindBusScreenState extends State<FindBusScreen> {
                 child: ElevatedButton(
                   onPressed: () => setState(() => isRoundTrip = false),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: !isRoundTrip
-                        ? Colors.green
-                        : const Color(0xFF9E9E9E),
+                    backgroundColor:
+                        !isRoundTrip ? Colors.green : const Color(0xFF9E9E9E),
                     foregroundColor: !isRoundTrip ? Colors.white : Colors.black,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(23),
@@ -881,9 +862,8 @@ class _FindBusScreenState extends State<FindBusScreen> {
                 child: ElevatedButton(
                   onPressed: () => setState(() => isRoundTrip = true),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isRoundTrip
-                        ? Colors.green
-                        : const Color(0xFF9E9E9E),
+                    backgroundColor:
+                        isRoundTrip ? Colors.green : const Color(0xFF9E9E9E),
                     foregroundColor: isRoundTrip ? Colors.white : Colors.black,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(23),
@@ -1012,9 +992,8 @@ class _FindBusScreenState extends State<FindBusScreen> {
                             ),
                           ),
                           GestureDetector(
-                            onTap: isRoundTrip
-                                ? () => _selectDate(false)
-                                : null,
+                            onTap:
+                                isRoundTrip ? () => _selectDate(false) : null,
                             child: AbsorbPointer(
                               child: TextField(
                                 controller: _returnDateController,
@@ -1123,8 +1102,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
         Row(
           children: [
             IconButton(
-              onPressed:
-                  (label == "Adult" && count > 1) ||
+              onPressed: (label == "Adult" && count > 1) ||
                       (label == "Children" && count > 0)
                   ? () => onCountChanged(count - 1)
                   : null,
@@ -1288,9 +1266,9 @@ class _FindBusScreenState extends State<FindBusScreen> {
                         Text(
                           bus.estimatedArrival != null
                               ? bus.estimatedArrival!.toString().substring(
-                                  11,
-                                  16,
-                                )
+                                    11,
+                                    16,
+                                  )
                               : 'TBD',
                           style: const TextStyle(
                             fontSize: 16,
@@ -1409,4 +1387,3 @@ class _FindBusScreenState extends State<FindBusScreen> {
     );
   }
 }
-*/
