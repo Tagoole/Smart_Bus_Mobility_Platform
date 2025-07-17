@@ -223,28 +223,46 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     );
 
     try {
+      // Clear existing passengers to avoid duplicates
+      _passengers.clear();
+      
       final bookingsSnapshot = await FirebaseFirestore.instance
           .collection('bookings')
           .where('busId', isEqualTo: _driverBus!.busId)
           .where('status', isEqualTo: 'confirmed')
           .get();
 
+      print('Found ${bookingsSnapshot.docs.length} bookings for bus ${_driverBus!.busId}');
+      
+      // Use a set to track unique user IDs to avoid duplicates
+      final Set<String> processedUserIds = {};
       final List<Map<String, dynamic>> passengers = [];
 
       for (var doc in bookingsSnapshot.docs) {
         final bookingData = doc.data();
+        final userId = bookingData['userId'];
+        
+        // Skip if we've already processed this user
+        if (processedUserIds.contains(userId)) {
+          print('Skipping duplicate booking for user: $userId');
+          continue;
+        }
+        
+        processedUserIds.add(userId);
 
         // Get user data for each booking
         final userDoc = await FirebaseFirestore.instance
             .collection('users')
-            .doc(bookingData['userId'])
+            .doc(userId)
             .get();
 
         if (userDoc.exists) {
           final userData = userDoc.data() as Map<String, dynamic>;
+          print('Adding passenger: ${userData['name'] ?? userData['username'] ?? 'Passenger'}');
+          
           passengers.add({
             'bookingId': doc.id,
-            'userId': bookingData['userId'],
+            'userId': userId,
             'userName': userData['name'] ?? userData['username'] ?? 'Passenger',
             'userEmail': userData['email'] ?? '',
             'pickupLocation': bookingData['pickupLocation'],
@@ -535,7 +553,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       );
     }
 
-    // Add passenger markers
+    // Add passenger markers - one marker per passenger booking, not per person
     for (int i = 0; i < _passengers.length; i++) {
       final passenger = _passengers[i];
 
@@ -546,35 +564,26 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         final adultCount = passenger['adultCount'] ?? 1;
         final childrenCount = passenger['childrenCount'] ?? 0;
         final totalPassengers = adultCount + childrenCount;
+        final selectedSeats = passenger['selectedSeats'] ?? [];
 
-        // Create multiple markers based on total passenger count
-        for (int j = 0; j < totalPassengers; j++) {
-          final icon = _passengerMarkerIcon ?? BitmapDescriptor.defaultMarker;
+        // Create just one marker per booking
+        final icon = _passengerMarkerIcon ?? BitmapDescriptor.defaultMarker;
 
-          // Slightly offset each marker to avoid overlap
-          final offset = j * 0.0001; // Small offset in degrees
-          final offsetLatLng = LatLng(
-            latLng.latitude + offset,
-            latLng.longitude + offset,
-          );
-
-          _allMarkers.add(
-            Marker(
-              markerId: MarkerId('passenger_${passenger['userId']}_$j'),
-              position: offsetLatLng,
-              icon: icon,
-              anchor: Offset(0.5, 0.5),
-              flat: true,
-              infoWindow: InfoWindow(
-                title:
-                    'Passenger ${i + 1}: $userName (${j + 1}/$totalPassengers)',
-                snippet:
-                    '${passenger['selectedSeats'].length} seats • ${passenger['pickupAddress']}',
-              ),
-              onTap: () => _showPassengerDetails(passenger),
+        _allMarkers.add(
+          Marker(
+            markerId: MarkerId('passenger_${passenger['userId']}'),
+            position: latLng,
+            icon: icon,
+            anchor: Offset(0.5, 0.5),
+            flat: true,
+            infoWindow: InfoWindow(
+              title: 'Passenger ${i + 1}: $userName',
+              snippet:
+                  '${selectedSeats.length} seats • ${totalPassengers} people • ${passenger['pickupAddress']}',
             ),
-          );
-        }
+            onTap: () => _showPassengerDetails(passenger),
+          ),
+        );
       }
     }
     setState(() {});
