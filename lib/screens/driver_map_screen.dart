@@ -73,12 +73,49 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   void initState() {
     super.initState();
     _initializeDriverScreen();
+    
+    // Get driver location as soon as possible
+    Future.delayed(Duration(seconds: 1), () {
+      if (mounted) {
+        _getCurrentLocation();
+      }
+    });
+    
     // Set up periodic refresh for passengers
     _passengerRefreshTimer = Timer.periodic(Duration(minutes: 2), (timer) {
       if (mounted) {
         _loadPassengers();
       }
     });
+    
+    // Check for Google API key issues
+    _checkGoogleApiKey();
+  }
+
+  // Check if Google API key is working properly
+  Future<void> _checkGoogleApiKey() async {
+    if (_driverLocation == null) {
+      // Use a default location for testing
+      final testOrigin = LatLng(0.34540783865964797, 32.54297125499706);
+      final testDestination = LatLng(0.34640783865964797, 32.54397125499706);
+
+      try {
+        final directions = await _directionsRepository.getDirections(
+          origin: testOrigin,
+          destination: testDestination,
+        );
+
+        if (directions == null) {
+          print('Warning: Google Directions API returned null response');
+          _showSnackBar('Warning: Google Maps API may not be working properly');
+        } else {
+          print('Google Directions API test successful');
+        }
+      } catch (e) {
+        print('Error testing Google Directions API: $e');
+        _showSnackBar('Error: Google Maps API not working - ${e.toString()}');
+      }
+    }
   }
 
   Future<void> _initializeDriverScreen() async {
@@ -320,11 +357,38 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
   // Generate optimized route using BusRouteService
   Future<void> _generateOptimizedRoute() async {
-    if (_driverLocation == null) return;
+    // Check if we have the driver's location
+    if (_driverLocation == null) {
+      print('Driver location is null, attempting to get location');
+      await _getCurrentLocation();
+      
+      if (_driverLocation == null) {
+        print('Failed to get driver location');
+        _showSnackBar('Unable to get your location. Please try again.');
+        return;
+      }
+    }
+    
+    // Check if we have passengers
+    if (_passengers.isEmpty) {
+      print('No passengers available for route generation');
+      _showSnackBar('No passengers available for route generation');
+      return;
+    }
 
     try {
+      // Show loading indicator
+      setState(() {
+        _isLoading = true;
+        _statusMessage = 'Optimizing route...';
+      });
+
+      print('Starting route generation with driver at: $_driverLocation');
+      print('Number of passengers: ${_passengers.length}');
+
       // Clear previous route data
       _routeService.clearAllPassengers();
+      _polylines.clear();
 
       // Add driver's current location as starting point
       final driverStop = map_service.BusStop(
@@ -332,6 +396,13 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         location: map_service.LatLng(
             _driverLocation!.latitude, _driverLocation!.longitude),
         name: 'Driver Location',
+      );
+      
+      // Add driver as first stop
+      _routeService.addPassengerPickup(
+        'driver',
+        map_service.LatLng(_driverLocation!.latitude, _driverLocation!.longitude),
+        'Driver Location',
       );
 
       // Add all visible passengers to the route service
@@ -363,13 +434,23 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
           ),
           name: _driverBus!.destination,
         );
+        
+        // Add destination as last stop
+        _routeService.addPassengerPickup(
+          'destination',
+          map_service.LatLng(_driverBus!.destinationLat!, _driverBus!.destinationLng!),
+          _driverBus!.destination,
+        );
       }
 
       // Force optimization
+      print('Forcing route optimization...');
       await _routeService.optimizeNow();
+      print('Route optimization complete');
 
       // Get optimized route coordinates
       final routeCoordinates = _routeService.getOptimizedRouteCoordinates();
+      print('Got ${routeCoordinates.length} optimized route coordinates');
 
       // Convert to Google Maps LatLng
       final googleMapCoordinates = routeCoordinates
@@ -379,39 +460,187 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       // Get total distance and time
       _totalRouteDistance = _routeService.getEstimatedTotalDistance() ?? 0;
       _totalRouteTime = _routeService.getEstimatedTotalTime() ?? 0;
+      print('Total route distance: ${_totalRouteDistance.toStringAsFixed(1)} km');
+      print('Total route time: ${_totalRouteTime.toStringAsFixed(0)} min');
 
-      // Create polyline
+      // Get ordered bus stops
+      final orderedStops = _routeService.getOrderedBusStops();
+      print('Got ${orderedStops.length} ordered stops');
+      
+      // Create a list of LatLng points for each stop
+      final List<LatLng> waypoints = [];
+      
+      // Start with driver location
+      if (_driverLocation != null) {
+        waypoints.add(_driverLocation!);
+      }
+      
+      // Add each passenger location in optimized order
+      for (var stop in orderedStops) {
+        if (stop.id != 'driver' && stop.id != 'destination') {
+          waypoints.add(LatLng(stop.location.latitude, stop.location.longitude));
+        }
+      }
+      
+      // Add destination if available
+      if (_driverBus != null && 
+          _driverBus!.destinationLat != null && 
+          _driverBus!.destinationLng != null) {
+        waypoints.add(LatLng(_driverBus!.destinationLat!, _driverBus!.destinationLng!));
+      }
+
+      print('Created ${waypoints.length} waypoints for polyline');
+      
+      // Now create a road-following polyline through all waypoints
+      await _createWaypointPolyline(waypoints);
+
+      // Find nearest passenger for the detail view
+      await _findNearestPassengerAndDrawRoute();
+      
       setState(() {
-        _polylines.clear();
+        _isLoading = false;
+        _statusMessage = '';
+      });
+    } catch (e) {
+      print('Error generating optimized route: $e');
+      setState(() {
+        _isLoading = false;
+        _statusMessage = 'Error: ${e.toString()}';
+      });
+      _showSnackBar('Error generating route: ${e.toString()}');
+    }
+  }
 
-        if (googleMapCoordinates.length > 1) {
-          _polylines.add(
-            Polyline(
-              polylineId: PolylineId('optimized_route'),
-              points: googleMapCoordinates,
-              color: Colors.blue,
-              width: 5,
-              patterns: [
-                PatternItem.dash(20),
-                PatternItem.gap(10),
-              ],
-            ),
-          );
+  // Create a polyline that follows roads through all waypoints
+  Future<void> _createWaypointPolyline(List<LatLng> waypoints) async {
+    if (waypoints.length < 2) return;
+
+    print('Creating waypoint polyline with ${waypoints.length} waypoints');
+    print('Waypoints: $waypoints');
+
+    try {
+      // We'll build the polyline segment by segment
+      List<LatLng> fullRoutePoints = [];
+      double totalDistance = 0;
+      double totalDuration = 0;
+
+      // Process waypoints in pairs to create route segments
+      for (int i = 0; i < waypoints.length - 1; i++) {
+        final origin = waypoints[i];
+        final destination = waypoints[i + 1];
+
+        print('Getting directions for segment $i: $origin to $destination');
+
+        // Get directions between this pair of points
+        final directions = await _directionsRepository.getDirections(
+          origin: origin,
+          destination: destination,
+        );
+
+        if (directions != null) {
+          // Extract polyline points
+          final points = directions.polylinePoints
+              .map((point) => LatLng(point.latitude, point.longitude))
+              .toList();
+
+          print('Segment $i: Got ${points.length} polyline points');
+
+          // Add to our full route
+          fullRoutePoints.addAll(points);
+
+          // Extract numeric distance value (remove "km" or "mi")
+          final distanceText = directions.totalDistance;
+          final distanceValue = double.tryParse(
+                  distanceText.replaceAll(RegExp(r'[^0-9.]'), '')) ??
+              0;
+
+          // Add to total
+          totalDistance += distanceValue;
+
+          // Log segment
+          print(
+              'Route segment $i: ${directions.totalDistance}, ${directions.totalDuration}');
+        } else {
+          // If directions failed, just use a straight line
+          fullRoutePoints.add(origin);
+          fullRoutePoints.add(destination);
+          print('Failed to get directions for segment $i, using straight line');
+        }
+      }
+
+      print(
+          'Total route has ${fullRoutePoints.length} points, distance: ${totalDistance.toStringAsFixed(1)} km');
+
+      // Update the polylines
+      setState(() {
+        _polylines.add(
+          Polyline(
+            polylineId: PolylineId('full_route'),
+            points: fullRoutePoints,
+            color: Colors.blue,
+            width: 5,
+            patterns: [
+              PatternItem.dash(20),
+              PatternItem.gap(10),
+            ],
+          ),
+        );
+
+        // Update total route stats if we calculated them
+        if (totalDistance > 0) {
+          _totalRouteDistance = totalDistance;
+          _routeDistanceText = '${totalDistance.toStringAsFixed(1)} km';
         }
       });
 
-      // Find nearest passenger and draw route
-      await _findNearestPassengerAndDrawRoute();
+      // Adjust camera to show the route
+      if (_mapController != null && fullRoutePoints.isNotEmpty) {
+        final bounds = _calculateBounds(fullRoutePoints);
+        print('Adjusting camera to bounds: $bounds');
+        _mapController!.animateCamera(
+          CameraUpdate.newLatLngBounds(bounds, 50),
+        );
+      }
     } catch (e) {
-      print('Error generating optimized route: $e');
+      print('Error creating waypoint polyline: $e');
     }
+  }
+
+  // Calculate bounds for a list of LatLng points
+  LatLngBounds _calculateBounds(List<LatLng> points) {
+    double minLat = 90;
+    double maxLat = -90;
+    double minLng = 180;
+    double maxLng = -180;
+
+    for (var point in points) {
+      if (point.latitude < minLat) minLat = point.latitude;
+      if (point.latitude > maxLat) maxLat = point.latitude;
+      if (point.longitude < minLng) minLng = point.longitude;
+      if (point.longitude > maxLng) maxLng = point.longitude;
+    }
+
+    return LatLngBounds(
+      southwest: LatLng(minLat, minLng),
+      northeast: LatLng(maxLat, maxLng),
+    );
   }
 
   // Find nearest passenger and draw route
   Future<void> _findNearestPassengerAndDrawRoute() async {
-    if (_driverLocation == null || _passengers.isEmpty) return;
+    if (_driverLocation == null) {
+      print('Cannot find nearest passenger: Driver location is null');
+      return;
+    }
+    
+    if (_passengers.isEmpty) {
+      print('Cannot find nearest passenger: No passengers available');
+      return;
+    }
 
     try {
+      print('Finding nearest passenger from ${_passengers.length} passengers');
+      
       // Find the nearest passenger
       Map<String, dynamic>? nearest;
       double minDistance = double.infinity;
@@ -440,6 +669,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       }
 
       if (nearest != null) {
+        print('Found nearest passenger: ${nearest['userName']} at ${minDistance.toStringAsFixed(2)} km');
         setState(() {
           _nearestPassenger = nearest;
         });
@@ -451,12 +681,14 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
           location['longitude'],
         );
 
+        print('Getting directions to nearest passenger');
         final directions = await _directionsRepository.getDirections(
           origin: _driverLocation!,
           destination: destination,
         );
 
         if (directions != null) {
+          print('Got directions: ${directions.totalDistance}, ${directions.totalDuration}');
           setState(() {
             _directions = directions;
             _routeDistanceText = directions.totalDistance;
@@ -468,6 +700,12 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
               .map((point) => LatLng(point.latitude, point.longitude))
               .toList();
 
+          print('Created polyline with ${points.length} points');
+          
+          // Remove any existing nearest passenger route polyline
+          _polylines.removeWhere(
+              (polyline) => polyline.polylineId.value == 'nearest_passenger_route');
+
           setState(() {
             _polylines.add(
               Polyline(
@@ -475,17 +713,17 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                 points: points,
                 color: Colors.green,
                 width: 5,
+                zIndex: 2, // Make sure it's drawn on top
               ),
             );
           });
 
-          // Adjust camera to show the route
-          if (_mapController != null) {
-            _mapController!.animateCamera(
-              CameraUpdate.newLatLngBounds(directions.bounds, 50),
-            );
-          }
+          // Don't adjust camera here - we want to see the full route
+        } else {
+          print('Failed to get directions to nearest passenger');
         }
+      } else {
+        print('No nearest passenger found with valid location');
       }
     } catch (e) {
       print('Error finding nearest passenger: $e');
@@ -976,15 +1214,29 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                         ],
                       ),
                       child: InkWell(
-                        onTap: () {
-                          _loadPassengers().then((_) {
-                            if (_passengers.isNotEmpty &&
-                                _driverLocation != null) {
-                              _generateOptimizedRoute();
-                              // Automatically show passenger list
-                              _showPassengerList();
+                        onTap: () async {
+                          // First make sure we have the driver's location
+                          if (_driverLocation == null) {
+                            await _getCurrentLocation();
+                          }
+
+                          // Then load passengers
+                          await _loadPassengers();
+
+                          // Generate route if we have both location and passengers
+                          if (_driverLocation != null &&
+                              _passengers.isNotEmpty) {
+                            await _generateOptimizedRoute();
+                            _showPassengerList();
+                          } else {
+                            if (_driverLocation == null) {
+                              _showSnackBar(
+                                  'Unable to get your location. Please try again.');
+                            } else if (_passengers.isEmpty) {
+                              _showSnackBar(
+                                  'No passengers found for your bus.');
                             }
-                          });
+                          }
                         },
                         child: Padding(
                           padding: EdgeInsets.all(8.0),
@@ -994,7 +1246,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                               Icon(Icons.people, color: Colors.white),
                               SizedBox(width: 8),
                               Text(
-                                'Load Passengers',
+                                'Load Passengers & Generate Route',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
@@ -1222,6 +1474,120 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
               ),
             ),
 
+            // Route regeneration button
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: Colors.amber.withOpacity(0.2),
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  // First check if we have the driver's location
+                  if (_driverLocation == null) {
+                    Navigator.pop(context);
+                    _showSnackBar('Getting your location...');
+                    await _getCurrentLocation();
+                    
+                    if (_driverLocation == null) {
+                      _showSnackBar('Unable to get your location. Please try again.');
+                      return;
+                    }
+                  }
+                  
+                  // Check if we have passengers
+                  if (_passengers.isEmpty) {
+                    Navigator.pop(context);
+                    _showSnackBar('No passengers found. Loading passengers...');
+                    await _loadPassengers();
+                    
+                    if (_passengers.isEmpty) {
+                      _showSnackBar('No passengers found for your bus.');
+                      return;
+                    }
+                  }
+                  
+                  // Now generate the route
+                  Navigator.pop(context);
+                  _showSnackBar('Generating optimized route...');
+                  await _generateOptimizedRoute();
+                  _showSnackBar('Route regenerated successfully');
+                  _showPassengerList();
+                },
+                icon: Icon(Icons.refresh, size: 16),
+                label: Text('Regenerate Route'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.amber,
+                  foregroundColor: Colors.black87,
+                  minimumSize: Size(double.infinity, 36),
+                ),
+              ),
+            ),
+
+            // Route information
+            if (_totalRouteDistance > 0)
+              Container(
+                padding: EdgeInsets.all(16),
+                color: Colors.blue.withOpacity(0.1),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.route, color: Colors.blue),
+                        SizedBox(width: 8),
+                        Text(
+                          'Full Route (All Passengers)',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Total Distance: ${_totalRouteDistance.toStringAsFixed(1)} km',
+                              style: TextStyle(
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                            Text(
+                              '${_passengers.length} passengers',
+                              style: TextStyle(
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                          ],
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              'Est. Time: ${_totalRouteTime.toStringAsFixed(0)} min',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'Blue dashed line on map',
+                              style: TextStyle(
+                                color: Colors.blue,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
             // Nearest passenger route information
             if (_nearestPassenger != null && _routeDistanceText.isNotEmpty)
               Container(
@@ -1274,13 +1640,12 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                               ),
                             ),
                             Text(
-                              'Pickup: ${_nearestPassenger!['pickupAddress']}',
+                              'Green solid line on map',
                               style: TextStyle(
-                                color: Colors.grey[700],
+                                color: Colors.green,
                                 fontSize: 12,
+                                fontWeight: FontWeight.w500,
                               ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
                             ),
                           ],
                         ),
@@ -1296,55 +1661,6 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                         foregroundColor: Colors.white,
                         minimumSize: Size(double.infinity, 36),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-
-            // Route information
-            if (_totalRouteDistance > 0)
-              Container(
-                padding: EdgeInsets.all(16),
-                color: Colors.blue.withOpacity(0.1),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Optimized Route',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Total Distance: ${_totalRouteDistance.toStringAsFixed(1)} km',
-                          style: TextStyle(
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                      ],
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          'Est. Time: ${_totalRouteTime.toStringAsFixed(0)} min',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          '${_passengers.length} stops',
-                          style: TextStyle(
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                      ],
                     ),
                   ],
                 ),
