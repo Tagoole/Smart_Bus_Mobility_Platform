@@ -94,10 +94,10 @@ class _SplashScreenState extends State<SplashScreen>
       CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
     );
 
-    _slideAnimation = Tween<Offset>(begin: Offset(-1.5, 0.0), end: Offset.zero)
-        .animate(
-          CurvedAnimation(parent: _slideController, curve: Curves.elasticOut),
-        );
+    _slideAnimation =
+        Tween<Offset>(begin: Offset(-1.5, 0.0), end: Offset.zero).animate(
+      CurvedAnimation(parent: _slideController, curve: Curves.elasticOut),
+    );
 
     _scaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _scaleController, curve: Curves.bounceOut),
@@ -172,7 +172,7 @@ class _SplashScreenState extends State<SplashScreen>
               case 'driver':
                 Navigator.pushReplacementNamed(
                   context,
-                  AppRoutes.busDriverHomeScreen,
+                  AppRoutes.driverNavbarScreen,
                 );
                 break;
               case 'user':
@@ -407,11 +407,11 @@ class _SplashScreenState extends State<SplashScreen>
           child: SlideTransition(
             position: Tween<Offset>(begin: Offset(1.5, 0.0), end: Offset.zero)
                 .animate(
-                  CurvedAnimation(
-                    parent: _slideController,
-                    curve: Curves.elasticOut,
-                  ),
-                ),
+              CurvedAnimation(
+                parent: _slideController,
+                curve: Curves.elasticOut,
+              ),
+            ),
             child: _buildModernStrokedText(
               'Bus',
               fontSize: screenWidth * 0.15,
@@ -616,8 +616,8 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 
-                          isSelected ? 0.25 : 0.15,
+                        color: Colors.black.withValues(
+                          alpha: isSelected ? 0.25 : 0.15,
                         ),
                         blurRadius: isSelected ? 30 : 20,
                         offset: Offset(0, isSelected ? 15 : 10),
@@ -770,4 +770,3 @@ class DottedPathPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
-

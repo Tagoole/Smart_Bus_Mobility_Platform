@@ -12,7 +12,6 @@ import 'package:smart_bus_mobility_platform1/resources/map_service.dart'
     as map_service;
 import 'package:smart_bus_mobility_platform1/utils/directions_repository.dart';
 import 'package:smart_bus_mobility_platform1/utils/directions_model.dart';
-import 'package:smart_bus_mobility_platform1/screens/bus_driver_home_screen.dart';
 
 class DriverMapScreen extends StatefulWidget {
   const DriverMapScreen({super.key});
@@ -70,9 +69,6 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
   // Timer for passenger data refresh
   Timer? _passengerRefreshTimer;
-
-  // Add navigation bar state
-  int _currentNavIndex = 1; // Default to map tab (middle)
 
   @override
   void initState() {
@@ -1648,51 +1644,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                   ),
               ],
             ),
-      // Add bottom navigation bar
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentNavIndex,
-        onTap: (index) {
-          setState(() {
-            _currentNavIndex = index;
-          });
-          
-          // Handle navigation
-          switch (index) {
-            case 0: // Dashboard
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => BusDriverHomeScreen(),
-                ),
-              );
-              break;
-            case 1: // Map (current screen)
-              // Already on map screen
-              break;
-            case 2: // Settings
-              _showSnackBar('Settings feature coming soon');
-              break;
-          }
-        },
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'Dashboard',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.map),
-            label: 'Map',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
-        selectedItemColor: Colors.green,
-        unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true,
-        type: BottomNavigationBarType.fixed,
-      ),
+      // Remove bottom navigation bar
     );
   }
 

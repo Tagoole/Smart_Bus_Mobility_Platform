@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
-import 'package:smart_bus_mobility_platform1/screens/driver_map_screen.dart';
 
 class BusDriverHomeScreen extends StatefulWidget {
   const BusDriverHomeScreen({Key? key}) : super(key: key);
@@ -12,20 +11,17 @@ class BusDriverHomeScreen extends StatefulWidget {
 }
 
 class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
-  // Navigation bar state
-  int _currentNavIndex = 0; // Default to dashboard tab
-  
   // Driver data
   String _driverName = 'Driver';
   String _driverEmail = '';
   BusModel? _driverBus;
-  
+
   // Statistics
   int _totalPassengers = 0;
   int _completedTrips = 0;
   double _totalEarnings = 0.0;
   bool _isOnline = false;
-  
+
   // Loading state
   bool _isLoading = true;
 
@@ -34,13 +30,13 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
     super.initState();
     _loadDriverData();
   }
-  
+
   // Get current user ID
   String? _getCurrentUserId() {
     final user = FirebaseAuth.instance.currentUser;
     return user?.uid;
   }
-  
+
   // Load driver data
   Future<void> _loadDriverData() async {
     try {
@@ -101,7 +97,7 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
           }
         }
       }
-      
+
       setState(() {
         _isLoading = false;
       });
@@ -112,7 +108,7 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
       });
     }
   }
-  
+
   // Load bus statistics
   Future<void> _loadBusStatistics(String busId) async {
     try {
@@ -121,27 +117,28 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
           .collection('bookings')
           .where('busId', isEqualTo: busId)
           .get();
-      
+
       int passengers = 0;
       double earnings = 0.0;
-      
+
       for (var doc in bookingsSnapshot.docs) {
         final bookingData = doc.data();
         final adultCount = (bookingData['adultCount'] ?? 1) as int;
         final childrenCount = (bookingData['childrenCount'] ?? 0) as int;
         final totalFare = bookingData['totalFare'] ?? 0.0;
-        
+
         passengers += adultCount + childrenCount;
-        earnings += (totalFare is int) ? totalFare.toDouble() : (totalFare as double);
+        earnings +=
+            (totalFare is int) ? totalFare.toDouble() : (totalFare as double);
       }
-      
+
       // Get completed trips count
       final tripsSnapshot = await FirebaseFirestore.instance
           .collection('trips')
           .where('busId', isEqualTo: busId)
           .where('status', isEqualTo: 'completed')
           .get();
-      
+
       setState(() {
         _totalPassengers = passengers;
         _totalEarnings = earnings;
@@ -151,30 +148,28 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
       print('Error loading bus statistics: $e');
     }
   }
-  
+
   // Toggle online status
   Future<void> _toggleOnlineStatus() async {
     try {
       final userId = _getCurrentUserId();
       if (userId == null) return;
-      
+
       final newStatus = !_isOnline;
-      
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .update({
+
+      await FirebaseFirestore.instance.collection('users').doc(userId).update({
         'isOnline': newStatus,
         'lastUpdated': FieldValue.serverTimestamp(),
       });
-      
+
       setState(() {
         _isOnline = newStatus;
       });
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(newStatus ? 'You are now online' : 'You are now offline'),
+          content:
+              Text(newStatus ? 'You are now online' : 'You are now offline'),
           backgroundColor: newStatus ? Colors.green : Colors.grey,
         ),
       );
@@ -237,7 +232,8 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                                 children: [
                                   CircleAvatar(
                                     radius: 30,
-                                    backgroundColor: Colors.green.withOpacity(0.2),
+                                    backgroundColor:
+                                        Colors.green.withOpacity(0.2),
                                     child: Icon(
                                       Icons.person,
                                       size: 40,
@@ -247,7 +243,8 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                                   SizedBox(width: 16),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           _driverName,
@@ -294,9 +291,9 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                           ),
                         ),
                       ),
-                      
+
                       SizedBox(height: 16),
-                      
+
                       // Bus info card
                       if (_driverBus != null)
                         Card(
@@ -316,7 +313,8 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                                 SizedBox(height: 8),
                                 Row(
                                   children: [
-                                    Icon(Icons.directions_bus, color: Colors.green),
+                                    Icon(Icons.directions_bus,
+                                        color: Colors.green),
                                     SizedBox(width: 8),
                                     Text(
                                       _driverBus!.numberPlate,
@@ -340,7 +338,9 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                                   children: [
                                     Text('Status: '),
                                     Text(
-                                      _driverBus!.isAvailable ? 'Available' : 'Unavailable',
+                                      _driverBus!.isAvailable
+                                          ? 'Available'
+                                          : 'Unavailable',
                                       style: TextStyle(
                                         color: _driverBus!.isAvailable
                                             ? Colors.green
@@ -354,9 +354,9 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                             ),
                           ),
                         ),
-                      
+
                       SizedBox(height: 16),
-                      
+
                       // Statistics cards
                       Text(
                         'Statistics',
@@ -394,9 +394,9 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                         Icons.attach_money,
                         Colors.green,
                       ),
-                      
+
                       SizedBox(height: 24),
-                      
+
                       // Quick actions
                       Text(
                         'Quick Actions',
@@ -414,12 +414,21 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                               Icons.play_arrow,
                               Colors.green,
                               () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => DriverMapScreen(),
-                                  ),
-                                );
+                                // Switch to map tab in the NavBarScreen
+                                final parentNavBar =
+                                    DefaultTabController.of(context);
+                                if (parentNavBar != null) {
+                                  // If we're already in a NavBarScreen, just switch tabs
+                                  parentNavBar
+                                      .animateTo(1); // Index 1 is the Map tab
+                                } else {
+                                  // Otherwise navigate to the NavBarScreen with the Map tab selected
+                                  Navigator.pushReplacementNamed(
+                                    context,
+                                    '/driver_navbar',
+                                    arguments: 1, // Index for map tab
+                                  );
+                                }
                               },
                             ),
                           ),
@@ -430,13 +439,21 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                               Icons.map,
                               Colors.blue,
                               () {
-                                // Navigate to map screen
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => DriverMapScreen(),
-                                  ),
-                                );
+                                // Switch to map tab in the NavBarScreen
+                                final parentNavBar =
+                                    DefaultTabController.of(context);
+                                if (parentNavBar != null) {
+                                  // If we're already in a NavBarScreen, just switch tabs
+                                  parentNavBar
+                                      .animateTo(1); // Index 1 is the Map tab
+                                } else {
+                                  // Otherwise navigate to the NavBarScreen with the Map tab selected
+                                  Navigator.pushReplacementNamed(
+                                    context,
+                                    '/driver_navbar',
+                                    arguments: 1, // Index for map tab
+                                  );
+                                }
                               },
                             ),
                           ),
@@ -453,7 +470,8 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                               () {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text('Passenger list feature coming soon'),
+                                    content: Text(
+                                        'Passenger list feature coming soon'),
                                   ),
                                 );
                               },
@@ -468,7 +486,8 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                               () {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text('Report issue feature coming soon'),
+                                    content: Text(
+                                        'Report issue feature coming soon'),
                                   ),
                                 );
                               },
@@ -481,64 +500,12 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                 ),
               ),
             ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentNavIndex,
-        onTap: (index) {
-          setState(() {
-            _currentNavIndex = index;
-          });
-          
-          // Handle navigation
-          switch (index) {
-            case 0: // Dashboard
-              // Already on dashboard
-              break;
-            case 1: // Map
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => DriverMapScreen(),
-                ),
-              ).then((_) {
-                // Reset index when returning from map screen
-                setState(() {
-                  _currentNavIndex = 0;
-                });
-              });
-              break;
-            case 2: // Settings
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Settings feature coming soon'),
-                ),
-              );
-              break;
-          }
-        },
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'Dashboard',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.map),
-            label: 'Map',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
-        selectedItemColor: Colors.green,
-        unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true,
-        type: BottomNavigationBarType.fixed,
-      ),
     );
   }
-  
+
   // Helper method to build stat cards
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+      String title, String value, IconData icon, Color color) {
     return Card(
       elevation: 4,
       child: Padding(
@@ -572,7 +539,7 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
       ),
     );
   }
-  
+
   // Helper method to build action buttons
   Widget _buildActionButton(
       String title, IconData icon, Color color, VoidCallback onPressed) {

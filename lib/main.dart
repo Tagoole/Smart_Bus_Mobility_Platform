@@ -115,9 +115,9 @@ class MyApp extends StatelessWidget {
                           // Route based on user role
                           switch (role) {
                             case 'admin':
-                              return AdminDashboardScreen();
+                              return NavBarScreen(userRole: 'admin');
                             case 'driver':
-                              return BusDriverHomeScreen();
+                              return NavBarScreen(userRole: 'driver');
                             case 'user':
                             default:
                               return NavBarScreen(userRole: role);
@@ -155,7 +155,7 @@ class MyApp extends StatelessWidget {
         '/forgotPassword': (context) => ForgotPasswordScreen(),
         '/admin': (context) => AdminDashboardScreen(),
         '/passenger': (context) => BusTrackingScreen(),
-        '/busdriver': (context) => DriverMapScreen(),
+        '/busdriver': (context) => NavBarScreen(userRole: 'driver'),
       },
     );
   }
