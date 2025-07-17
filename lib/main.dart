@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:smart_bus_mobility_platform1/screens/admin_home_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/bus_driver_home_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/nav_bar_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/login_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/signup_screen.dart';
@@ -116,7 +117,7 @@ class MyApp extends StatelessWidget {
                             case 'admin':
                               return AdminDashboardScreen();
                             case 'driver':
-                              return DriverMapScreen();
+                              return BusDriverHomeScreen();
                             case 'user':
                             default:
                               return NavBarScreen(userRole: role);

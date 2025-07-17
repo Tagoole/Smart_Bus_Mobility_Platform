@@ -12,6 +12,7 @@ import 'package:smart_bus_mobility_platform1/resources/map_service.dart'
     as map_service;
 import 'package:smart_bus_mobility_platform1/utils/directions_repository.dart';
 import 'package:smart_bus_mobility_platform1/utils/directions_model.dart';
+import 'package:smart_bus_mobility_platform1/screens/bus_driver_home_screen.dart';
 
 class DriverMapScreen extends StatefulWidget {
   const DriverMapScreen({super.key});
@@ -51,6 +52,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
   // Passengers data
   List<Map<String, dynamic>> _passengers = [];
+  List<Map<String, dynamic>> _removedPassengers = []; // Track removed passengers
   final Set<Marker> _allMarkers = {};
 
   // Polylines and route data
@@ -69,25 +71,28 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   // Timer for passenger data refresh
   Timer? _passengerRefreshTimer;
 
+  // Add navigation bar state
+  int _currentNavIndex = 1; // Default to map tab (middle)
+
   @override
   void initState() {
     super.initState();
     _initializeDriverScreen();
-    
+
     // Get driver location as soon as possible
     Future.delayed(Duration(seconds: 1), () {
       if (mounted) {
         _getCurrentLocation();
       }
     });
-    
+
     // Set up periodic refresh for passengers
     _passengerRefreshTimer = Timer.periodic(Duration(minutes: 2), (timer) {
       if (mounted) {
         _loadPassengers();
       }
     });
-    
+
     // Check for Google API key issues
     _checkGoogleApiKey();
   }
@@ -361,14 +366,14 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     if (_driverLocation == null) {
       print('Driver location is null, attempting to get location');
       await _getCurrentLocation();
-      
+
       if (_driverLocation == null) {
         print('Failed to get driver location');
         _showSnackBar('Unable to get your location. Please try again.');
         return;
       }
     }
-    
+
     // Check if we have passengers
     if (_passengers.isEmpty) {
       print('No passengers available for route generation');
@@ -397,11 +402,12 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
             _driverLocation!.latitude, _driverLocation!.longitude),
         name: 'Driver Location',
       );
-      
+
       // Add driver as first stop
       _routeService.addPassengerPickup(
         'driver',
-        map_service.LatLng(_driverLocation!.latitude, _driverLocation!.longitude),
+        map_service.LatLng(
+            _driverLocation!.latitude, _driverLocation!.longitude),
         'Driver Location',
       );
 
@@ -434,11 +440,12 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
           ),
           name: _driverBus!.destination,
         );
-        
+
         // Add destination as last stop
         _routeService.addPassengerPickup(
           'destination',
-          map_service.LatLng(_driverBus!.destinationLat!, _driverBus!.destinationLng!),
+          map_service.LatLng(
+              _driverBus!.destinationLat!, _driverBus!.destinationLng!),
           _driverBus!.destination,
         );
       }
@@ -460,43 +467,46 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       // Get total distance and time
       _totalRouteDistance = _routeService.getEstimatedTotalDistance() ?? 0;
       _totalRouteTime = _routeService.getEstimatedTotalTime() ?? 0;
-      print('Total route distance: ${_totalRouteDistance.toStringAsFixed(1)} km');
+      print(
+          'Total route distance: ${_totalRouteDistance.toStringAsFixed(1)} km');
       print('Total route time: ${_totalRouteTime.toStringAsFixed(0)} min');
 
       // Get ordered bus stops
       final orderedStops = _routeService.getOrderedBusStops();
       print('Got ${orderedStops.length} ordered stops');
-      
+
       // Create a list of LatLng points for each stop
       final List<LatLng> waypoints = [];
-      
+
       // Start with driver location
       if (_driverLocation != null) {
         waypoints.add(_driverLocation!);
       }
-      
+
       // Add each passenger location in optimized order
       for (var stop in orderedStops) {
         if (stop.id != 'driver' && stop.id != 'destination') {
-          waypoints.add(LatLng(stop.location.latitude, stop.location.longitude));
+          waypoints
+              .add(LatLng(stop.location.latitude, stop.location.longitude));
         }
       }
-      
+
       // Add destination if available
-      if (_driverBus != null && 
-          _driverBus!.destinationLat != null && 
+      if (_driverBus != null &&
+          _driverBus!.destinationLat != null &&
           _driverBus!.destinationLng != null) {
-        waypoints.add(LatLng(_driverBus!.destinationLat!, _driverBus!.destinationLng!));
+        waypoints.add(
+            LatLng(_driverBus!.destinationLat!, _driverBus!.destinationLng!));
       }
 
       print('Created ${waypoints.length} waypoints for polyline');
-      
+
       // Now create a road-following polyline through all waypoints
       await _createWaypointPolyline(waypoints);
 
       // Find nearest passenger for the detail view
       await _findNearestPassengerAndDrawRoute();
-      
+
       setState(() {
         _isLoading = false;
         _statusMessage = '';
@@ -632,7 +642,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       print('Cannot find nearest passenger: Driver location is null');
       return;
     }
-    
+
     if (_passengers.isEmpty) {
       print('Cannot find nearest passenger: No passengers available');
       return;
@@ -640,7 +650,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
     try {
       print('Finding nearest passenger from ${_passengers.length} passengers');
-      
+
       // Find the nearest passenger
       Map<String, dynamic>? nearest;
       double minDistance = double.infinity;
@@ -669,7 +679,8 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       }
 
       if (nearest != null) {
-        print('Found nearest passenger: ${nearest['userName']} at ${minDistance.toStringAsFixed(2)} km');
+        print(
+            'Found nearest passenger: ${nearest['userName']} at ${minDistance.toStringAsFixed(2)} km');
         setState(() {
           _nearestPassenger = nearest;
         });
@@ -688,7 +699,8 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         );
 
         if (directions != null) {
-          print('Got directions: ${directions.totalDistance}, ${directions.totalDuration}');
+          print(
+              'Got directions: ${directions.totalDistance}, ${directions.totalDuration}');
           setState(() {
             _directions = directions;
             _routeDistanceText = directions.totalDistance;
@@ -701,10 +713,10 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
               .toList();
 
           print('Created polyline with ${points.length} points');
-          
+
           // Remove any existing nearest passenger route polyline
-          _polylines.removeWhere(
-              (polyline) => polyline.polylineId.value == 'nearest_passenger_route');
+          _polylines.removeWhere((polyline) =>
+              polyline.polylineId.value == 'nearest_passenger_route');
 
           setState(() {
             _polylines.add(
@@ -944,6 +956,200 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     setState(() {});
   }
 
+  // Remove passenger from the map and route
+  Future<void> _removePassenger(Map<String, dynamic> passenger) async {
+    final bookingId = passenger['bookingId'];
+    final userName = passenger['userName'] ?? 'Passenger';
+    
+    // Show confirmation dialog
+    bool confirmed = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Remove Passenger'),
+        content: Text('Are you sure you want to remove $userName from the route?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Remove', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    ) ?? false;
+    
+    if (!confirmed) return;
+
+    // Check if we're removing the nearest passenger
+    bool wasNearestPassenger = false;
+    if (_nearestPassenger != null && _nearestPassenger!['bookingId'] == bookingId) {
+      wasNearestPassenger = true;
+      setState(() {
+        _nearestPassenger = null;
+      });
+      
+      // Remove the nearest passenger route polyline
+      _polylines.removeWhere((polyline) => polyline.polylineId.value == 'nearest_passenger_route');
+    }
+
+    // Add to removed passengers list
+    _removedPassengers.add(Map<String, dynamic>.from(passenger));
+
+    // Remove from local list
+    setState(() {
+      _passengers.removeWhere((p) => p['bookingId'] == bookingId);
+    });
+    
+    // Update markers
+    _updateMarkers();
+    
+    // Regenerate route if we still have passengers
+    if (_passengers.isNotEmpty && _driverLocation != null) {
+      _showSnackBar('Regenerating route without $userName...');
+      await _generateOptimizedRoute();
+      
+      // If we removed the nearest passenger, find a new nearest passenger
+      if (wasNearestPassenger) {
+        await _findNearestPassengerAndDrawRoute();
+      }
+    } else {
+      // Clear polylines if no passengers left
+      setState(() {
+        _polylines.clear();
+        _nearestPassenger = null;
+        _routeDistanceText = '';
+        _routeDurationText = '';
+      });
+    }
+    
+    _showSnackBar('Removed $userName from the route');
+  }
+
+  // Restore a removed passenger
+  Future<void> _restorePassenger(Map<String, dynamic> passenger) async {
+    final bookingId = passenger['bookingId'];
+    final userName = passenger['userName'] ?? 'Passenger';
+    
+    // Remove from removed list
+    _removedPassengers.removeWhere((p) => p['bookingId'] == bookingId);
+    
+    // Add back to passengers list
+    _passengers.add(passenger);
+    
+    // Update markers
+    _updateMarkers();
+    
+    // Regenerate route
+    if (_driverLocation != null) {
+      _showSnackBar('Regenerating route with $userName...');
+      await _generateOptimizedRoute();
+    }
+    
+    _showSnackBar('Restored $userName to the route');
+  }
+
+  // Show removed passengers list
+  void _showRemovedPassengersList() {
+    if (_removedPassengers.isEmpty) {
+      _showSnackBar('No removed passengers');
+      return;
+    }
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.5,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Removed Passengers',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    '${_removedPassengers.length} removed',
+                    style: TextStyle(
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // List of removed passengers
+            Expanded(
+              child: ListView.builder(
+                itemCount: _removedPassengers.length,
+                itemBuilder: (context, index) {
+                  final passenger = _removedPassengers[index];
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.red.withOpacity(0.2),
+                      child: Icon(Icons.person_off, color: Colors.red),
+                    ),
+                    title: Text(
+                      passenger['userName'] ?? 'Passenger',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(passenger['pickupAddress'] ?? 'Unknown location'),
+                    trailing: TextButton.icon(
+                      icon: Icon(Icons.restore, size: 16),
+                      label: Text('Restore'),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _restorePassenger(passenger);
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+            
+            // Close button
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.grey,
+                  minimumSize: Size(double.infinity, 40),
+                ),
+                child: Text('Close'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // Show passenger details dialog
   void _showPassengerDetails(Map<String, dynamic> passenger) {
     showDialog(
@@ -975,6 +1181,16 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text('Close'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _removePassenger(passenger);
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+            child: Text('Remove'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1163,35 +1379,10 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                   myLocationButtonEnabled: false,
                   zoomControlsEnabled: false,
                   mapToolbarEnabled: false,
-                  // Remove the onTap handler that was loading passengers
                 ),
 
                 if (_isLoadingLocation)
                   const Center(child: CircularProgressIndicator()),
-
-                // Remove the tap instruction tooltip
-                // if (_passengers.isEmpty)
-                //   Positioned(
-                //     top: 40,
-                //     left: 0,
-                //     right: 0,
-                //     child: Center(
-                //       child: Container(
-                //         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                //         decoration: BoxDecoration(
-                //           color: Colors.black.withOpacity(0.7),
-                //           borderRadius: BorderRadius.circular(20),
-                //         ),
-                //         child: Text(
-                //           'Tap on the map to load passengers',
-                //           style: TextStyle(
-                //             color: Colors.white,
-                //             fontWeight: FontWeight.bold,
-                //           ),
-                //         ),
-                //       ),
-                //     ),
-                //   ),
 
                 // Add notification/button to load passengers
                 Positioned(
@@ -1219,22 +1410,19 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                           if (_driverLocation == null) {
                             await _getCurrentLocation();
                           }
-
+                          
                           // Then load passengers
                           await _loadPassengers();
-
+                          
                           // Generate route if we have both location and passengers
-                          if (_driverLocation != null &&
-                              _passengers.isNotEmpty) {
+                          if (_driverLocation != null && _passengers.isNotEmpty) {
                             await _generateOptimizedRoute();
                             _showPassengerList();
                           } else {
                             if (_driverLocation == null) {
-                              _showSnackBar(
-                                  'Unable to get your location. Please try again.');
+                              _showSnackBar('Unable to get your location. Please try again.');
                             } else if (_passengers.isEmpty) {
-                              _showSnackBar(
-                                  'No passengers found for your bus.');
+                              _showSnackBar('No passengers found for your bus.');
                             }
                           }
                         },
@@ -1407,8 +1595,104 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                     ),
                   ),
                 ),
+                
+                // Removed passengers button
+                if (_removedPassengers.isNotEmpty)
+                  Positioned(
+                    bottom: 16,
+                    left: 76,
+                    child: Container(
+                      height: 50,
+                      width: 50,
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(25),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 6,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Stack(
+                        children: [
+                          IconButton(
+                            padding: EdgeInsets.zero,
+                            icon: Icon(Icons.person_off, color: Colors.white),
+                            onPressed: _showRemovedPassengersList,
+                            tooltip: 'Show removed passengers',
+                          ),
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: Container(
+                              padding: EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text(
+                                '${_removedPassengers.length}',
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
               ],
             ),
+      // Add bottom navigation bar
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentNavIndex,
+        onTap: (index) {
+          setState(() {
+            _currentNavIndex = index;
+          });
+          
+          // Handle navigation
+          switch (index) {
+            case 0: // Dashboard
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => BusDriverHomeScreen(),
+                ),
+              );
+              break;
+            case 1: // Map (current screen)
+              // Already on map screen
+              break;
+            case 2: // Settings
+              _showSnackBar('Settings feature coming soon');
+              break;
+          }
+        },
+        items: [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard),
+            label: 'Dashboard',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.map),
+            label: 'Map',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Settings',
+          ),
+        ],
+        selectedItemColor: Colors.green,
+        unselectedItemColor: Colors.grey,
+        showUnselectedLabels: true,
+        type: BottomNavigationBarType.fixed,
+      ),
     );
   }
 
@@ -1481,7 +1765,8 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                   children: [
                     // Route regeneration button
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       color: Colors.amber.withOpacity(0.2),
                       child: ElevatedButton.icon(
                         onPressed: () async {
@@ -1490,25 +1775,28 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                             Navigator.pop(context); // Dismiss the sheet
                             _showSnackBar('Getting your location...');
                             await _getCurrentLocation();
-                            
+
                             if (_driverLocation == null) {
-                              _showSnackBar('Unable to get your location. Please try again.');
+                              _showSnackBar(
+                                  'Unable to get your location. Please try again.');
                               return;
                             }
                           }
-                          
+
                           // Check if we have passengers
                           if (_passengers.isEmpty) {
                             Navigator.pop(context); // Dismiss the sheet
-                            _showSnackBar('No passengers found. Loading passengers...');
+                            _showSnackBar(
+                                'No passengers found. Loading passengers...');
                             await _loadPassengers();
-                            
+
                             if (_passengers.isEmpty) {
-                              _showSnackBar('No passengers found for your bus.');
+                              _showSnackBar(
+                                  'No passengers found for your bus.');
                               return;
                             }
                           }
-                          
+
                           // Now generate the route
                           Navigator.pop(context); // Dismiss the sheet
                           _showSnackBar('Generating optimized route...');
@@ -1593,7 +1881,8 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                       ),
 
                     // Nearest passenger route information
-                    if (_nearestPassenger != null && _routeDistanceText.isNotEmpty)
+                    if (_nearestPassenger != null &&
+                        _routeDistanceText.isNotEmpty)
                       Container(
                         padding: EdgeInsets.all(16),
                         color: Colors.green.withOpacity(0.1),
@@ -1738,7 +2027,8 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                                     horizontal: 16, vertical: 8),
                                 child: ListTile(
                                   leading: CircleAvatar(
-                                    backgroundColor: Colors.blue.withOpacity(0.2),
+                                    backgroundColor:
+                                        Colors.blue.withOpacity(0.2),
                                     child: Icon(
                                       Icons.person,
                                       color: Colors.blue,
@@ -1746,24 +2036,29 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                                   ),
                                   title: Text(
                                     passenger['userName'] ?? 'Passenger',
-                                    style: TextStyle(fontWeight: FontWeight.bold),
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold),
                                   ),
                                   subtitle: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(passenger['userEmail'] ?? ''),
                                       Text(
                                         'Booking ID: ${passenger['bookingId']}',
                                         style: TextStyle(
-                                            fontSize: 12, color: Colors.grey[600]),
+                                            fontSize: 12,
+                                            color: Colors.grey[600]),
                                       ),
                                       Text(
                                         'Seats: ${(passenger['selectedSeats'] as List).join(', ')}',
-                                        style: TextStyle(fontWeight: FontWeight.w500),
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w500),
                                       ),
                                       Text(
                                         'Pickup: ${passenger['pickupAddress']}',
-                                        style: TextStyle(color: Colors.grey[600]),
+                                        style:
+                                            TextStyle(color: Colors.grey[600]),
                                       ),
                                     ],
                                   ),
@@ -1772,13 +2067,16 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           Text(
                                             '${passenger['adultCount']} adult${passenger['adultCount'] > 1 ? 's' : ''}',
                                             style: TextStyle(fontSize: 12),
                                           ),
-                                          if ((passenger['childrenCount'] ?? 0) > 0)
+                                          if ((passenger['childrenCount'] ??
+                                                  0) >
+                                              0)
                                             Text(
                                               '${passenger['childrenCount']} child${passenger['childrenCount'] > 1 ? 'ren' : ''}',
                                               style: TextStyle(fontSize: 12),
@@ -1786,10 +2084,21 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                                         ],
                                       ),
                                       IconButton(
+                                        icon: Icon(Icons.remove_circle_outline,
+                                            size: 20, color: Colors.red),
+                                        onPressed: () {
+                                          Navigator.pop(
+                                              context); // Dismiss the sheet
+                                          _removePassenger(passenger);
+                                        },
+                                        tooltip: 'Remove passenger from route',
+                                      ),
+                                      IconButton(
                                         icon: Icon(Icons.navigation,
                                             size: 20, color: Colors.blue),
                                         onPressed: () {
-                                          Navigator.pop(context); // Dismiss the sheet
+                                          Navigator.pop(
+                                              context); // Dismiss the sheet
                                           _navigateToPassenger(passenger);
                                         },
                                         tooltip: 'Navigate to passenger',
