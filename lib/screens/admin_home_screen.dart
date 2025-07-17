@@ -114,6 +114,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     }
   }
 
+  // Logout function
+  Future<void> _handleLogout() async {
+    try {
+      await _auth.signOut();
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(context, '/sign-in', (route) => false);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error signing out: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -152,7 +169,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB), width: 1)),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
+        //Border(bottom: BorderSide(color: Color(0xFFE5E7EB), width: 1)),
         boxShadow: [
           BoxShadow(
             color: Color(0x0A000000),
@@ -209,11 +230,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               ],
             ),
             const SizedBox(width: 24),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     'Admin Dashboard',
                     style: TextStyle(
                       fontSize: 28,
@@ -221,8 +242,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                       color: Color(0xFF111827),
                     ),
                   ),
-                  SizedBox(height: 4),
-                  Text(
+                  const SizedBox(height: 4),
+                  const Text(
                     'Manage your routes and operations efficiently',
                     style: TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
                   ),
@@ -232,41 +253,60 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                const Text(
-                  'Last updated',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-                ),
-                const Text(
-                  '2 minutes ago',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF111827),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade400,
-                    shape: BoxShape.circle,
-                  ),
-                  child: AnimatedBuilder(
-                    animation: _animationController,
-                    builder: (context, child) {
-                      return Transform.scale(
-                        scale: 0.8 + (0.2 * _animationController.value),
-                        child: child,
-                      );
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade400,
-                        shape: BoxShape.circle,
-                      ),
+                Row(
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const Text(
+                          'Last updated',
+                          style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                        ),
+                        const Text(
+                          '2 minutes ago',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF111827),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade400,
+                            shape: BoxShape.circle,
+                          ),
+                          child: AnimatedBuilder(
+                            animation: _animationController,
+                            builder: (context, child) {
+                              return Transform.scale(
+                                scale: 0.8 + (0.2 * _animationController.value),
+                                child: child,
+                              );
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade400,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
+                    const SizedBox(width: 16),
+                    IconButton(
+                      onPressed: _handleLogout,
+                      icon: const Icon(
+                        Icons.logout,
+                        color: Color(0xFF576238),
+                        size: 24,
+                      ),
+                      tooltip: 'Logout',
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -992,4 +1032,3 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     }
   }
 }
-

@@ -1,3 +1,5 @@
+
+
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -6,10 +8,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:smart_bus_mobility_platform1/utils/marker_icon_utils.dart';
 import 'package:flutter_google_places/flutter_google_places.dart';
 import 'package:google_maps_webservice/places.dart';
+import 'package:google_maps_webservice/directions.dart' as directions;
 import 'package:smart_bus_mobility_platform1/screens/bus_route_preview_screen.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 const kGoogleApiKey = 'AIzaSyC2n6urW_4DUphPLUDaNGAW_VN53j0RP4s';
 
@@ -25,8 +28,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   GoogleMapController? _mapController;
 
   static final CameraPosition _initialPosition = CameraPosition(
-    target:
-        LatLng(0.34540783865964797, 32.54297125499706), // Kampala coordinates
+    target: LatLng(0.34540783865964797, 32.54297125499706), // Kampala coordinates
     zoom: 14,
   );
 
@@ -45,15 +47,13 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   List<Map<String, dynamic>> _availableBuses = [];
   final Set<Marker> _allMarkers = {};
   final Set<Marker> _searchMarkers = {};
+  final Set<Polyline> _polylines = {}; // Added for polylines
   final Mode _mode = Mode.overlay;
   bool _isRefreshingBuses = false;
-  Set<Polyline> _routePolylines = {};
 
-  // Example: Replace with actual logic to get these
-  LatLng? _busLocation; // Set this to the selected bus's current location
-  LatLng? _pickupLocation; // Set this to the selected pickup location
+  LatLng? _busLocation;
+  LatLng? _pickupLocation;
 
-  // Remove FocusNode and listener
   StreamSubscription<QuerySnapshot>? _bookingSubscription;
 
   @override
@@ -61,7 +61,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     super.initState();
     _initializeMap();
     _listenToBookings();
-    // No searchController listener needed
   }
 
   void _listenToBookings() {
@@ -80,7 +79,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
         if (booking['pickupLocation'] != null && booking['busId'] != null) {
           final pickup = booking['pickupLocation'];
           final busId = booking['busId'];
-          // Get bus's current location from Firestore
           final busDoc = await FirebaseFirestore.instance
               .collection('buses')
               .doc(busId)
@@ -91,14 +89,15 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
               _pickupLocation = LatLng(pickup['latitude'], pickup['longitude']);
               _busLocation = LatLng(busLoc['latitude'], busLoc['longitude']);
             });
-            _drawRoutePolyline();
+            // Draw polyline for confirmed booking
+            if (_pickupLocation != null && _busLocation != null) {
+              _drawRoutePolyline(_pickupLocation!, _busLocation!);
+            }
           }
         }
       }
     });
   }
-
-  // Remove _onSearchChanged and FocusNode logic
 
   Future<void> _initializeMap() async {
     await _loadMarkerIcons();
@@ -109,11 +108,9 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   Future<void> _loadMarkerIcons() async {
     try {
       _busMarkerIcon = await MarkerIcons.busIcon;
-      // Use the passenger icon for the user marker
       _userMarkerIcon = await MarkerIcons.passengerIcon;
     } catch (e) {
       print('Error loading marker icons: $e');
-      // Fallback to default markers
       _busMarkerIcon =
           BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
       _userMarkerIcon =
@@ -127,7 +124,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     });
 
     try {
-      // Check location permissions
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -140,7 +136,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
         throw Exception('Location permissions permanently denied');
       }
 
-      // Get current position
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
@@ -150,7 +145,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
         _isLoadingLocation = false;
       });
 
-      // Update camera to current location
       if (_controller.isCompleted) {
         GoogleMapController controller = await _controller.future;
         controller.animateCamera(
@@ -166,7 +160,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
       setState(() {
         _isLoadingLocation = false;
       });
-      // Set default location as fallback
       _setDefaultLocation();
     }
   }
@@ -193,7 +186,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
         });
       }
 
-      // Debug print: print all fetched buses
       print('--- Fetched Buses (${buses.length}) ---');
       for (var bus in buses) {
         print(bus);
@@ -213,7 +205,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   void _updateMarkers() {
     _allMarkers.clear();
 
-    // Add current location marker
     if (_currentLocation != null && _userMarkerIcon != null) {
       _allMarkers.add(
         Marker(
@@ -228,7 +219,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
       );
     }
 
-    // Add bus markers
     for (int i = 0; i < _availableBuses.length; i++) {
       final bus = _availableBuses[i];
       if (bus['currentLocation'] != null && _busMarkerIcon != null) {
@@ -252,6 +242,71 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     }
 
     setState(() {});
+  }
+
+  // New function to fetch and draw polylines using Google Directions API
+  Future<void> _drawRoutePolyline(LatLng origin, LatLng destination) async {
+    try {
+      final String url =
+          'https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&key=$kGoogleApiKey';
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['status'] == 'OK') {
+          final points = data['routes'][0]['overview_polyline']['points'];
+          final List<LatLng> polylinePoints = _decodePolyline(points);
+
+          setState(() {
+            _polylines.clear();
+            _polylines.add(
+              Polyline(
+                polylineId: PolylineId('route'),
+                points: polylinePoints,
+                color: Colors.blue,
+                width: 5,
+              ),
+            );
+          });
+        } else {
+          print('Directions API error: ${data['status']}');
+        }
+      } else {
+        print('Failed to fetch directions: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error drawing polyline: $e');
+    }
+  }
+
+  // Utility to decode polyline points
+  List<LatLng> _decodePolyline(encoded) {
+    List<LatLng> poly = [];
+    int index = 0, len = encoded.length;
+    int lat = 0, lng = 0;
+
+    while (index < len) {
+      int b, shift = 0, result = 0;
+      do {
+        b = encoded.codeUnitAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+      lat += dlat;
+
+      shift = 0;
+      result = 0;
+      do {
+        b = encoded.codeUnitAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+      lng += dlng;
+
+      poly.add(LatLng(lat / 1E5, lng / 1E5));
+    }
+    return poly;
   }
 
   void _showBusDetails(Map<String, dynamic> bus) {
@@ -285,24 +340,63 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
             },
             child: Text('Book This Bus'),
           ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _showBusRoute(bus);
+            },
+            child: Text('View Route'),
+          ),
         ],
       ),
     );
   }
 
+  // New function to show bus route polyline
+  void _showBusRoute(Map<String, dynamic> bus) async {
+    if (bus['currentLocation'] != null && _currentLocation != null) {
+      final busLoc = bus['currentLocation'];
+      final busLatLng = LatLng(busLoc['latitude'], busLoc['longitude']);
+      await _drawRoutePolyline(_currentLocation!, busLatLng);
+      final controller = _mapController ?? await _controller.future;
+      controller.animateCamera(
+        CameraUpdate.newLatLngBounds(
+          LatLngBounds(
+            southwest: LatLng(
+              _currentLocation!.latitude < busLatLng.latitude
+                  ? _currentLocation!.latitude
+                  : busLatLng.latitude,
+              _currentLocation!.longitude < busLatLng.longitude
+                  ? _currentLocation!.longitude
+                  : busLatLng.longitude,
+            ),
+            northeast: LatLng(
+              _currentLocation!.latitude > busLatLng.latitude
+                  ? _currentLocation!.latitude
+                  : busLatLng.latitude,
+              _currentLocation!.longitude > busLatLng.longitude
+                  ? _currentLocation!.longitude
+                  : busLatLng.longitude,
+            ),
+          ),
+          100.0,
+        ),
+      );
+    }
+  }
+
   void _bookBus(Map<String, dynamic> bus) {
-    // TODO: Implement booking functionality
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Booking functionality coming soon!')),
     );
   }
 
-  // Search functionality
   void _performSearch(String query) async {
     if (query.isEmpty) {
       setState(() {
         _searchResults = [];
         _isSearching = false;
+        _polylines.clear(); // Clear polylines when search is cleared
       });
       return;
     }
@@ -312,8 +406,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     });
 
     try {
-      // TODO: Implement actual search logic
-      // For now, just filter buses by route
       final filteredBuses = _availableBuses.where((bus) {
         final startPoint = bus['startPoint']?.toString().toLowerCase() ?? '';
         final destination = bus['destination']?.toString().toLowerCase() ?? '';
@@ -327,6 +419,16 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
         _searchResults = filteredBuses;
         _isSearching = false;
       });
+
+      // Show routes for filtered buses
+      if (filteredBuses.isNotEmpty && _currentLocation != null) {
+        final bus = filteredBuses.first;
+        final busLoc = bus['currentLocation'];
+        if (busLoc != null) {
+          final busLatLng = LatLng(busLoc['latitude'], busLoc['longitude']);
+          await _drawRoutePolyline(_currentLocation!, busLatLng);
+        }
+      }
     } catch (e) {
       print('Error performing search: $e');
       setState(() {
@@ -363,14 +465,24 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     final lat = detail.result.geometry!.location.lat;
     final lng = detail.result.geometry!.location.lng;
     _searchMarkers.clear();
-    _searchMarkers.add(Marker(
-      markerId: const MarkerId("search_result"),
-      position: LatLng(lat, lng),
-      icon: _userMarkerIcon ??
-          BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-      infoWindow: InfoWindow(title: detail.result.name),
-    ));
-    setState(() {});
+    _searchMarkers.add(
+      Marker(
+        markerId: const MarkerId("search_result"),
+        position: LatLng(lat, lng),
+        icon: _userMarkerIcon ??
+            BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+        infoWindow: InfoWindow(title: detail.result.name),
+      ),
+    );
+    setState(() {
+      _pickupLocation = LatLng(lat, lng);
+    });
+
+    // Draw polyline from current location to searched location
+    if (_currentLocation != null) {
+      await _drawRoutePolyline(_currentLocation!, _pickupLocation!);
+    }
+
     final controller = _mapController ?? await _controller.future;
     controller
         .animateCamera(CameraUpdate.newLatLngZoom(LatLng(lat, lng), 14.0));
@@ -506,60 +618,11 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     await _loadAvailableBuses();
     setState(() {
       _isRefreshingBuses = false;
+      _polylines.clear(); // Clear polylines on refresh
     });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Bus list refreshed!')),
     );
-  }
-
-  Future<void> _drawRoutePolyline() async {
-    if (_busLocation == null || _pickupLocation == null) return;
-    final url =
-        'https://maps.googleapis.com/maps/api/directions/json?origin=${_busLocation!.latitude},${_busLocation!.longitude}&destination=${_pickupLocation!.latitude},${_pickupLocation!.longitude}&mode=driving&key=$kGoogleApiKey';
-    final response = await http.get(Uri.parse(url));
-    final data = json.decode(response.body);
-    if (data['routes'] != null && data['routes'].isNotEmpty) {
-      final points = _decodePolyline(
-        data['routes'][0]['overview_polyline']['points'],
-      );
-      setState(() {
-        _routePolylines = {
-          Polyline(
-            polylineId: PolylineId('route'),
-            points: points,
-            color: Colors.blue,
-            width: 5,
-          ),
-        };
-      });
-    }
-  }
-
-  List<LatLng> _decodePolyline(String encoded) {
-    List<LatLng> polyline = [];
-    int index = 0, len = encoded.length;
-    int lat = 0, lng = 0;
-    while (index < len) {
-      int b, shift = 0, result = 0;
-      do {
-        b = encoded.codeUnitAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-      lat += dlat;
-      shift = 0;
-      result = 0;
-      do {
-        b = encoded.codeUnitAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-      lng += dlng;
-      polyline.add(LatLng(lat / 1E5, lng / 1E5));
-    }
-    return polyline;
   }
 
   @override
@@ -581,46 +644,20 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
             },
             initialCameraPosition: _initialPosition,
             markers: _allMarkers.union(_searchMarkers),
+            polylines: _polylines, // Add polylines to the map
             myLocationEnabled: true,
             myLocationButtonEnabled: false,
             zoomControlsEnabled: false,
             mapToolbarEnabled: false,
-            polylines: _routePolylines,
           ),
           if (_isLoadingLocation)
             const Center(child: CircularProgressIndicator()),
-          // Search bar-style button overlay
           Positioned(
             top: 40,
             left: 16,
             right: 16,
             child: GestureDetector(
-              onTap: () async {
-                Prediction? p = await PlacesAutocomplete.show(
-                  context: context,
-                  apiKey: kGoogleApiKey,
-                  mode: _mode,
-                  language: 'en',
-                  strictbounds: false,
-                  types: [""],
-                  decoration: InputDecoration(
-                    hintText: 'Search for places...',
-                    filled: true,
-                    fillColor: Colors.white,
-                    prefixIcon: const Icon(Icons.search),
-                    contentPadding:
-                        const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  components: [Component(Component.country, "ug")],
-                );
-                if (p != null) {
-                  await _displayPrediction(p);
-                }
-              },
+              onTap: _handleSearchButton,
               child: Container(
                 height: 48,
                 decoration: BoxDecoration(
@@ -650,7 +687,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
               ),
             ),
           ),
-          // My location button
           Positioned(
             bottom: 16,
             right: 16,
@@ -671,7 +707,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                   : const Icon(Icons.my_location),
             ),
           ),
-          // Refresh buses button
           Positioned(
             bottom: 16,
             left: 16,
@@ -692,18 +727,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                   : const Icon(Icons.refresh),
             ),
           ),
-          // Sample button to trigger polyline drawing (for demo)
-          Positioned(
-            bottom: 90,
-            right: 16,
-            child: FloatingActionButton(
-              heroTag: 'draw_route',
-              onPressed: _drawRoutePolyline,
-              backgroundColor: Colors.orange,
-              child: const Icon(Icons.alt_route),
-              tooltip: 'Draw route from bus to pickup',
-            ),
-          ),
         ],
       ),
     );
@@ -718,7 +741,6 @@ void _showBusDetailsScreen(BuildContext context, Map<String, dynamic> bus) {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Container(
         width: double.infinity,
-        height: MediaQuery.of(context).size.height * 0.75,
         padding: EdgeInsets.all(24),
         child: SingleChildScrollView(
           child: Column(
@@ -752,54 +774,6 @@ void _showBusDetailsScreen(BuildContext context, Map<String, dynamic> bus) {
                   style: TextStyle(fontSize: 16)),
               Text('Status: ${bus['status'] ?? 'N/A'}',
                   style: TextStyle(fontSize: 16)),
-              SizedBox(height: 16),
-              if (bus['routePolyline'] != null &&
-                  bus['routePolyline'] is List &&
-                  (bus['routePolyline'] as List).isNotEmpty)
-                Container(
-                  height: 200,
-                  margin: EdgeInsets.only(top: 8),
-                  child: GoogleMap(
-                    initialCameraPosition: CameraPosition(
-                      target: LatLng(
-                        (bus['routePolyline'][0]['lat'] ?? 0.0) as double,
-                        (bus['routePolyline'][0]['lng'] ?? 0.0) as double,
-                      ),
-                      zoom: 13,
-                    ),
-                    polylines: {
-                      Polyline(
-                        polylineId: PolylineId('route'),
-                        color: Colors.green,
-                        width: 5,
-                        points: (bus['routePolyline'] as List)
-                            .map<LatLng>((p) => LatLng(p['lat'], p['lng']))
-                            .toList(),
-                      ),
-                    },
-                    markers: {
-                      Marker(
-                        markerId: MarkerId('start'),
-                        position: LatLng(
-                          (bus['routePolyline'][0]['lat'] ?? 0.0) as double,
-                          (bus['routePolyline'][0]['lng'] ?? 0.0) as double,
-                        ),
-                        infoWindow: InfoWindow(title: 'Start'),
-                      ),
-                      Marker(
-                        markerId: MarkerId('end'),
-                        position: LatLng(
-                          (bus['routePolyline'].last['lat'] ?? 0.0) as double,
-                          (bus['routePolyline'].last['lng'] ?? 0.0) as double,
-                        ),
-                        infoWindow: InfoWindow(title: 'Destination'),
-                      ),
-                    },
-                    zoomControlsEnabled: false,
-                    myLocationButtonEnabled: false,
-                    liteModeEnabled: true,
-                  ),
-                ),
               SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
