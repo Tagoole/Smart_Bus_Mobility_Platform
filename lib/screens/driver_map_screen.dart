@@ -18,9 +18,10 @@ class DriverMapScreen extends StatefulWidget {
 class _DriverMapScreenState extends State<DriverMapScreen> {
   final Completer<GoogleMapController> _controller = Completer();
   GoogleMapController? _mapController;
-  
+
   static final CameraPosition _initialPosition = CameraPosition(
-    target: LatLng(0.34540783865964797, 32.54297125499706), // Kampala coordinates
+    target:
+        LatLng(0.34540783865964797, 32.54297125499706), // Kampala coordinates
     zoom: 14,
   );
 
@@ -75,8 +76,10 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     } catch (e) {
       print('Error loading marker icons: $e');
       // Fallback to default markers
-      _driverMarkerIcon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
-      _passengerMarkerIcon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
+      _driverMarkerIcon =
+          BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
+      _passengerMarkerIcon =
+          BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
     }
   }
 
@@ -229,9 +232,9 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
       // Get current position with high accuracy
       Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 10),
-        );
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 10),
+      );
 
       setState(() {
         _driverLocation = LatLng(position.latitude, position.longitude);
@@ -291,15 +294,15 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
           .collection('users')
           .doc(_driverId)
           .update({
-            'currentLocation': {
-              'latitude': _driverLocation!.latitude,
-              'longitude': _driverLocation!.longitude,
-            },
-            'isOnline': _isOnline,
-            'lastUpdated': FieldValue.serverTimestamp(),
-            'assignedBusId': _driverBus?.busId,
-            'assignedBusPlate': _driverBus?.numberPlate,
-          });
+        'currentLocation': {
+          'latitude': _driverLocation!.latitude,
+          'longitude': _driverLocation!.longitude,
+        },
+        'isOnline': _isOnline,
+        'lastUpdated': FieldValue.serverTimestamp(),
+        'assignedBusId': _driverBus?.busId,
+        'assignedBusPlate': _driverBus?.numberPlate,
+      });
 
       print('Driver location updated successfully for driver: $_driverId');
 
@@ -311,7 +314,8 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
             _driverLocation!.latitude,
             _driverLocation!.longitude,
           );
-          print('Bus location updated successfully for bus: ${_driverBus!.busId}');
+          print(
+              'Bus location updated successfully for bus: ${_driverBus!.busId}');
         } catch (busError) {
           print('Error updating bus location: $busError');
         }
@@ -391,8 +395,10 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
               anchor: Offset(0.5, 0.5),
               flat: true,
               infoWindow: InfoWindow(
-                title: 'Passenger ${i + 1}: $userName (${j + 1}/$totalPassengers)',
-                snippet: '${passenger['selectedSeats'].length} seats • ${passenger['pickupAddress']}',
+                title:
+                    'Passenger ${i + 1}: $userName (${j + 1}/$totalPassengers)',
+                snippet:
+                    '${passenger['selectedSeats'].length} seats • ${passenger['pickupAddress']}',
               ),
               onTap: () => _showPassengerDetails(passenger),
             ),
@@ -540,23 +546,6 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Driver Map'),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            onPressed: _toggleOnlineStatus,
-            icon: Icon(_isOnline ? Icons.wifi : Icons.wifi_off),
-            tooltip: _isOnline ? 'Go Offline' : 'Go Online',
-          ),
-          IconButton(
-            onPressed: _refreshData,
-            icon: Icon(Icons.refresh),
-            tooltip: 'Refresh',
-          ),
-        ],
-      ),
       body: _isLoading
           ? Center(
               child: Column(
@@ -568,182 +557,122 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                 ],
               ),
             )
-          : Column(
+          : Stack(
               children: [
-                // Driver info card
-                Container(
-                  margin: EdgeInsets.all(16),
-                  padding: EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
+                // Full screen map
+                GoogleMap(
+                  onMapCreated: (GoogleMapController controller) {
+                    _controller.complete(controller);
+                    _mapController = controller;
+                  },
+                  initialCameraPosition: _initialPosition,
+                  markers: _allMarkers,
+                  myLocationEnabled: true,
+                  myLocationButtonEnabled: false,
+                  zoomControlsEnabled: false,
+                  mapToolbarEnabled: false,
+                  onTap: (LatLng location) {
+                    // Handle map tap if needed
+                  },
+                ),
+
+                if (_isLoadingLocation)
+                  const Center(child: CircularProgressIndicator()),
+
+                // Zoom controls
+                Positioned(
+                  bottom: 80,
+                  right: 16,
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF576238),
-                              borderRadius: BorderRadius.circular(8),
+                      // Zoom in button
+                      Container(
+                        height: 40,
+                        width: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 6,
+                              offset: Offset(0, 2),
                             ),
-                            child: Icon(
-                              Icons.directions_bus,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Driver Dashboard',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF111827),
-                                  ),
-                                ),
-                                Text(
-                                  _driverBus?.numberPlate ?? 'No bus assigned',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Color(0xFF6B7280),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: _isOnline ? Colors.green : Colors.grey,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              _isOnline ? 'Online' : 'Offline',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          icon: Icon(Icons.add, color: Colors.black87),
+                          onPressed: () {
+                            _mapController?.animateCamera(
+                              CameraUpdate.zoomIn(),
+                            );
+                          },
+                        ),
                       ),
-                      if (_driverBus != null) ...[
-                        SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.route,
-                              size: 16,
-                              color: Color(0xFF6B7280),
-                            ),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                '${_driverBus!.startPoint} → ${_driverBus!.destination}',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFF6B7280),
-                                ),
-                              ),
+                      SizedBox(height: 8),
+                      // Zoom out button
+                      Container(
+                        height: 40,
+                        width: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 6,
+                              offset: Offset(0, 2),
                             ),
                           ],
                         ),
-                        SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.people,
-                              size: 16,
-                              color: Color(0xFF6B7280),
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              '${_passengers.fold<int>(0, (total, passenger) => total + ((passenger['adultCount'] as int? ?? 1) + (passenger['childrenCount'] as int? ?? 0)))} passengers',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF6B7280),
-                              ),
-                            ),
-                          ],
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          icon: Icon(Icons.remove, color: Colors.black87),
+                          onPressed: () {
+                            _mapController?.animateCamera(
+                              CameraUpdate.zoomOut(),
+                            );
+                          },
                         ),
-                      ],
+                      ),
                     ],
                   ),
                 ),
 
-                // Map
-                Expanded(
+                // My location button
+                Positioned(
+                  bottom: 16,
+                  right: 16,
                   child: Container(
-                    margin: EdgeInsets.symmetric(horizontal: 16),
+                    height: 50,
+                    width: 50,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.green,
+                      borderRadius: BorderRadius.circular(25),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 8,
-                          offset: Offset(0, 4),
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 6,
+                          offset: Offset(0, 2),
                         ),
                       ],
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Stack(
-                        children: [
-                          GoogleMap(
-                            onMapCreated: (GoogleMapController controller) {
-                              _controller.complete(controller);
-                              _mapController = controller;
-                            },
-                            initialCameraPosition: _initialPosition,
-                            markers: _allMarkers,
-                            myLocationEnabled: true,
-                            myLocationButtonEnabled: false,
-                            zoomControlsEnabled: false,
-                            mapToolbarEnabled: false,
-                            onTap: (LatLng location) {
-                              // Handle map tap if needed
-                            },
-                          ),
-                          if (_isLoadingLocation)
-                            const Center(child: CircularProgressIndicator()),
-
-                          // My location button
-                          Positioned(
-                            bottom: 16,
-                            right: 16,
-                            child: FloatingActionButton(
-                              onPressed: _isLoadingLocation ? null : _getCurrentLocation,
-                              backgroundColor: Colors.green,
-                              foregroundColor: Colors.white,
-                              child: _isLoadingLocation
-                                        ? SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                    ),
-                                  )
-                                : Icon(Icons.my_location),
-                            ),
-                                      ),
-                                    ],
-                                  ),
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: _isLoadingLocation
+                          ? SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : Icon(Icons.my_location, color: Colors.white),
+                      onPressed:
+                          _isLoadingLocation ? null : _getCurrentLocation,
                     ),
                   ),
                 ),

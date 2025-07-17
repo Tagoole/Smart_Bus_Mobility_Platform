@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:smart_bus_mobility_platform1/screens/booked_buses_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/selectseat_screen.dart';
 import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
 
