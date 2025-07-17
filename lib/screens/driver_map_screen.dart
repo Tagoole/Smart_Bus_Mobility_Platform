@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
@@ -57,6 +58,9 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   Directions? _directions;
   double _totalRouteDistance = 0;
   double _totalRouteTime = 0;
+  Map<String, dynamic>? _nearestPassenger;
+  String _routeDistanceText = '';
+  String _routeDurationText = '';
 
   // UI state
   bool _isLoading = true;
@@ -225,30 +229,32 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     try {
       // Clear existing passengers to avoid duplicates
       _passengers.clear();
-      
+
       final bookingsSnapshot = await FirebaseFirestore.instance
           .collection('bookings')
           .where('busId', isEqualTo: _driverBus!.busId)
           .where('status', isEqualTo: 'confirmed')
           .get();
 
-      print('Found ${bookingsSnapshot.docs.length} bookings for bus ${_driverBus!.busId}');
-      
-      // Use a set to track unique user IDs to avoid duplicates
-      final Set<String> processedUserIds = {};
+      print(
+          'Found ${bookingsSnapshot.docs.length} bookings for bus ${_driverBus!.busId}');
+
+      // Use a set to track unique booking IDs to avoid duplicates
+      final Set<String> processedBookingIds = {};
       final List<Map<String, dynamic>> passengers = [];
 
       for (var doc in bookingsSnapshot.docs) {
         final bookingData = doc.data();
+        final bookingId = doc.id;
         final userId = bookingData['userId'];
-        
-        // Skip if we've already processed this user
-        if (processedUserIds.contains(userId)) {
-          print('Skipping duplicate booking for user: $userId');
+
+        // Skip if we've already processed this booking
+        if (processedBookingIds.contains(bookingId)) {
+          print('Skipping duplicate booking: $bookingId');
           continue;
         }
-        
-        processedUserIds.add(userId);
+
+        processedBookingIds.add(bookingId);
 
         // Get user data for each booking
         final userDoc = await FirebaseFirestore.instance
@@ -258,12 +264,14 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
         if (userDoc.exists) {
           final userData = userDoc.data() as Map<String, dynamic>;
-          print('Adding passenger: ${userData['name'] ?? userData['username'] ?? 'Passenger'}');
-          
+          final userName =
+              userData['name'] ?? userData['username'] ?? 'Passenger';
+          print('Adding passenger: $userName (Booking ID: $bookingId)');
+
           passengers.add({
-            'bookingId': doc.id,
+            'bookingId': bookingId,
             'userId': userId,
-            'userName': userData['name'] ?? userData['username'] ?? 'Passenger',
+            'userName': userName,
             'userEmail': userData['email'] ?? '',
             'pickupLocation': bookingData['pickupLocation'],
             'pickupAddress': bookingData['pickupAddress'] ?? 'Unknown location',
@@ -286,14 +294,14 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       });
 
       _updateMarkers();
-      
+
       // Show success message
       if (_passengers.isEmpty) {
         _showSnackBar('No passengers found for your bus');
       } else {
         _showSnackBar('${_passengers.length} passengers loaded successfully');
       }
-      
+
       // Generate optimized route if we have passengers and driver location
       if (_passengers.isNotEmpty && _driverLocation != null) {
         await _generateOptimizedRoute();
@@ -301,7 +309,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     } catch (e) {
       // Close the loading dialog
       Navigator.of(context).pop();
-      
+
       print('Error loading passengers: $e');
       setState(() {
         _isLoading = false;
@@ -391,9 +399,117 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
           );
         }
       });
+
+      // Find nearest passenger and draw route
+      await _findNearestPassengerAndDrawRoute();
     } catch (e) {
       print('Error generating optimized route: $e');
     }
+  }
+
+  // Find nearest passenger and draw route
+  Future<void> _findNearestPassengerAndDrawRoute() async {
+    if (_driverLocation == null || _passengers.isEmpty) return;
+
+    try {
+      // Find the nearest passenger
+      Map<String, dynamic>? nearest;
+      double minDistance = double.infinity;
+
+      for (var passenger in _passengers) {
+        if (passenger['pickupLocation'] != null) {
+          final location = passenger['pickupLocation'];
+          final passengerLatLng = LatLng(
+            location['latitude'],
+            location['longitude'],
+          );
+
+          // Calculate direct distance (as the crow flies)
+          final directDistance = _calculateDistance(
+            _driverLocation!.latitude,
+            _driverLocation!.longitude,
+            passengerLatLng.latitude,
+            passengerLatLng.longitude,
+          );
+
+          if (directDistance < minDistance) {
+            minDistance = directDistance;
+            nearest = passenger;
+          }
+        }
+      }
+
+      if (nearest != null) {
+        setState(() {
+          _nearestPassenger = nearest;
+        });
+
+        // Get directions from Google Directions API
+        final location = nearest['pickupLocation'];
+        final destination = LatLng(
+          location['latitude'],
+          location['longitude'],
+        );
+
+        final directions = await _directionsRepository.getDirections(
+          origin: _driverLocation!,
+          destination: destination,
+        );
+
+        if (directions != null) {
+          setState(() {
+            _directions = directions;
+            _routeDistanceText = directions.totalDistance;
+            _routeDurationText = directions.totalDuration;
+          });
+
+          // Create polyline from directions
+          final points = directions.polylinePoints
+              .map((point) => LatLng(point.latitude, point.longitude))
+              .toList();
+
+          setState(() {
+            _polylines.add(
+              Polyline(
+                polylineId: PolylineId('nearest_passenger_route'),
+                points: points,
+                color: Colors.green,
+                width: 5,
+              ),
+            );
+          });
+
+          // Adjust camera to show the route
+          if (_mapController != null) {
+            _mapController!.animateCamera(
+              CameraUpdate.newLatLngBounds(directions.bounds, 50),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      print('Error finding nearest passenger: $e');
+    }
+  }
+
+  // Calculate distance between two points using Haversine formula
+  double _calculateDistance(
+      double lat1, double lon1, double lat2, double lon2) {
+    const double earthRadius = 6371; // Radius of the earth in km
+    final double dLat = _degreesToRadians(lat2 - lat1);
+    final double dLon = _degreesToRadians(lon2 - lon1);
+    final double a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(_degreesToRadians(lat1)) *
+            cos(_degreesToRadians(lat2)) *
+            sin(dLon / 2) *
+            sin(dLon / 2);
+    final double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    final double distance = earthRadius * c;
+    return distance;
+  }
+
+  double _degreesToRadians(double degrees) {
+    return degrees * (pi / 180);
   }
 
   // Get current location
@@ -553,7 +669,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       );
     }
 
-    // Add passenger markers - one marker per passenger booking, not per person
+    // Add passenger markers - one marker per booking
     for (int i = 0; i < _passengers.length; i++) {
       final passenger = _passengers[i];
 
@@ -565,13 +681,14 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         final childrenCount = passenger['childrenCount'] ?? 0;
         final totalPassengers = adultCount + childrenCount;
         final selectedSeats = passenger['selectedSeats'] ?? [];
+        final bookingId = passenger['bookingId'];
 
-        // Create just one marker per booking
+        // Create one marker per booking
         final icon = _passengerMarkerIcon ?? BitmapDescriptor.defaultMarker;
 
         _allMarkers.add(
           Marker(
-            markerId: MarkerId('passenger_${passenger['userId']}'),
+            markerId: MarkerId('booking_$bookingId'),
             position: latLng,
             icon: icon,
             anchor: Offset(0.5, 0.5),
@@ -1105,6 +1222,85 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
               ),
             ),
 
+            // Nearest passenger route information
+            if (_nearestPassenger != null && _routeDistanceText.isNotEmpty)
+              Container(
+                padding: EdgeInsets.all(16),
+                color: Colors.green.withOpacity(0.1),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.directions, color: Colors.green),
+                        SizedBox(width: 8),
+                        Text(
+                          'Nearest Passenger Route',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'To: ${_nearestPassenger!['userName']}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              'Distance: $_routeDistanceText',
+                              style: TextStyle(
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                          ],
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              'ETA: $_routeDurationText',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'Pickup: ${_nearestPassenger!['pickupAddress']}',
+                              style: TextStyle(
+                                color: Colors.grey[700],
+                                fontSize: 12,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    ElevatedButton.icon(
+                      onPressed: () => _navigateToPassenger(_nearestPassenger!),
+                      icon: Icon(Icons.navigation, size: 16),
+                      label: Text('Navigate to Nearest Passenger'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        minimumSize: Size(double.infinity, 36),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
             // Route information
             if (_totalRouteDistance > 0)
               Container(
@@ -1229,6 +1425,11 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(passenger['userEmail'] ?? ''),
+                                Text(
+                                  'Booking ID: ${passenger['bookingId']}',
+                                  style: TextStyle(
+                                      fontSize: 12, color: Colors.grey[600]),
+                                ),
                                 Text(
                                   'Seats: ${(passenger['selectedSeats'] as List).join(', ')}',
                                   style: TextStyle(fontWeight: FontWeight.w500),
