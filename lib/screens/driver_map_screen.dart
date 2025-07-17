@@ -7,6 +7,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
 import 'package:smart_bus_mobility_platform1/resources/bus_service.dart';
 import 'package:smart_bus_mobility_platform1/utils/marker_icon_utils.dart';
+import 'package:smart_bus_mobility_platform1/resources/map_service.dart'
+    as map_service;
+import 'package:smart_bus_mobility_platform1/utils/directions_repository.dart';
+import 'package:smart_bus_mobility_platform1/utils/directions_model.dart';
 
 class DriverMapScreen extends StatefulWidget {
   const DriverMapScreen({super.key});
@@ -27,6 +31,9 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
   // Services
   final BusService _busService = BusService();
+  final DirectionsRepository _directionsRepository = DirectionsRepository();
+  final map_service.BusRouteService _routeService =
+      map_service.BusRouteService();
 
   // Driver data
   String? _driverId;
@@ -44,6 +51,12 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   // Passengers data
   List<Map<String, dynamic>> _passengers = [];
   final Set<Marker> _allMarkers = {};
+
+  // Polylines and route data
+  final Set<Polyline> _polylines = {};
+  Directions? _directions;
+  double _totalRouteDistance = 0;
+  double _totalRouteTime = 0;
 
   // UI state
   bool _isLoading = true;
@@ -118,15 +131,17 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       }
 
       // Find the bus assigned to this driver
+      print('Looking for bus assigned to driver with email: $_driverEmail');
       final busSnapshot = await FirebaseFirestore.instance
           .collection('buses')
           .where('driverId', isEqualTo: _driverEmail)
-          .where('isAvailable', isEqualTo: true)
           .limit(1)
           .get();
 
       if (busSnapshot.docs.isNotEmpty) {
         final busData = busSnapshot.docs.first.data();
+        print('Found bus with ID: ${busSnapshot.docs.first.id}');
+        print('Bus data: $busData');
         setState(() {
           _driverBus = BusModel.fromJson(busData, busSnapshot.docs.first.id);
         });
@@ -135,10 +150,36 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         await _loadPassengers();
       } else {
         print('No bus assigned to driver: $_driverEmail');
-        setState(() {
-          _statusMessage = 'No bus assigned to you';
-          _isLoading = false;
-        });
+        print('Trying to find bus with case-insensitive email match...');
+
+        // Try to get all buses and check manually for case-insensitive match
+        final allBusesSnapshot =
+            await FirebaseFirestore.instance.collection('buses').get();
+
+        bool foundBus = false;
+        for (var doc in allBusesSnapshot.docs) {
+          final data = doc.data();
+          final driverId = data['driverId']?.toString().toLowerCase() ?? '';
+          if (driverId == _driverEmail.toLowerCase()) {
+            print('Found bus with case-insensitive match. Bus ID: ${doc.id}');
+            print('Bus data: $data');
+            setState(() {
+              _driverBus = BusModel.fromJson(data, doc.id);
+            });
+            foundBus = true;
+
+            // Load passengers for this bus
+            await _loadPassengers();
+            break;
+          }
+        }
+
+        if (!foundBus) {
+          setState(() {
+            _statusMessage = 'No bus assigned to you';
+            _isLoading = false;
+          });
+        }
       }
     } catch (e) {
       print('Error loading driver data: $e');
@@ -156,8 +197,15 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       setState(() {
         _isLoading = false;
       });
+      _showSnackBar('No bus assigned to you');
       return;
     }
+
+    // Show loading indicator
+    setState(() {
+      _isLoading = true;
+      _statusMessage = 'Loading passengers...';
+    });
 
     try {
       final bookingsSnapshot = await FirebaseFirestore.instance
@@ -202,11 +250,115 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       });
 
       _updateMarkers();
+
+      // Show success message
+      if (_passengers.isEmpty) {
+        _showSnackBar('No passengers found for your bus');
+      } else {
+        _showSnackBar('${_passengers.length} passengers loaded successfully');
+
+        // Automatically show passenger list if passengers were found
+        if (_passengers.length > 0) {
+          _showPassengerList();
+        }
+      }
+
+      // Generate optimized route if we have passengers and driver location
+      if (_passengers.isNotEmpty && _driverLocation != null) {
+        await _generateOptimizedRoute();
+      }
     } catch (e) {
       print('Error loading passengers: $e');
       setState(() {
         _isLoading = false;
       });
+      _showSnackBar('Error loading passengers: ${e.toString()}');
+    }
+  }
+
+  // Generate optimized route using BusRouteService
+  Future<void> _generateOptimizedRoute() async {
+    if (_driverLocation == null) return;
+
+    try {
+      // Clear previous route data
+      _routeService.clearAllPassengers();
+
+      // Add driver's current location as starting point
+      final driverStop = map_service.BusStop(
+        id: 'driver',
+        location: map_service.LatLng(
+            _driverLocation!.latitude, _driverLocation!.longitude),
+        name: 'Driver Location',
+      );
+
+      // Add all visible passengers to the route service
+      for (var passenger in _passengers) {
+        if (passenger['pickupLocation'] != null) {
+          final location = passenger['pickupLocation'];
+          final latLng = map_service.LatLng(
+            location['latitude'],
+            location['longitude'],
+          );
+
+          _routeService.addPassengerPickup(
+            passenger['userId'],
+            latLng,
+            passenger['pickupAddress'] ?? 'Unknown location',
+          );
+        }
+      }
+
+      // Add bus destination if available
+      if (_driverBus != null &&
+          _driverBus!.destinationLat != null &&
+          _driverBus!.destinationLng != null) {
+        final destinationStop = map_service.BusStop(
+          id: 'destination',
+          location: map_service.LatLng(
+            _driverBus!.destinationLat!,
+            _driverBus!.destinationLng!,
+          ),
+          name: _driverBus!.destination,
+        );
+      }
+
+      // Force optimization
+      await _routeService.optimizeNow();
+
+      // Get optimized route coordinates
+      final routeCoordinates = _routeService.getOptimizedRouteCoordinates();
+
+      // Convert to Google Maps LatLng
+      final googleMapCoordinates = routeCoordinates
+          .map((point) => LatLng(point.latitude, point.longitude))
+          .toList();
+
+      // Get total distance and time
+      _totalRouteDistance = _routeService.getEstimatedTotalDistance() ?? 0;
+      _totalRouteTime = _routeService.getEstimatedTotalTime() ?? 0;
+
+      // Create polyline
+      setState(() {
+        _polylines.clear();
+
+        if (googleMapCoordinates.length > 1) {
+          _polylines.add(
+            Polyline(
+              polylineId: PolylineId('optimized_route'),
+              points: googleMapCoordinates,
+              color: Colors.blue,
+              width: 5,
+              patterns: [
+                PatternItem.dash(20),
+                PatternItem.gap(10),
+              ],
+            ),
+          );
+        }
+      });
+    } catch (e) {
+      print('Error generating optimized route: $e');
     }
   }
 
@@ -253,6 +405,11 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
       _updateMarkers();
       _updateDriverLocationInFirestore();
+
+      // Generate optimized route if we have passengers
+      if (_passengers.isNotEmpty) {
+        await _generateOptimizedRoute();
+      }
     } catch (e) {
       print('Error getting location: $e');
       setState(() {
@@ -368,6 +525,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     // Add passenger markers
     for (int i = 0; i < _passengers.length; i++) {
       final passenger = _passengers[i];
+
       if (passenger['pickupLocation'] != null) {
         final location = passenger['pickupLocation'];
         final latLng = LatLng(location['latitude'], location['longitude']);
@@ -567,17 +725,48 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                   },
                   initialCameraPosition: _initialPosition,
                   markers: _allMarkers,
+                  polylines: _polylines,
                   myLocationEnabled: true,
                   myLocationButtonEnabled: false,
                   zoomControlsEnabled: false,
                   mapToolbarEnabled: false,
                   onTap: (LatLng location) {
-                    // Handle map tap if needed
+                    // Load passengers and generate route when map is tapped
+                    _loadPassengers().then((_) {
+                      if (_passengers.isNotEmpty && _driverLocation != null) {
+                        _generateOptimizedRoute();
+                      }
+                    });
                   },
                 ),
 
                 if (_isLoadingLocation)
                   const Center(child: CircularProgressIndicator()),
+
+                // Tap instruction tooltip
+                if (_passengers.isEmpty)
+                  Positioned(
+                    top: 40,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Container(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.7),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          'Tap on the map to load passengers',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
 
                 // Zoom controls
                 Positioned(
@@ -769,6 +958,55 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
               ),
             ),
 
+            // Route information
+            if (_totalRouteDistance > 0)
+              Container(
+                padding: EdgeInsets.all(16),
+                color: Colors.blue.withOpacity(0.1),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Optimized Route',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Total Distance: ${_totalRouteDistance.toStringAsFixed(1)} km',
+                          style: TextStyle(
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          'Est. Time: ${_totalRouteTime.toStringAsFixed(0)} min',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          '${_passengers.length} stops',
+                          style: TextStyle(
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
             // Bus info
             if (_driverBus != null)
               Container(
@@ -831,7 +1069,10 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                           child: ListTile(
                             leading: CircleAvatar(
                               backgroundColor: Colors.blue.withOpacity(0.2),
-                              child: Icon(Icons.person, color: Colors.blue),
+                              child: Icon(
+                                Icons.person,
+                                color: Colors.blue,
+                              ),
                             ),
                             title: Text(
                               passenger['userName'] ?? 'Passenger',
@@ -852,18 +1093,30 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                               ],
                             ),
                             isThreeLine: true,
-                            trailing: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(
-                                  '${passenger['adultCount']} adult${passenger['adultCount'] > 1 ? 's' : ''}',
-                                  style: TextStyle(fontSize: 12),
+                                Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      '${passenger['adultCount']} adult${passenger['adultCount'] > 1 ? 's' : ''}',
+                                      style: TextStyle(fontSize: 12),
+                                    ),
+                                    if ((passenger['childrenCount'] ?? 0) > 0)
+                                      Text(
+                                        '${passenger['childrenCount']} child${passenger['childrenCount'] > 1 ? 'ren' : ''}',
+                                        style: TextStyle(fontSize: 12),
+                                      ),
+                                  ],
                                 ),
-                                if ((passenger['childrenCount'] ?? 0) > 0)
-                                  Text(
-                                    '${passenger['childrenCount']} child${passenger['childrenCount'] > 1 ? 'ren' : ''}',
-                                    style: TextStyle(fontSize: 12),
-                                  ),
+                                IconButton(
+                                  icon: Icon(Icons.navigation,
+                                      size: 20, color: Colors.blue),
+                                  onPressed: () =>
+                                      _navigateToPassenger(passenger),
+                                  tooltip: 'Navigate to passenger',
+                                ),
                               ],
                             ),
                             onTap: () => _navigateToPassenger(passenger),

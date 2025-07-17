@@ -18,6 +18,7 @@ import 'package:smart_bus_mobility_platform1/screens/payment_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/customer_home_screen.dart';
 import 'package:smart_bus_mobility_platform1/routes/app_routes.dart';
 import 'package:flutter/services.dart';
+import 'package:smart_bus_mobility_platform1/screens/driver_map_screen.dart';
 
 void main() async {
   // Configure error handling to prevent crashes
@@ -115,7 +116,7 @@ class MyApp extends StatelessWidget {
                             case 'admin':
                               return AdminDashboardScreen();
                             case 'driver':
-                              return NavBarScreen(userRole: role);
+                              return DriverMapScreen();
                             case 'user':
                             default:
                               return NavBarScreen(userRole: role);
@@ -153,7 +154,7 @@ class MyApp extends StatelessWidget {
         '/forgotPassword': (context) => ForgotPasswordScreen(),
         '/admin': (context) => AdminDashboardScreen(),
         '/passenger': (context) => BusTrackingScreen(),
-        '/busdriver': (context) => NavBarScreen(userRole: 'driver'),
+        '/busdriver': (context) => DriverMapScreen(),
       },
     );
   }
