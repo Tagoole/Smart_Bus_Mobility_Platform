@@ -51,7 +51,8 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
   // Passengers data
   List<Map<String, dynamic>> _passengers = [];
-  List<Map<String, dynamic>> _removedPassengers = []; // Track removed passengers
+  List<Map<String, dynamic>> _removedPassengers =
+      []; // Track removed passengers
   final Set<Marker> _allMarkers = {};
 
   // Polylines and route data
@@ -956,38 +957,42 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   Future<void> _removePassenger(Map<String, dynamic> passenger) async {
     final bookingId = passenger['bookingId'];
     final userName = passenger['userName'] ?? 'Passenger';
-    
+
     // Show confirmation dialog
     bool confirmed = await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Remove Passenger'),
-        content: Text('Are you sure you want to remove $userName from the route?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel'),
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Remove Passenger'),
+            content: Text(
+                'Are you sure you want to remove $userName from the route?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text('Remove', style: TextStyle(color: Colors.red)),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('Remove', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    ) ?? false;
-    
+        ) ??
+        false;
+
     if (!confirmed) return;
 
     // Check if we're removing the nearest passenger
     bool wasNearestPassenger = false;
-    if (_nearestPassenger != null && _nearestPassenger!['bookingId'] == bookingId) {
+    if (_nearestPassenger != null &&
+        _nearestPassenger!['bookingId'] == bookingId) {
       wasNearestPassenger = true;
       setState(() {
         _nearestPassenger = null;
       });
-      
+
       // Remove the nearest passenger route polyline
-      _polylines.removeWhere((polyline) => polyline.polylineId.value == 'nearest_passenger_route');
+      _polylines.removeWhere(
+          (polyline) => polyline.polylineId.value == 'nearest_passenger_route');
     }
 
     // Add to removed passengers list
@@ -997,15 +1002,15 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     setState(() {
       _passengers.removeWhere((p) => p['bookingId'] == bookingId);
     });
-    
+
     // Update markers
     _updateMarkers();
-    
+
     // Regenerate route if we still have passengers
     if (_passengers.isNotEmpty && _driverLocation != null) {
       _showSnackBar('Regenerating route without $userName...');
       await _generateOptimizedRoute();
-      
+
       // If we removed the nearest passenger, find a new nearest passenger
       if (wasNearestPassenger) {
         await _findNearestPassengerAndDrawRoute();
@@ -1019,7 +1024,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         _routeDurationText = '';
       });
     }
-    
+
     _showSnackBar('Removed $userName from the route');
   }
 
@@ -1027,22 +1032,22 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   Future<void> _restorePassenger(Map<String, dynamic> passenger) async {
     final bookingId = passenger['bookingId'];
     final userName = passenger['userName'] ?? 'Passenger';
-    
+
     // Remove from removed list
     _removedPassengers.removeWhere((p) => p['bookingId'] == bookingId);
-    
+
     // Add back to passengers list
     _passengers.add(passenger);
-    
+
     // Update markers
     _updateMarkers();
-    
+
     // Regenerate route
     if (_driverLocation != null) {
       _showSnackBar('Regenerating route with $userName...');
       await _generateOptimizedRoute();
     }
-    
+
     _showSnackBar('Restored $userName to the route');
   }
 
@@ -1052,7 +1057,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       _showSnackBar('No removed passengers');
       return;
     }
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1098,7 +1103,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                 ],
               ),
             ),
-            
+
             // List of removed passengers
             Expanded(
               child: ListView.builder(
@@ -1114,7 +1119,8 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                       passenger['userName'] ?? 'Passenger',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    subtitle: Text(passenger['pickupAddress'] ?? 'Unknown location'),
+                    subtitle:
+                        Text(passenger['pickupAddress'] ?? 'Unknown location'),
                     trailing: TextButton.icon(
                       icon: Icon(Icons.restore, size: 16),
                       label: Text('Restore'),
@@ -1127,7 +1133,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                 },
               ),
             ),
-            
+
             // Close button
             Padding(
               padding: const EdgeInsets.all(16.0),
@@ -1406,19 +1412,22 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                           if (_driverLocation == null) {
                             await _getCurrentLocation();
                           }
-                          
+
                           // Then load passengers
                           await _loadPassengers();
-                          
+
                           // Generate route if we have both location and passengers
-                          if (_driverLocation != null && _passengers.isNotEmpty) {
+                          if (_driverLocation != null &&
+                              _passengers.isNotEmpty) {
                             await _generateOptimizedRoute();
                             _showPassengerList();
                           } else {
                             if (_driverLocation == null) {
-                              _showSnackBar('Unable to get your location. Please try again.');
+                              _showSnackBar(
+                                  'Unable to get your location. Please try again.');
                             } else if (_passengers.isEmpty) {
-                              _showSnackBar('No passengers found for your bus.');
+                              _showSnackBar(
+                                  'No passengers found for your bus.');
                             }
                           }
                         },
@@ -1591,7 +1600,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                     ),
                   ),
                 ),
-                
+
                 // Removed passengers button
                 if (_removedPassengers.isNotEmpty)
                   Positioned(
