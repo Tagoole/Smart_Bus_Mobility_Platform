@@ -1474,320 +1474,341 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
               ),
             ),
 
-            // Route regeneration button
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: Colors.amber.withOpacity(0.2),
-              child: ElevatedButton.icon(
-                onPressed: () async {
-                  // First check if we have the driver's location
-                  if (_driverLocation == null) {
-                    Navigator.pop(context);
-                    _showSnackBar('Getting your location...');
-                    await _getCurrentLocation();
-                    
-                    if (_driverLocation == null) {
-                      _showSnackBar('Unable to get your location. Please try again.');
-                      return;
-                    }
-                  }
-                  
-                  // Check if we have passengers
-                  if (_passengers.isEmpty) {
-                    Navigator.pop(context);
-                    _showSnackBar('No passengers found. Loading passengers...');
-                    await _loadPassengers();
-                    
-                    if (_passengers.isEmpty) {
-                      _showSnackBar('No passengers found for your bus.');
-                      return;
-                    }
-                  }
-                  
-                  // Now generate the route
-                  Navigator.pop(context);
-                  _showSnackBar('Generating optimized route...');
-                  await _generateOptimizedRoute();
-                  _showSnackBar('Route regenerated successfully');
-                  _showPassengerList();
-                },
-                icon: Icon(Icons.refresh, size: 16),
-                label: Text('Regenerate Route'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.amber,
-                  foregroundColor: Colors.black87,
-                  minimumSize: Size(double.infinity, 36),
-                ),
-              ),
-            ),
-
-            // Route information
-            if (_totalRouteDistance > 0)
-              Container(
-                padding: EdgeInsets.all(16),
-                color: Colors.blue.withOpacity(0.1),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.route, color: Colors.blue),
-                        SizedBox(width: 8),
-                        Text(
-                          'Full Route (All Passengers)',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Total Distance: ${_totalRouteDistance.toStringAsFixed(1)} km',
-                              style: TextStyle(
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                            Text(
-                              '${_passengers.length} passengers',
-                              style: TextStyle(
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                          ],
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              'Est. Time: ${_totalRouteTime.toStringAsFixed(0)} min',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              'Blue dashed line on map',
-                              style: TextStyle(
-                                color: Colors.blue,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-            // Nearest passenger route information
-            if (_nearestPassenger != null && _routeDistanceText.isNotEmpty)
-              Container(
-                padding: EdgeInsets.all(16),
-                color: Colors.green.withOpacity(0.1),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.directions, color: Colors.green),
-                        SizedBox(width: 8),
-                        Text(
-                          'Nearest Passenger Route',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'To: ${_nearestPassenger!['userName']}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            Text(
-                              'Distance: $_routeDistanceText',
-                              style: TextStyle(
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                          ],
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              'ETA: $_routeDurationText',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              'Green solid line on map',
-                              style: TextStyle(
-                                color: Colors.green,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 8),
-                    ElevatedButton.icon(
-                      onPressed: () => _navigateToPassenger(_nearestPassenger!),
-                      icon: Icon(Icons.navigation, size: 16),
-                      label: Text('Navigate to Nearest Passenger'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        minimumSize: Size(double.infinity, 36),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-            // Bus info
-            if (_driverBus != null)
-              Container(
-                padding: EdgeInsets.all(16),
-                color: Colors.green.withOpacity(0.1),
-                child: Row(
-                  children: [
-                    Icon(Icons.directions_bus, color: Colors.green),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _driverBus!.numberPlate,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            '${_driverBus!.startPoint} → ${_driverBus!.destination}',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-            // Passenger list
+            // Make the rest of the content scrollable
             Expanded(
-              child: _passengers.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.people_outline,
-                              size: 64, color: Colors.grey),
-                          SizedBox(height: 16),
-                          Text(
-                            'No passengers found',
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    // Route regeneration button
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      color: Colors.amber.withOpacity(0.2),
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          // First check if we have the driver's location
+                          if (_driverLocation == null) {
+                            Navigator.pop(context); // Dismiss the sheet
+                            _showSnackBar('Getting your location...');
+                            await _getCurrentLocation();
+                            
+                            if (_driverLocation == null) {
+                              _showSnackBar('Unable to get your location. Please try again.');
+                              return;
+                            }
+                          }
+                          
+                          // Check if we have passengers
+                          if (_passengers.isEmpty) {
+                            Navigator.pop(context); // Dismiss the sheet
+                            _showSnackBar('No passengers found. Loading passengers...');
+                            await _loadPassengers();
+                            
+                            if (_passengers.isEmpty) {
+                              _showSnackBar('No passengers found for your bus.');
+                              return;
+                            }
+                          }
+                          
+                          // Now generate the route
+                          Navigator.pop(context); // Dismiss the sheet
+                          _showSnackBar('Generating optimized route...');
+                          await _generateOptimizedRoute();
+                          _showSnackBar('Route regenerated successfully');
+                        },
+                        icon: Icon(Icons.refresh, size: 16),
+                        label: Text('Regenerate Route'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.amber,
+                          foregroundColor: Colors.black87,
+                          minimumSize: Size(double.infinity, 36),
+                        ),
                       ),
-                    )
-                  : ListView.builder(
-                      itemCount: _passengers.length,
-                      itemBuilder: (context, index) {
-                        final passenger = _passengers[index];
-                        return Card(
-                          margin:
-                              EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: Colors.blue.withOpacity(0.2),
-                              child: Icon(
-                                Icons.person,
-                                color: Colors.blue,
-                              ),
-                            ),
-                            title: Text(
-                              passenger['userName'] ?? 'Passenger',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                    ),
+
+                    // Route information
+                    if (_totalRouteDistance > 0)
+                      Container(
+                        padding: EdgeInsets.all(16),
+                        color: Colors.blue.withOpacity(0.1),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               children: [
-                                Text(passenger['userEmail'] ?? ''),
+                                Icon(Icons.route, color: Colors.blue),
+                                SizedBox(width: 8),
                                 Text(
-                                  'Booking ID: ${passenger['bookingId']}',
+                                  'Full Route (All Passengers)',
                                   style: TextStyle(
-                                      fontSize: 12, color: Colors.grey[600]),
-                                ),
-                                Text(
-                                  'Seats: ${(passenger['selectedSeats'] as List).join(', ')}',
-                                  style: TextStyle(fontWeight: FontWeight.w500),
-                                ),
-                                Text(
-                                  'Pickup: ${passenger['pickupAddress']}',
-                                  style: TextStyle(color: Colors.grey[600]),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
                                 ),
                               ],
                             ),
-                            isThreeLine: true,
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
+                            SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      '${passenger['adultCount']} adult${passenger['adultCount'] > 1 ? 's' : ''}',
-                                      style: TextStyle(fontSize: 12),
-                                    ),
-                                    if ((passenger['childrenCount'] ?? 0) > 0)
-                                      Text(
-                                        '${passenger['childrenCount']} child${passenger['childrenCount'] > 1 ? 'ren' : ''}',
-                                        style: TextStyle(fontSize: 12),
+                                      'Total Distance: ${_totalRouteDistance.toStringAsFixed(1)} km',
+                                      style: TextStyle(
+                                        color: Colors.grey[700],
                                       ),
+                                    ),
+                                    Text(
+                                      '${_passengers.length} passengers',
+                                      style: TextStyle(
+                                        color: Colors.grey[700],
+                                      ),
+                                    ),
                                   ],
                                 ),
-                                IconButton(
-                                  icon: Icon(Icons.navigation,
-                                      size: 20, color: Colors.blue),
-                                  onPressed: () =>
-                                      _navigateToPassenger(passenger),
-                                  tooltip: 'Navigate to passenger',
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      'Est. Time: ${_totalRouteTime.toStringAsFixed(0)} min',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Blue dashed line on map',
+                                      style: TextStyle(
+                                        color: Colors.blue,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                            onTap: () => _navigateToPassenger(passenger),
+                          ],
+                        ),
+                      ),
+
+                    // Nearest passenger route information
+                    if (_nearestPassenger != null && _routeDistanceText.isNotEmpty)
+                      Container(
+                        padding: EdgeInsets.all(16),
+                        color: Colors.green.withOpacity(0.1),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.directions, color: Colors.green),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Nearest Passenger Route',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'To: ${_nearestPassenger!['userName']}',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Distance: $_routeDistanceText',
+                                      style: TextStyle(
+                                        color: Colors.grey[700],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      'ETA: $_routeDurationText',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Green solid line on map',
+                                      style: TextStyle(
+                                        color: Colors.green,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(context); // Dismiss the sheet
+                                _navigateToPassenger(_nearestPassenger!);
+                              },
+                              icon: Icon(Icons.navigation, size: 16),
+                              label: Text('Navigate to Nearest Passenger'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                minimumSize: Size(double.infinity, 36),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    // Bus info
+                    if (_driverBus != null)
+                      Container(
+                        padding: EdgeInsets.all(16),
+                        color: Colors.green.withOpacity(0.1),
+                        child: Row(
+                          children: [
+                            Icon(Icons.directions_bus, color: Colors.green),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _driverBus!.numberPlate,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${_driverBus!.startPoint} → ${_driverBus!.destination}',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    // Passenger list
+                    _passengers.isEmpty
+                        ? Container(
+                            height: 200,
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.people_outline,
+                                      size: 64, color: Colors.grey),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'No passengers found',
+                                    style: TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            physics: NeverScrollableScrollPhysics(),
+                            shrinkWrap: true,
+                            itemCount: _passengers.length,
+                            itemBuilder: (context, index) {
+                              final passenger = _passengers[index];
+                              return Card(
+                                margin: EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
+                                child: ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: Colors.blue.withOpacity(0.2),
+                                    child: Icon(
+                                      Icons.person,
+                                      color: Colors.blue,
+                                    ),
+                                  ),
+                                  title: Text(
+                                    passenger['userName'] ?? 'Passenger',
+                                    style: TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(passenger['userEmail'] ?? ''),
+                                      Text(
+                                        'Booking ID: ${passenger['bookingId']}',
+                                        style: TextStyle(
+                                            fontSize: 12, color: Colors.grey[600]),
+                                      ),
+                                      Text(
+                                        'Seats: ${(passenger['selectedSeats'] as List).join(', ')}',
+                                        style: TextStyle(fontWeight: FontWeight.w500),
+                                      ),
+                                      Text(
+                                        'Pickup: ${passenger['pickupAddress']}',
+                                        style: TextStyle(color: Colors.grey[600]),
+                                      ),
+                                    ],
+                                  ),
+                                  isThreeLine: true,
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            '${passenger['adultCount']} adult${passenger['adultCount'] > 1 ? 's' : ''}',
+                                            style: TextStyle(fontSize: 12),
+                                          ),
+                                          if ((passenger['childrenCount'] ?? 0) > 0)
+                                            Text(
+                                              '${passenger['childrenCount']} child${passenger['childrenCount'] > 1 ? 'ren' : ''}',
+                                              style: TextStyle(fontSize: 12),
+                                            ),
+                                        ],
+                                      ),
+                                      IconButton(
+                                        icon: Icon(Icons.navigation,
+                                            size: 20, color: Colors.blue),
+                                        onPressed: () {
+                                          Navigator.pop(context); // Dismiss the sheet
+                                          _navigateToPassenger(passenger);
+                                        },
+                                        tooltip: 'Navigate to passenger',
+                                      ),
+                                    ],
+                                  ),
+                                  onTap: () {
+                                    Navigator.pop(context); // Dismiss the sheet
+                                    _navigateToPassenger(passenger);
+                                  },
+                                ),
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
+                    // Add some padding at the bottom for better scrolling
+                    SizedBox(height: 20),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
