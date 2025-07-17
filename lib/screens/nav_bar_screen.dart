@@ -99,11 +99,6 @@ class _NavBarScreenState extends State<NavBarScreen> {
         screen: const DriverMapScreen(),
       ),
       NavBarItem(
-        icon: Icons.confirmation_number,
-        label: "Tickets",
-        screen: const TicketScreen(),
-      ),
-      NavBarItem(
         icon: Icons.settings,
         label: "Settings",
         screen: const SettingsScreen(),

@@ -676,8 +676,205 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                     ),
                   ),
                 ),
+
+                // Passenger list button
+                Positioned(
+                  bottom: 16,
+                  left: 16,
+                  child: Container(
+                    height: 50,
+                    width: 50,
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      borderRadius: BorderRadius.circular(25),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 6,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: Icon(Icons.people, color: Colors.white),
+                      onPressed: _showPassengerList,
+                    ),
+                  ),
+                ),
               ],
             ),
+    );
+  }
+
+  // Show passenger list bottom sheet
+  void _showPassengerList() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.green,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Passenger List',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Text(
+                        '${_passengers.length} passengers',
+                        style: TextStyle(
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      IconButton(
+                        icon: Icon(Icons.refresh, color: Colors.white),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _loadPassengers().then((_) {
+                            _showPassengerList();
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // Bus info
+            if (_driverBus != null)
+              Container(
+                padding: EdgeInsets.all(16),
+                color: Colors.green.withOpacity(0.1),
+                child: Row(
+                  children: [
+                    Icon(Icons.directions_bus, color: Colors.green),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _driverBus!.numberPlate,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            '${_driverBus!.startPoint} → ${_driverBus!.destination}',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // Passenger list
+            Expanded(
+              child: _passengers.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.people_outline,
+                              size: 64, color: Colors.grey),
+                          SizedBox(height: 16),
+                          Text(
+                            'No passengers found',
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: _passengers.length,
+                      itemBuilder: (context, index) {
+                        final passenger = _passengers[index];
+                        return Card(
+                          margin:
+                              EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: Colors.blue.withOpacity(0.2),
+                              child: Icon(Icons.person, color: Colors.blue),
+                            ),
+                            title: Text(
+                              passenger['userName'] ?? 'Passenger',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(passenger['userEmail'] ?? ''),
+                                Text(
+                                  'Seats: ${(passenger['selectedSeats'] as List).join(', ')}',
+                                  style: TextStyle(fontWeight: FontWeight.w500),
+                                ),
+                                Text(
+                                  'Pickup: ${passenger['pickupAddress']}',
+                                  style: TextStyle(color: Colors.grey[600]),
+                                ),
+                              ],
+                            ),
+                            isThreeLine: true,
+                            trailing: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  '${passenger['adultCount']} adult${passenger['adultCount'] > 1 ? 's' : ''}',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                                if ((passenger['childrenCount'] ?? 0) > 0)
+                                  Text(
+                                    '${passenger['childrenCount']} child${passenger['childrenCount'] > 1 ? 'ren' : ''}',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                              ],
+                            ),
+                            onTap: () => _navigateToPassenger(passenger),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

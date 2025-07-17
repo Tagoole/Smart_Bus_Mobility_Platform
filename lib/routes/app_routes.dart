@@ -53,7 +53,7 @@ class AppRoutes {
       adminScreen: (context) => AdminDashboardScreen(),
       passengerHomeScreen: (context) => BusTrackingScreen(),
 
-      busDriverHomeScreen: (context) => NavBarScreen(userRole: 'driver'),
+      busDriverHomeScreen: (context) => DriverMapScreen(),
       //coordinatetoAddressScreen: (context) => TransformLatLngToAddress(),
       //mountExampleScreen: (context) => const MountExampleScreen(),
       busManagementScreen: (context) => BusManagementScreen(),
@@ -61,5 +61,3 @@ class AppRoutes {
     };
   }
 }
-
-

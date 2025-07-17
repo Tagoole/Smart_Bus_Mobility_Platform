@@ -95,7 +95,7 @@ class _SignInScreenState extends State<SignInScreen> {
         break;
       case 'driver':
         print('Navigating to bus driver screen');
-        targetRoute = AppRoutes.driverMapScreen;
+        targetRoute = AppRoutes.busDriverHomeScreen;
         break;
       default:
         print('Unknown role: $role, showing error');
@@ -510,8 +510,7 @@ class DiagonalDividerPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color =
-          const Color(0xFFFFF59D) // Light yellow
+      ..color = const Color(0xFFFFF59D) // Light yellow
       ..style = PaintingStyle.fill;
 
     final path = Path();
