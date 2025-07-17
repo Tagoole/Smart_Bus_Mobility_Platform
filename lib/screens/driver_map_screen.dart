@@ -207,6 +207,21 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       _statusMessage = 'Loading passengers...';
     });
 
+    // Show a loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Text('Loading passengers...'),
+          ],
+        ),
+      ),
+    );
+
     try {
       final bookingsSnapshot = await FirebaseFirestore.instance
           .collection('bookings')
@@ -244,30 +259,31 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         }
       }
 
+      // Close the loading dialog
+      Navigator.of(context).pop();
+
       setState(() {
         _passengers = passengers;
         _isLoading = false;
       });
 
       _updateMarkers();
-
+      
       // Show success message
       if (_passengers.isEmpty) {
         _showSnackBar('No passengers found for your bus');
       } else {
         _showSnackBar('${_passengers.length} passengers loaded successfully');
-
-        // Automatically show passenger list if passengers were found
-        if (_passengers.length > 0) {
-          _showPassengerList();
-        }
       }
-
+      
       // Generate optimized route if we have passengers and driver location
       if (_passengers.isNotEmpty && _driverLocation != null) {
         await _generateOptimizedRoute();
       }
     } catch (e) {
+      // Close the loading dialog
+      Navigator.of(context).pop();
+      
       print('Error loading passengers: $e');
       setState(() {
         _isLoading = false;
@@ -394,9 +410,8 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       });
 
       // Update camera to driver location
-      if (_controller.isCompleted) {
-        GoogleMapController controller = await _controller.future;
-        controller.animateCamera(
+      if (_mapController != null) {
+        _mapController!.animateCamera(
           CameraUpdate.newCameraPosition(
             CameraPosition(target: _driverLocation!, zoom: 15),
           ),
@@ -425,17 +440,15 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       _isLoadingLocation = false;
     });
 
-    if (_controller.isCompleted) {
-      _controller.future.then((controller) {
-        controller.animateCamera(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(
-              target: LatLng(0.34540783865964797, 32.54297125499706),
-              zoom: 15,
-            ),
+    if (_mapController != null) {
+      _mapController!.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: LatLng(0.34540783865964797, 32.54297125499706),
+            zoom: 15,
           ),
-        );
-      });
+        ),
+      );
     }
 
     _updateMarkers();
@@ -617,26 +630,34 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
   // Navigate to passenger
   void _navigateToPassenger(Map<String, dynamic> passenger) async {
-    if (passenger['pickupLocation'] != null && _driverLocation != null) {
-      final location = passenger['pickupLocation'];
-      final LatLng passengerLatLng = LatLng(
-        location['latitude'],
-        location['longitude'],
-      );
-
-      // Move camera
-      if (_controller.isCompleted) {
-        _controller.future.then((controller) {
-          controller.animateCamera(
-            CameraUpdate.newCameraPosition(
-              CameraPosition(target: passengerLatLng, zoom: 16),
-            ),
-          );
-        });
-      }
-
-      _showSnackBar('Navigating to ${passenger['userName']}');
+    if (passenger['pickupLocation'] == null) {
+      _showSnackBar('Passenger pickup location not available');
+      return;
     }
+
+    final location = passenger['pickupLocation'];
+    if (location == null ||
+        location['latitude'] == null ||
+        location['longitude'] == null) {
+      _showSnackBar('Invalid passenger location data');
+      return;
+    }
+
+    final LatLng passengerLatLng = LatLng(
+      location['latitude'],
+      location['longitude'],
+    );
+
+    // Move camera
+    if (_mapController != null) {
+      _mapController!.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(target: passengerLatLng, zoom: 16),
+        ),
+      );
+    }
+
+    _showSnackBar('Navigating to ${passenger['userName']}');
   }
 
   // Toggle online status
@@ -685,18 +706,58 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     );
   }
 
+  // Update bus isAvailable field
+  Future<void> _updateBusIsAvailable() async {
+    setState(() {
+      _isLoading = true;
+      _statusMessage = 'Updating bus...';
+    });
+
+    try {
+      // Find the bus by driver email
+      final busSnapshot = await FirebaseFirestore.instance
+          .collection('buses')
+          .where('driverId', isEqualTo: _driverEmail)
+          .limit(1)
+          .get();
+
+      if (busSnapshot.docs.isEmpty) {
+        setState(() {
+          _statusMessage = 'No bus found for driver: $_driverEmail';
+          _isLoading = false;
+        });
+        _showSnackBar('No bus found for driver: $_driverEmail');
+        return;
+      }
+
+      final busDoc = busSnapshot.docs.first;
+      final busId = busDoc.id;
+
+      // Update the bus with isAvailable field
+      await FirebaseFirestore.instance.collection('buses').doc(busId).update({
+        'isAvailable': true,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      _showSnackBar('Bus updated successfully! Bus ID: $busId');
+
+      // Reload driver data
+      await _loadDriverData();
+    } catch (e) {
+      print('Error updating bus: $e');
+      setState(() {
+        _statusMessage = 'Error updating bus: $e';
+        _isLoading = false;
+      });
+      _showSnackBar('Error updating bus: $e');
+    }
+  }
+
   @override
   void dispose() {
     _passengerRefreshTimer?.cancel();
-    _mapController?.dispose();
-    if (_controller.isCompleted) {
-      _controller.future.then((controller) {
-        try {
-          controller.dispose();
-        } catch (e) {
-          print('Error disposing map controller: $e');
-        }
-      });
+    if (_mapController != null) {
+      _mapController!.dispose();
     }
     super.dispose();
   }
@@ -712,6 +773,11 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                   CircularProgressIndicator(),
                   SizedBox(height: 16),
                   Text(_statusMessage),
+                  if (_statusMessage.contains('No bus assigned'))
+                    ElevatedButton(
+                      onPressed: _updateBusIsAvailable,
+                      child: Text('Update Bus'),
+                    ),
                 ],
               ),
             )
@@ -720,7 +786,10 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                 // Full screen map
                 GoogleMap(
                   onMapCreated: (GoogleMapController controller) {
-                    _controller.complete(controller);
+                    // Fix for "Future already completed" error
+                    if (!_controller.isCompleted) {
+                      _controller.complete(controller);
+                    }
                     _mapController = controller;
                   },
                   initialCameraPosition: _initialPosition,
@@ -730,43 +799,88 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                   myLocationButtonEnabled: false,
                   zoomControlsEnabled: false,
                   mapToolbarEnabled: false,
-                  onTap: (LatLng location) {
-                    // Load passengers and generate route when map is tapped
-                    _loadPassengers().then((_) {
-                      if (_passengers.isNotEmpty && _driverLocation != null) {
-                        _generateOptimizedRoute();
-                      }
-                    });
-                  },
+                  // Remove the onTap handler that was loading passengers
                 ),
 
                 if (_isLoadingLocation)
                   const Center(child: CircularProgressIndicator()),
 
-                // Tap instruction tooltip
-                if (_passengers.isEmpty)
-                  Positioned(
-                    top: 40,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: Container(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.7),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          'Tap on the map to load passengers',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                // Remove the tap instruction tooltip
+                // if (_passengers.isEmpty)
+                //   Positioned(
+                //     top: 40,
+                //     left: 0,
+                //     right: 0,
+                //     child: Center(
+                //       child: Container(
+                //         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                //         decoration: BoxDecoration(
+                //           color: Colors.black.withOpacity(0.7),
+                //           borderRadius: BorderRadius.circular(20),
+                //         ),
+                //         child: Text(
+                //           'Tap on the map to load passengers',
+                //           style: TextStyle(
+                //             color: Colors.white,
+                //             fontWeight: FontWeight.bold,
+                //           ),
+                //         ),
+                //       ),
+                //     ),
+                //   ),
+
+                // Add notification/button to load passengers
+                Positioned(
+                  top: 40,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Container(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.8),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 6,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: InkWell(
+                        onTap: () {
+                          _loadPassengers().then((_) {
+                            if (_passengers.isNotEmpty &&
+                                _driverLocation != null) {
+                              _generateOptimizedRoute();
+                              // Automatically show passenger list
+                              _showPassengerList();
+                            }
+                          });
+                        },
+                        child: Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.people, color: Colors.white),
+                              SizedBox(width: 8),
+                              Text(
+                                'Load Passengers',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
                     ),
                   ),
+                ),
 
                 // Zoom controls
                 Positioned(
@@ -884,10 +998,34 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                         ),
                       ],
                     ),
-                    child: IconButton(
-                      padding: EdgeInsets.zero,
-                      icon: Icon(Icons.people, color: Colors.white),
-                      onPressed: _showPassengerList,
+                    child: Stack(
+                      children: [
+                        IconButton(
+                          padding: EdgeInsets.zero,
+                          icon: Icon(Icons.people, color: Colors.white),
+                          onPressed: _showPassengerList,
+                        ),
+                        if (_passengers.isNotEmpty)
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: Container(
+                              padding: EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text(
+                                '${_passengers.length}',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ),

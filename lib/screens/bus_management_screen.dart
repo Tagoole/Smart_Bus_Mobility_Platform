@@ -482,6 +482,7 @@ class _BusManagementScreenState extends State<BusManagementScreen>
         'seatCapacity': constantSeatCapacity,
         'availableSeats': constantSeatCapacity,
         'status': 'active',
+        'isAvailable': true, // Add this field explicitly
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
         'currentLocation': {
