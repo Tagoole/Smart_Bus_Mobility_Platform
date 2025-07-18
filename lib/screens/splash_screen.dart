@@ -771,8 +771,3 @@ class DottedPathPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
-<<<<<<< HEAD
-
-
-=======
->>>>>>> 4e6b5d66db6d785ba6dcb1614dd30d9c03908646
