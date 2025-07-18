@@ -257,3 +257,4 @@ mixin AutoRefreshMixin<T extends StatefulWidget> on State<T> {
     _refreshService.stopAllRefresh();
   }
 }
+
