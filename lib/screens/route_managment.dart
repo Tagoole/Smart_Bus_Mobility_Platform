@@ -21,6 +21,7 @@ class PickupPoint {
     required this.lng,
   });
 
+
   PickupPoint copyWith({
     String? id,
     String? name,
