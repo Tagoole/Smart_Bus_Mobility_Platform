@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:smart_bus_mobility_platform1/screens/admin_home_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/bus_driver_home_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/nav_bar_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/login_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/signup_screen.dart';
@@ -18,6 +19,7 @@ import 'package:smart_bus_mobility_platform1/screens/payment_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/customer_home_screen.dart';
 import 'package:smart_bus_mobility_platform1/routes/app_routes.dart';
 import 'package:flutter/services.dart';
+import 'package:smart_bus_mobility_platform1/screens/driver_map_screen.dart';
 
 void main() async {
   // Configure error handling to prevent crashes
@@ -113,9 +115,9 @@ class MyApp extends StatelessWidget {
                           // Route based on user role
                           switch (role) {
                             case 'admin':
-                              return AdminDashboardScreen();
+                              return NavBarScreen(userRole: 'admin');
                             case 'driver':
-                              return NavBarScreen(userRole: role);
+                              return NavBarScreen(userRole: 'driver');
                             case 'user':
                             default:
                               return NavBarScreen(userRole: role);

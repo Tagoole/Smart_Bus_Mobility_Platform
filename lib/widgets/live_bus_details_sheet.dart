@@ -11,8 +11,8 @@ class LiveBusDetailsSheet extends StatefulWidget {
     required this.busId,
     required this.booking,
     this.passengerIcon,
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   State<LiveBusDetailsSheet> createState() => _LiveBusDetailsSheetState();
