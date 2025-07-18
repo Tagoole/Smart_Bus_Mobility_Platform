@@ -7,6 +7,7 @@ import 'package:smart_bus_mobility_platform1/routes/app_routes.dart';
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
+
   @override
   _SplashScreenState createState() => _SplashScreenState();
 }
