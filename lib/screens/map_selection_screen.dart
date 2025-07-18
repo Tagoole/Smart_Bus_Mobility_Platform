@@ -12,6 +12,7 @@ class MapSelectionScreen extends StatefulWidget {
     required this.onLocationSelected,
   });
 
+
   @override
   State<MapSelectionScreen> createState() => _MapSelectionScreenState();
 }
