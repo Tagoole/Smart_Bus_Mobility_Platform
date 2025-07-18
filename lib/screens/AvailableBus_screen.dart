@@ -670,3 +670,4 @@ class BusInfo {
     required this.seatNumber,
   });
 }
+
