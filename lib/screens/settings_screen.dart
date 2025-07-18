@@ -12,6 +12,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool locationEnabled = true;
   bool isDarkMode = false;
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
