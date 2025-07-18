@@ -8,3 +8,4 @@ sealed class BusState extends Equatable {
 }
 
 final class BusInitial extends BusState {}
+
