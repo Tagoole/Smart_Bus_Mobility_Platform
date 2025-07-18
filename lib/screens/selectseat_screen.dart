@@ -10,6 +10,7 @@ import 'package:smart_bus_mobility_platform1/screens/nav_bar_screen.dart';
 
 enum SeatStatus { available, selected, reserved }
 
+
 class SelectSeatScreen extends StatefulWidget {
   final String? origin;
   final String? destination;
