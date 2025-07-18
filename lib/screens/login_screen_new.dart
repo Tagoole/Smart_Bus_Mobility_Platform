@@ -1,6 +1,7 @@
-/*import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:smart_bus_mobility_platform1/routes/app_routes.dart';
 import 'package:smart_bus_mobility_platform1/resources/auth_service.dart';
+import 'dart:ui';
 
 class SignInScreenNew extends StatefulWidget {
   const SignInScreenNew({super.key});
@@ -113,26 +114,67 @@ class _SignInScreenNewState extends State<SignInScreenNew> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          borderRadius: BorderRadius.all(Radius.circular(30)),
-        ),
-        child: ClipRRect(
-          borderRadius: const BorderRadius.all(Radius.circular(30)),
-          child: Stack(
-            children: [
-              // Background with luxury bus image
-              _buildBackground(),
+      body: Stack(
+        children: [
+          // Animated gradient background
+          AnimatedContainer(
+            duration: const Duration(seconds: 2),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFFB2FEFA),
+                  Color(0xFFFFD700),
+                  Color(0xFF76FF03),
+                ],
+                stops: [0.0, 0.7, 1.0],
+              ),
+            ),
+          ),
+          // Background with bus image and diagonal divider
+          _buildBackground(),
+          _buildDiagonalDivider(),
+          _buildCircularOverlay(),
+          // Glassmorphism main content
+          _buildGlassmorphicMainContent(),
+        ],
+      ),
+    );
+  }
 
-              // Diagonal divider
-              _buildDiagonalDivider(),
-
-              // Circular profile overlay
-              _buildCircularOverlay(),
-
-              // Main content
-              _buildMainContent(),
-            ],
+  Widget _buildGlassmorphicMainContent() {
+    return SafeArea(
+      child: Center(
+        child: AnimatedOpacity(
+          opacity: 1.0,
+          duration: const Duration(milliseconds: 900),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(32),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              child: Container(
+                width: 420,
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(32),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.10),
+                      blurRadius: 32,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.25),
+                    width: 1.5,
+                  ),
+                ),
+                child: _buildMainContent(),
+              ),
+            ),
           ),
         ),
       ),
@@ -429,66 +471,179 @@ class _SignInScreenNewState extends State<SignInScreenNew> {
       children: [
         Row(
           children: [
-            Expanded(child: Divider(color: Colors.grey[400])),
+            const Expanded(child: Divider(color: Colors.black)),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
-                'Or continue with',
-                style: TextStyle(color: Colors.grey[600]),
+                'Continue with',
+                style: TextStyle(
+                  color: Colors.black.withOpacity(0.7),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'Montserrat',
+                  letterSpacing: 0.5,
+                ),
               ),
             ),
-            Expanded(child: Divider(color: Colors.grey[400])),
+            const Expanded(child: Divider(color: Colors.black)),
           ],
         ),
         const SizedBox(height: 20),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildSocialButton(
-              icon: 'assets/images/Google.png',
-              onPressed: () {
-                // TODO: Implement Google sign in
-              },
-            ),
-            _buildSocialButton(
-              icon: 'assets/images/facebook.png',
-              onPressed: () {
-                // TODO: Implement Facebook sign in
-              },
-            ),
-            _buildSocialButton(
-              icon: 'assets/images/apple.png',
-              onPressed: () {
-                // TODO: Implement Apple sign in
-              },
-            ),
-          ],
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 900),
+          builder: (context, value, child) {
+            return Opacity(
+              opacity: value,
+              child: Transform.translate(
+                offset: Offset(0, (1 - value) * 20),
+                child: child,
+              ),
+            );
+          },
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildFancySocialLogoButton(
+                assetPath: 'assets/images/instagram.png',
+                semanticLabel: 'Sign in with Instagram',
+                onTap: _handleInstagramSignIn,
+                glowColor: const Color(0xFFE1306C),
+              ),
+              const SizedBox(width: 24),
+              _buildFancySocialLogoButton(
+                assetPath: 'assets/images/facebook.png',
+                semanticLabel: 'Sign in with Facebook',
+                onTap: _handleFacebookSignIn,
+                glowColor: const Color(0xFF1877F2),
+              ),
+              const SizedBox(width: 24),
+              _buildFancySocialLogoButton(
+                assetPath: 'assets/images/Google.png',
+                semanticLabel: 'Sign in with Google',
+                onTap: _handleGoogleSignIn,
+                glowColor: const Color(0xFFDB4437),
+              ),
+            ],
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildSocialButton({
-    required String icon,
-    required VoidCallback onPressed,
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _isLoading = true);
+    final result = await AuthMethods().signInWithGoogle();
+    setState(() => _isLoading = false);
+    if (result['status'] == 'Success') {
+      _navigateBasedOnRole(result['role'] ?? 'user');
+    } else {
+      _showSnackBar(result['status'] ?? 'Google sign in failed');
+    }
+  }
+
+  Future<void> _handleFacebookSignIn() async {
+    setState(() => _isLoading = true);
+    final result = await AuthMethods().signInWithFacebook();
+    setState(() => _isLoading = false);
+    if (result['status'] == 'Success') {
+      _navigateBasedOnRole(result['role'] ?? 'user');
+    } else {
+      _showSnackBar(result['status'] ?? 'Facebook sign in failed');
+    }
+  }
+
+  Future<void> _handleInstagramSignIn() async {
+    setState(() => _isLoading = true);
+    try {
+      await AuthMethods().signInWithInstagram();
+    } catch (e) {
+      _showSnackBar('Instagram sign in not available');
+    }
+    setState(() => _isLoading = false);
+  }
+
+  Widget _buildSocialLogoButton({
+    required String assetPath,
+    required String semanticLabel,
+    required VoidCallback onTap,
   }) {
-    return Container(
-      width: 50,
-      height: 50,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(25),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.10),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+          border: Border.all(
+            color: Colors.grey.shade200,
+            width: 1.5,
           ),
-        ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Image.asset(
+            assetPath,
+            fit: BoxFit.contain,
+            semanticLabel: semanticLabel,
+          ),
+        ),
       ),
-      child: IconButton(
-        onPressed: onPressed,
-        icon: Image.asset(icon, width: 24, height: 24),
+    );
+  }
+
+  Widget _buildFancySocialLogoButton({
+    required String assetPath,
+    required String semanticLabel,
+    required VoidCallback onTap,
+    required Color glowColor,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: 54,
+          height: 54,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white.withOpacity(0.95),
+            boxShadow: [
+              BoxShadow(
+                color: glowColor.withOpacity(0.25),
+                blurRadius: 18,
+                spreadRadius: 2,
+                offset: const Offset(0, 4),
+              ),
+              BoxShadow(
+                color: Colors.black.withOpacity(0.10),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+            border: Border.all(
+              color: glowColor.withOpacity(0.5),
+              width: 2,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(10.0),
+            child: Image.asset(
+              assetPath,
+              fit: BoxFit.contain,
+              semanticLabel: semanticLabel,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -539,4 +694,3 @@ class DiagonalDividerPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-*/
