@@ -15,6 +15,7 @@ class _EmailVerificationSuccessScreenAnimatedState
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
+  
 
   // Color constants
   static const Color _lightCream = Color(0xFFFFFDF5);
