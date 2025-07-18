@@ -6,3 +6,4 @@ sealed class BusEvent extends Equatable {
   @override
   List<Object> get props => [];
 }
+
