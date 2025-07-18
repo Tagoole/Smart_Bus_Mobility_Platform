@@ -14,6 +14,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _emailController = TextEditingController();
   bool _isEmailValid = false;
 
+
   @override
   void initState() {
     super.initState();
@@ -390,3 +391,4 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 }
+

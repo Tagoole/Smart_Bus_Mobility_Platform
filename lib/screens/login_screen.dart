@@ -421,8 +421,9 @@ class _SignInScreenState extends State<SignInScreen> {
               child: Text(
                 'Continue with',
                 style: TextStyle(
-                  color: Colors.black.withValues(alpha: 0.7),
+                  color: Colors.black.withOpacity(0.7),
                   fontSize: 14,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
@@ -431,21 +432,23 @@ class _SignInScreenState extends State<SignInScreen> {
         ),
         const SizedBox(height: 20),
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildSocialIcon(
-              icon: Icons.camera_alt, // Instagram placeholder
-              color: const Color(0xFFE1306C),
+            _buildSocialLogoButton(
+              assetPath: 'assets/images/instagram.png',
+              semanticLabel: 'Sign in with Instagram',
               onTap: () {},
             ),
-            _buildSocialIcon(
-              icon: Icons.facebook,
-              color: const Color(0xFF1877F2),
+            const SizedBox(width: 24),
+            _buildSocialLogoButton(
+              assetPath: 'assets/images/facebook.png',
+              semanticLabel: 'Sign in with Facebook',
               onTap: () {},
             ),
-            _buildSocialIcon(
-              icon: Icons.search, // Google placeholder
-              color: const Color(0xFFDB4437),
+            const SizedBox(width: 24),
+            _buildSocialLogoButton(
+              assetPath: 'assets/images/Google.png',
+              semanticLabel: 'Sign in with Google',
               onTap: () {},
             ),
           ],
@@ -454,28 +457,39 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  Widget _buildSocialIcon({
-    required IconData icon,
-    required Color color,
+  Widget _buildSocialLogoButton({
+    required String assetPath,
+    required String semanticLabel,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 50,
-        height: 50,
+        width: 48,
+        height: 48,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
+              color: Colors.black.withOpacity(0.10),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
           ],
+          border: Border.all(
+            color: Colors.grey.shade200,
+            width: 1.5,
+          ),
         ),
-        child: Icon(icon, color: color, size: 24),
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Image.asset(
+            assetPath,
+            fit: BoxFit.contain,
+            semanticLabel: semanticLabel,
+          ),
+        ),
       ),
     );
   }
@@ -525,3 +539,4 @@ class DiagonalDividerPainter extends CustomPainter {
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
+

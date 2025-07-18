@@ -235,3 +235,4 @@ class BusModel {
     }).toList();
   }
 }
+

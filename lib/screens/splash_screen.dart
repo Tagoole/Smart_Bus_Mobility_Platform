@@ -7,6 +7,7 @@ import 'package:smart_bus_mobility_platform1/routes/app_routes.dart';
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
+
   @override
   _SplashScreenState createState() => _SplashScreenState();
 }
@@ -770,3 +771,8 @@ class DottedPathPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
+<<<<<<< HEAD
+
+
+=======
+>>>>>>> 4e6b5d66db6d785ba6dcb1614dd30d9c03908646

@@ -14,6 +14,7 @@ class AdminSearchScreen extends StatefulWidget {
     required this.onLocationSelected,
   });
 
+
   @override
   State<AdminSearchScreen> createState() => _AdminSearchScreenState();
 }

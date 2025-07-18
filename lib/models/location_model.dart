@@ -132,3 +132,4 @@ class LocationModel {
     return 'LocationModel(locationId: $locationId, locationName: $locationName, coordinates: ($latitude, $longitude), type: $locationType)';
   }
 }
+

@@ -16,6 +16,7 @@ import 'package:smart_bus_mobility_platform1/utils/directions_model.dart';
 class DriverMapScreen extends StatefulWidget {
   const DriverMapScreen({super.key});
 
+
   @override
   State<DriverMapScreen> createState() => _DriverMapScreenState();
 }
@@ -2086,3 +2087,4 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     );
   }
 }
+
