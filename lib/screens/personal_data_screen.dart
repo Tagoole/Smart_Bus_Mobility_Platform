@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import 'nav_bar_screen.dart'; // Import your existing NavBarScreen
+import 'package:smart_bus_mobility_platform1/screens/nav_bar_screen.dart';
 
 class PersonalData extends StatefulWidget {
   // Accept user data from signup/login
@@ -617,3 +617,4 @@ class _PersonalDataState extends State<PersonalData> {
     super.dispose();
   }
 }
+

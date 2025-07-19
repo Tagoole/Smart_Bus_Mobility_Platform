@@ -36,6 +36,7 @@ class AppRoutes {
   static const String mountExampleScreen = '/mount-example';
   static const String busManagementScreen = '/busManagement';
   static const String driverMapScreen = '/driverMap';
+  static const String driverNavbarScreen = '/driver_navbar';
   //static const String seatSelectionScreen = '/selectSeat';
 
   static Map<String, WidgetBuilder> getRoutes() {
@@ -53,13 +54,23 @@ class AppRoutes {
       adminScreen: (context) => AdminDashboardScreen(),
       passengerHomeScreen: (context) => BusTrackingScreen(),
 
-      busDriverHomeScreen: (context) => NavBarScreen(userRole: 'driver'),
+      busDriverHomeScreen: (context) => DriverMapScreen(),
       //coordinatetoAddressScreen: (context) => TransformLatLngToAddress(),
       //mountExampleScreen: (context) => const MountExampleScreen(),
       busManagementScreen: (context) => BusManagementScreen(),
       driverMapScreen: (context) => DriverMapScreen(),
+      driverNavbarScreen: (context) {
+        // Get initialTab from arguments if provided
+        final args = ModalRoute.of(context)?.settings.arguments;
+        final initialTab = args is int ? args : 0;
+        return NavBarScreen(userRole: 'driver', initialTab: initialTab);
+      },
     };
   }
 }
+<<<<<<< HEAD
 
 
+
+=======
+>>>>>>> 4e6b5d66db6d785ba6dcb1614dd30d9c03908646

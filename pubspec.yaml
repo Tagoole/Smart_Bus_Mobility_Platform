@@ -49,7 +49,7 @@ dependencies:
   flutter_spinkit:
   equatable: ^2.0.5
   provider: ^6.1.1
-  #flutter_polyline_points: ^2.1.0
+  flutter_polyline_points: ^1.0.0
 
   http: ^0.13.1
   flutter_secure_storage: ^9.0.0
@@ -85,6 +85,9 @@ dependencies:
   cupertino_icons: ^1.0.8
   file_picker: ^8.0.7
   url_launcher: ^6.2.5
+  # Social sign-in dependencies
+  google_sign_in: ^6.2.1
+  flutter_facebook_auth: ^6.0.4
 
 dev_dependencies:
   flutter_test:

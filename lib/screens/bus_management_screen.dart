@@ -16,11 +16,13 @@ const kGoogleApiKey = 'AIzaSyC2n6urW_4DUphPLUDaNGAW_VN53j0RP4s';
 class BusManagementScreen extends StatefulWidget {
   const BusManagementScreen({super.key});
 
+
   @override
   State<BusManagementScreen> createState() => _BusManagementScreenState();
 }
 
-class _BusManagementScreenState extends State<BusManagementScreen> with TickerProviderStateMixin {
+class _BusManagementScreenState extends State<BusManagementScreen>
+    with TickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
@@ -111,7 +113,9 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
   Future<void> _loadBuses() async {
     try {
       final snapshot = await _firestore.collection('buses').get();
-      setState(() => buses = snapshot.docs.map((doc) => BusModel.fromJson(doc.data(), doc.id)).toList());
+      setState(() => buses = snapshot.docs
+          .map((doc) => BusModel.fromJson(doc.data(), doc.id))
+          .toList());
     } catch (e) {
       print('Error loading buses: $e');
       setState(() => buses = []);
@@ -120,15 +124,18 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
 
   Future<void> _loadDrivers() async {
     try {
-      final snapshot = await _firestore.collection('users').where('role', isEqualTo: 'Driver').get();
+      final snapshot = await _firestore
+          .collection('users')
+          .where('role', isEqualTo: 'Driver')
+          .get();
       setState(() => drivers = snapshot.docs.map((doc) {
-        final data = doc.data();
-        return {
-          'uid': doc.id,
-          'email': data['email'] ?? '',
-          'name': data['name'] ?? data['email'] ?? 'Unknown Driver',
-        };
-      }).toList());
+            final data = doc.data();
+            return {
+              'uid': doc.id,
+              'email': data['email'] ?? '',
+              'name': data['name'] ?? data['email'] ?? 'Unknown Driver',
+            };
+          }).toList());
     } catch (e) {
       print('Error loading drivers: $e');
       setState(() => drivers = []);
@@ -144,7 +151,8 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
       strictbounds: false,
       types: [''],
       decoration: InputDecoration(
-        hintText: isStart ? 'Search start location...' : 'Search destination...',
+        hintText:
+            isStart ? 'Search start location...' : 'Search destination...',
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
           borderSide: const BorderSide(color: Colors.white),
@@ -156,10 +164,12 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
     if (prediction != null) {
       try {
         GoogleMapsPlaces places = GoogleMapsPlaces(apiKey: kGoogleApiKey);
-        PlacesDetailsResponse detail = await places.getDetailsByPlaceId(prediction.placeId!);
+        PlacesDetailsResponse detail =
+            await places.getDetailsByPlaceId(prediction.placeId!);
         final lat = detail.result.geometry!.location.lat;
         final lng = detail.result.geometry!.location.lng;
-        final address = detail.result.formattedAddress ?? prediction.description ?? '';
+        final address =
+            detail.result.formattedAddress ?? prediction.description ?? '';
 
         setState(() {
           if (isStart) {
@@ -179,7 +189,9 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
       } catch (e) {
         print('Error fetching place details: $e');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error fetching location: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Error fetching location: $e'),
+              backgroundColor: Colors.red),
         );
       }
     }
@@ -195,8 +207,11 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
         destination: _destinationLatLng!,
       );
 
-      if (directions != null && directions.polylinePoints.isNotEmpty) {
-        List<LatLng> routeCoords = _decodePolyline(directions.polylinePoints);
+      if (directions != null && directions.polylinePoints != null && directions.polylinePoints.isNotEmpty) {
+        // Convert List<PointLatLng> to List<LatLng>
+        List<LatLng> routeCoords = directions.polylinePoints
+            .map((point) => LatLng(point.latitude, point.longitude))
+            .toList();
 
         setState(() {
           _routeInfo = directions;
@@ -213,14 +228,18 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
             Marker(
               markerId: const MarkerId('start'),
               position: _startLatLng!,
-              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-              infoWindow: InfoWindow(title: 'Start: ${_startPointController.text}'),
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                  BitmapDescriptor.hueGreen),
+              infoWindow:
+                  InfoWindow(title: 'Start: ${_startPointController.text}'),
             ),
             Marker(
               markerId: const MarkerId('destination'),
               position: _destinationLatLng!,
-              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-              infoWindow: InfoWindow(title: 'Destination: ${_destinationController.text}'),
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                  BitmapDescriptor.hueRed),
+              infoWindow: InfoWindow(
+                  title: 'Destination: ${_destinationController.text}'),
             ),
           };
         });
@@ -234,7 +253,9 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
     } catch (e) {
       print('Error fetching route: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching route: $e'), backgroundColor: Colors.red),
+        SnackBar(
+            content: Text('Error fetching route: $e'),
+            backgroundColor: Colors.red),
       );
     } finally {
       setState(() => _isLoadingRoute = false);
@@ -291,7 +312,8 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
         Marker(
           markerId: const MarkerId('start'),
           position: _startLatLng!,
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+          icon:
+              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
           infoWindow: InfoWindow(title: 'Start: ${_startPointController.text}'),
         ),
       );
@@ -302,7 +324,8 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
           markerId: const MarkerId('destination'),
           position: _destinationLatLng!,
           icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-          infoWindow: InfoWindow(title: 'Destination: ${_destinationController.text}'),
+          infoWindow:
+              InfoWindow(title: 'Destination: ${_destinationController.text}'),
         ),
       );
     }
@@ -311,9 +334,14 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
 
   Future<void> _addBus() async {
     if (!_formKey.currentState!.validate()) return;
-    if (selectedDriverEmail == null || selectedVehicleModel == null || _startLatLng == null || _destinationLatLng == null) {
+    if (selectedDriverEmail == null ||
+        selectedVehicleModel == null ||
+        _startLatLng == null ||
+        _destinationLatLng == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please complete all required fields'), backgroundColor: Colors.red),
+        const SnackBar(
+            content: Text('Please complete all required fields'),
+            backgroundColor: Colors.red),
       );
       return;
     }
@@ -332,13 +360,20 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
         'destinationLat': _destinationLatLng!.latitude,
         'destinationLng': _destinationLatLng!.longitude,
         'routePolyline': _routePolylines.isNotEmpty
-            ? _routePolylines.first.points.map((p) => {'lat': p.latitude, 'lng': p.longitude}).toList()
-            : [_startLatLng!, _destinationLatLng!].map((p) => {'lat': p.latitude, 'lng': p.longitude}).toList(),
+            ? _routePolylines.first.points
+                .map((p) => {'lat': p.latitude, 'lng': p.longitude})
+                .toList()
+            : [_startLatLng!, _destinationLatLng!]
+                .map((p) => {'lat': p.latitude, 'lng': p.longitude})
+                .toList(),
         'fare': double.parse(_fareController.text.trim()),
-        'departureTime': _departureTimeController.text.trim().isNotEmpty ? _departureTimeController.text.trim() : null,
+        'departureTime': _departureTimeController.text.trim().isNotEmpty
+            ? _departureTimeController.text.trim()
+            : null,
         'seatCapacity': seatCapacity,
         'availableSeats': seatCapacity,
         'status': 'active',
+        'isAvailable': true, // Add this field explicitly
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
         'currentLocation': {
@@ -370,12 +405,15 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
       await _loadBuses();
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bus added successfully!'), backgroundColor: Colors.green),
+        const SnackBar(
+            content: Text('Bus added successfully!'),
+            backgroundColor: Colors.green),
       );
     } catch (e) {
       print('Error adding bus: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error adding bus: $e'), backgroundColor: Colors.red),
+        SnackBar(
+            content: Text('Error adding bus: $e'), backgroundColor: Colors.red),
       );
     } finally {
       setState(() => isAddingBus = false);
@@ -387,12 +425,16 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
       await _firestore.collection('buses').doc(busId).delete();
       await _loadBuses();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bus deleted successfully!'), backgroundColor: Colors.green),
+        const SnackBar(
+            content: Text('Bus deleted successfully!'),
+            backgroundColor: Colors.green),
       );
     } catch (e) {
       print('Error deleting bus: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error deleting bus: $e'), backgroundColor: Colors.red),
+        SnackBar(
+            content: Text('Error deleting bus: $e'),
+            backgroundColor: Colors.red),
       );
     }
   }
@@ -406,14 +448,17 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
       await _loadBuses();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Bus ${bus.isAvailable ? 'deactivated' : 'activated'} successfully!'),
+          content: Text(
+              'Bus ${bus.isAvailable ? 'deactivated' : 'activated'} successfully!'),
           backgroundColor: Colors.green,
         ),
       );
     } catch (e) {
       print('Error updating bus: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating bus: $e'), backgroundColor: Colors.red),
+        SnackBar(
+            content: Text('Error updating bus: $e'),
+            backgroundColor: Colors.red),
       );
     }
   }
@@ -430,7 +475,9 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
               _buildHeader(),
               Expanded(
                 child: isLoading
-                    ? const Center(child: CircularProgressIndicator(color: Color(0xFF576238)))
+                    ? const Center(
+                        child:
+                            CircularProgressIndicator(color: Color(0xFF576238)))
                     : _buildContent(),
               ),
             ],
@@ -453,7 +500,10 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
-        boxShadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 4, offset: Offset(0, 1))],
+        boxShadow: [
+          BoxShadow(
+              color: Color(0x0A000000), blurRadius: 4, offset: Offset(0, 1))
+        ],
       ),
       child: Row(
         children: [
@@ -465,7 +515,8 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
                 color: const Color(0xFFF3F4F6),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.arrow_back, color: Color(0xFF576238), size: 24),
+              child: const Icon(Icons.arrow_back,
+                  color: Color(0xFF576238), size: 24),
             ),
           ),
           const SizedBox(width: 16),
@@ -479,28 +530,42 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
               ),
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
-                BoxShadow(color: const Color(0xFF576238).withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4)),
+                BoxShadow(
+                    color: const Color(0xFF576238).withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4)),
               ],
             ),
-            child: const Icon(Icons.directions_bus, color: Colors.white, size: 24),
+            child:
+                const Icon(Icons.directions_bus, color: Colors.white, size: 24),
           ),
           const SizedBox(width: 16),
           const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Bus Management', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF111827))),
+                Text('Bus Management',
+                    style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF111827))),
                 SizedBox(height: 4),
-                Text('Manage your fleet of buses', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                Text('Manage your fleet of buses',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
               ],
             ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(color: const Color(0xFFE8F5E8), borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(
+                color: const Color(0xFFE8F5E8),
+                borderRadius: BorderRadius.circular(12)),
             child: Text(
               '${buses.length} Buses',
-              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF576238)),
+              style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF576238)),
             ),
           ),
         ],
@@ -516,13 +581,21 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
           children: [
             Container(
               padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(16)),
-              child: const Icon(Icons.directions_bus_outlined, size: 64, color: Color(0xFF9CA3AF)),
+              decoration: BoxDecoration(
+                  color: const Color(0xFFF3F4F6),
+                  borderRadius: BorderRadius.circular(16)),
+              child: const Icon(Icons.directions_bus_outlined,
+                  size: 64, color: Color(0xFF9CA3AF)),
             ),
             const SizedBox(height: 16),
-            const Text('No buses found', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Color(0xFF374151))),
+            const Text('No buses found',
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF374151))),
             const SizedBox(height: 8),
-            const Text('Add your first bus to get started', style: TextStyle(fontSize: 14, color: Color(0xFF6B7280))),
+            const Text('Add your first bus to get started',
+                style: TextStyle(fontSize: 14, color: Color(0xFF6B7280))),
           ],
         ),
       );
@@ -536,14 +609,23 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
   }
 
   Widget _buildBusCard(BusModel bus) {
-    final driver = drivers.firstWhere((d) => d['email'] == bus.driverId, orElse: () => {'name': 'Unknown Driver'});
+    final driver = drivers.firstWhere((d) => d['email'] == bus.driverId,
+        orElse: () => {'name': 'Unknown Driver'});
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: bus.isAvailable ? const Color(0xFFE8F5E8) : const Color(0xFFFEE2E2)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
+        border: Border.all(
+            color: bus.isAvailable
+                ? const Color(0xFFE8F5E8)
+                : const Color(0xFFFEE2E2)),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2))
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -555,12 +637,16 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: bus.isAvailable ? const Color(0xFFE8F5E8) : const Color(0xFFFEE2E2),
+                    color: bus.isAvailable
+                        ? const Color(0xFFE8F5E8)
+                        : const Color(0xFFFEE2E2),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     Icons.directions_bus,
-                    color: bus.isAvailable ? const Color(0xFF576238) : const Color(0xFFDC2626),
+                    color: bus.isAvailable
+                        ? const Color(0xFF576238)
+                        : const Color(0xFFDC2626),
                     size: 20,
                   ),
                 ),
@@ -569,16 +655,27 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(bus.numberPlate, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF111827))),
+                      Text(bus.numberPlate,
+                          style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF111827))),
                       const SizedBox(height: 2),
-                      Text(bus.vehicleModel, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      Text(bus.vehicleModel,
+                          style: const TextStyle(
+                              fontSize: 12, color: Color(0xFF6B7280)),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                   decoration: BoxDecoration(
-                    color: bus.isAvailable ? const Color(0xFFE8F5E8) : const Color(0xFFFEE2E2),
+                    color: bus.isAvailable
+                        ? const Color(0xFFE8F5E8)
+                        : const Color(0xFFFEE2E2),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -586,7 +683,9 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
-                      color: bus.isAvailable ? const Color(0xFF576238) : const Color(0xFFDC2626),
+                      color: bus.isAvailable
+                          ? const Color(0xFF576238)
+                          : const Color(0xFFDC2626),
                     ),
                   ),
                 ),
@@ -605,29 +704,53 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.route, size: 14, color: Color(0xFF576238)),
+                      const Icon(Icons.route,
+                          size: 14, color: Color(0xFF576238)),
                       const SizedBox(width: 6),
-                      const Text('Route', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF576238))),
+                      const Text('Route',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF576238))),
                       const Spacer(),
-                      if (bus.routePolyline != null && bus.routePolyline!.isNotEmpty)
+                      if (bus.routePolyline != null &&
+                          bus.routePolyline!.isNotEmpty)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(color: const Color(0xFFE8F5E8), borderRadius: BorderRadius.circular(4)),
-                          child: const Text('Mapped', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w600, color: Color(0xFF576238))),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                              color: const Color(0xFFE8F5E8),
+                              borderRadius: BorderRadius.circular(4)),
+                          child: const Text('Mapped',
+                              style: TextStyle(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF576238))),
                         ),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text('${bus.startPoint} → ${bus.destination}',
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF111827)), maxLines: 2, overflow: TextOverflow.ellipsis),
+                      style: const TextStyle(
+                          fontSize: 12, color: Color(0xFF111827)),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis),
                 ],
               ),
             ),
             const SizedBox(height: 8),
             Row(
               children: [
-                Expanded(child: _buildInfoItem('Capacity', '${bus.availableSeats}/${bus.seatCapacity}', Icons.people)),
-                Expanded(child: _buildInfoItem('Fare', 'UGX ${bus.fare.toStringAsFixed(0)}', Icons.attach_money)),
+                Expanded(
+                    child: _buildInfoItem(
+                        'Capacity',
+                        '${bus.availableSeats}/${bus.seatCapacity}',
+                        Icons.people)),
+                Expanded(
+                    child: _buildInfoItem(
+                        'Fare',
+                        'UGX ${bus.fare.toStringAsFixed(0)}',
+                        Icons.attach_money)),
               ],
             ),
             const SizedBox(height: 8),
@@ -646,8 +769,16 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Driver', style: TextStyle(fontSize: 10, color: Color(0xFF6B7280))),
-                        Text(driver['name'], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF111827)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const Text('Driver',
+                            style: TextStyle(
+                                fontSize: 10, color: Color(0xFF6B7280))),
+                        Text(driver['name'],
+                            style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF111827)),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
                       ],
                     ),
                   ),
@@ -660,11 +791,18 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () => _toggleBusAvailability(bus),
-                    icon: Icon(bus.isAvailable ? Icons.pause : Icons.play_arrow, size: 14),
-                    label: Text(bus.isAvailable ? 'Deactivate' : 'Activate', style: const TextStyle(fontSize: 12)),
+                    icon: Icon(bus.isAvailable ? Icons.pause : Icons.play_arrow,
+                        size: 14),
+                    label: Text(bus.isAvailable ? 'Deactivate' : 'Activate',
+                        style: const TextStyle(fontSize: 12)),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: bus.isAvailable ? const Color(0xFFDC2626) : const Color(0xFF576238),
-                      side: BorderSide(color: bus.isAvailable ? const Color(0xFFDC2626) : const Color(0xFF576238)),
+                      foregroundColor: bus.isAvailable
+                          ? const Color(0xFFDC2626)
+                          : const Color(0xFF576238),
+                      side: BorderSide(
+                          color: bus.isAvailable
+                              ? const Color(0xFFDC2626)
+                              : const Color(0xFF576238)),
                       padding: const EdgeInsets.symmetric(vertical: 8),
                     ),
                   ),
@@ -695,9 +833,17 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
       children: [
         Icon(icon, size: 16, color: const Color(0xFF6B7280)),
         const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+        Text(label,
+            style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
         const SizedBox(height: 2),
-        Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF111827)), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+        Text(value,
+            style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF111827)),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis),
       ],
     );
   }
@@ -708,7 +854,9 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
       builder: (context) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Container(
-          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.9, maxWidth: MediaQuery.of(context).size.width * 0.95),
+          constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.9,
+              maxWidth: MediaQuery.of(context).size.width * 0.95),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -720,10 +868,18 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.add_business, color: Colors.white, size: 24),
+                    const Icon(Icons.add_business,
+                        color: Colors.white, size: 24),
                     const SizedBox(width: 12),
-                    const Expanded(child: Text('Add New Bus', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white))),
-                    IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close, color: Colors.white)),
+                    const Expanded(
+                        child: Text('Add New Bus',
+                            style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white))),
+                    IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close, color: Colors.white)),
                   ],
                 ),
               ),
@@ -739,23 +895,40 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
                           controller: _numberPlateController,
                           label: 'Number Plate',
                           hint: 'UAB 123A',
-                          validator: (value) => value?.isEmpty ?? true ? 'Please enter number plate' : null,
+                          validator: (value) => value?.isEmpty ?? true
+                              ? 'Please enter number plate'
+                              : null,
                         ),
                         const SizedBox(height: 16),
                         _buildDropdownField(
                           label: 'Driver',
                           value: selectedDriverEmail,
-                          items: drivers.map((driver) => DropdownMenuItem<String>(value: driver['email'], child: Text(driver['name'], style: const TextStyle(fontSize: 14)))).toList(),
-                          onChanged: (value) => setState(() => selectedDriverEmail = value),
-                          validator: (value) => value == null ? 'Please select a driver' : null,
+                          items: drivers
+                              .map((driver) => DropdownMenuItem<String>(
+                                  value: driver['email'],
+                                  child: Text(driver['name'],
+                                      style: const TextStyle(fontSize: 14))))
+                              .toList(),
+                          onChanged: (value) =>
+                              setState(() => selectedDriverEmail = value),
+                          validator: (value) =>
+                              value == null ? 'Please select a driver' : null,
                         ),
                         const SizedBox(height: 16),
                         _buildDropdownField(
                           label: 'Vehicle Model',
                           value: selectedVehicleModel,
-                          items: vehicleModels.map((model) => DropdownMenuItem(value: model, child: Text(model, style: const TextStyle(fontSize: 14)))).toList(),
-                          onChanged: (value) => setState(() => selectedVehicleModel = value),
-                          validator: (value) => value == null ? 'Please select a vehicle model' : null,
+                          items: vehicleModels
+                              .map((model) => DropdownMenuItem(
+                                  value: model,
+                                  child: Text(model,
+                                      style: const TextStyle(fontSize: 14))))
+                              .toList(),
+                          onChanged: (value) =>
+                              setState(() => selectedVehicleModel = value),
+                          validator: (value) => value == null
+                              ? 'Please select a vehicle model'
+                              : null,
                         ),
                         const SizedBox(height: 16),
                         Container(
@@ -770,9 +943,14 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
                             children: [
                               Row(
                                 children: [
-                                  const Icon(Icons.map, color: Color(0xFF576238), size: 20),
+                                  const Icon(Icons.map,
+                                      color: Color(0xFF576238), size: 20),
                                   const SizedBox(width: 8),
-                                  const Text('Route Selection', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF111827))),
+                                  const Text('Route Selection',
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF111827))),
                                 ],
                               ),
                               const SizedBox(height: 16),
@@ -780,70 +958,118 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
                                 children: [
                                   Expanded(
                                     child: ElevatedButton.icon(
-                                      onPressed: () => _navigateToMapScreen('start'),
-                                      icon: const Icon(Icons.location_on, size: 18),
+                                      onPressed: () =>
+                                          _navigateToMapScreen('start'),
+                                      icon: const Icon(Icons.location_on,
+                                          size: 18),
                                       label: const Text('Select Start'),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFF90EE90),
-                                        foregroundColor: const Color(0xFF111827),
-                                        padding: const EdgeInsets.symmetric(vertical: 16),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                        backgroundColor:
+                                            const Color(0xFF90EE90),
+                                        foregroundColor:
+                                            const Color(0xFF111827),
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 16),
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8)),
                                       ),
                                     ),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: ElevatedButton.icon(
-                                      onPressed: () => _navigateToMapScreen('destination'),
-                                      icon: const Icon(Icons.location_on, size: 18),
+                                      onPressed: () =>
+                                          _navigateToMapScreen('destination'),
+                                      icon: const Icon(Icons.location_on,
+                                          size: 18),
                                       label: const Text('Select Stop'),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFFFF6B6B),
+                                        backgroundColor:
+                                            const Color(0xFFFF6B6B),
                                         foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(vertical: 16),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 16),
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8)),
                                       ),
                                     ),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 12),
-                              if (_startPointController.text.isNotEmpty || _destinationController.text.isNotEmpty)
+                              if (_startPointController.text.isNotEmpty ||
+                                  _destinationController.text.isNotEmpty)
                                 Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                                    border: Border.all(
+                                        color: const Color(0xFFE5E7EB)),
                                   ),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      if (_startPointController.text.isNotEmpty) ...[
+                                      if (_startPointController
+                                          .text.isNotEmpty) ...[
                                         Row(
                                           children: [
-                                            Container(width: 12, height: 12, decoration: const BoxDecoration(color: Color(0xFF90EE90), shape: BoxShape.circle)),
+                                            Container(
+                                                width: 12,
+                                                height: 12,
+                                                decoration: const BoxDecoration(
+                                                    color: Color(0xFF90EE90),
+                                                    shape: BoxShape.circle)),
                                             const SizedBox(width: 8),
-                                            const Text('Start:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF576238))),
+                                            const Text('Start:',
+                                                style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Color(0xFF576238))),
                                           ],
                                         ),
                                         Padding(
-                                          padding: const EdgeInsets.only(left: 20, top: 4),
-                                          child: Text(_startPointController.text, style: const TextStyle(fontSize: 14, color: Color(0xFF111827))),
+                                          padding: const EdgeInsets.only(
+                                              left: 20, top: 4),
+                                          child: Text(
+                                              _startPointController.text,
+                                              style: const TextStyle(
+                                                  fontSize: 14,
+                                                  color: Color(0xFF111827))),
                                         ),
                                       ],
-                                      if (_destinationController.text.isNotEmpty) ...[
-                                        if (_startPointController.text.isNotEmpty) const SizedBox(height: 8),
+                                      if (_destinationController
+                                          .text.isNotEmpty) ...[
+                                        if (_startPointController
+                                            .text.isNotEmpty)
+                                          const SizedBox(height: 8),
                                         Row(
                                           children: [
-                                            Container(width: 12, height: 12, decoration: const BoxDecoration(color: Color(0xFFFF6B6B), shape: BoxShape.circle)),
+                                            Container(
+                                                width: 12,
+                                                height: 12,
+                                                decoration: const BoxDecoration(
+                                                    color: Color(0xFFFF6B6B),
+                                                    shape: BoxShape.circle)),
                                             const SizedBox(width: 8),
-                                            const Text('Destination:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFDC2626))),
+                                            const Text('Destination:',
+                                                style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Color(0xFFDC2626))),
                                           ],
                                         ),
                                         Padding(
-                                          padding: const EdgeInsets.only(left: 20, top: 4),
-                                          child: Text(_destinationController.text, style: const TextStyle(fontSize: 14, color: Color(0xFF111827))),
+                                          padding: const EdgeInsets.only(
+                                              left: 20, top: 4),
+                                          child: Text(
+                                              _destinationController.text,
+                                              style: const TextStyle(
+                                                  fontSize: 14,
+                                                  color: Color(0xFF111827))),
                                         ),
                                       ],
                                     ],
@@ -858,13 +1084,18 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
                             decoration: BoxDecoration(
                               color: const Color(0xFFFFF3CD),
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFFFFEAA7)),
+                              border:
+                                  Border.all(color: const Color(0xFFFFEAA7)),
                             ),
                             child: const Row(
                               children: [
-                                Icon(Icons.warning, color: Color(0xFF856404), size: 16),
+                                Icon(Icons.warning,
+                                    color: Color(0xFF856404), size: 16),
                                 SizedBox(width: 8),
-                                Text('Please select a start location', style: TextStyle(fontSize: 12, color: Color(0xFF856404))),
+                                Text('Please select a start location',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF856404))),
                               ],
                             ),
                           ),
@@ -874,13 +1105,18 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
                             decoration: BoxDecoration(
                               color: const Color(0xFFFFF3CD),
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFFFFEAA7)),
+                              border:
+                                  Border.all(color: const Color(0xFFFFEAA7)),
                             ),
                             child: const Row(
                               children: [
-                                Icon(Icons.warning, color: Color(0xFF856404), size: 16),
+                                Icon(Icons.warning,
+                                    color: Color(0xFF856404), size: 16),
                                 SizedBox(width: 8),
-                                Text('Please select a destination', style: TextStyle(fontSize: 12, color: Color(0xFF856404))),
+                                Text('Please select a destination',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF856404))),
                               ],
                             ),
                           ),
@@ -891,8 +1127,10 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
                           hint: '15000',
                           keyboardType: TextInputType.number,
                           validator: (value) {
-                            if (value == null || value.isEmpty) return 'Please enter fare';
-                            if (double.tryParse(value) == null) return 'Please enter a valid number';
+                            if (value == null || value.isEmpty)
+                              return 'Please enter fare';
+                            if (double.tryParse(value) == null)
+                              return 'Please enter a valid number';
                             return null;
                           },
                         ),
@@ -906,10 +1144,15 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.info_outline, size: 16, color: Color(0xFF6B7280)),
+                              const Icon(Icons.info_outline,
+                                  size: 16, color: Color(0xFF6B7280)),
                               const SizedBox(width: 8),
                               Expanded(
-                                child: Text('Seat Capacity: $seatCapacity seats (fixed for all buses)', style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                                child: Text(
+                                    'Seat Capacity: $seatCapacity seats (fixed for all buses)',
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF6B7280))),
                               ),
                             ],
                           ),
@@ -939,7 +1182,8 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
                 padding: const EdgeInsets.all(20),
                 decoration: const BoxDecoration(
                   color: Color(0xFFF8F9FA),
-                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
+                  borderRadius:
+                      BorderRadius.vertical(bottom: Radius.circular(16)),
                 ),
                 child: Row(
                   children: [
@@ -963,7 +1207,13 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
                         child: isAddingBus
-                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)))
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white)))
                             : const Text('Add Bus'),
                       ),
                     ),
@@ -987,7 +1237,11 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF374151))),
+        Text(label,
+            style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF374151))),
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
@@ -995,10 +1249,17 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
           validator: validator,
           decoration: InputDecoration(
             hintText: hint,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD1D5DB))),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD1D5DB))),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF576238))),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Color(0xFFD1D5DB))),
+            enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Color(0xFFD1D5DB))),
+            focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Color(0xFF576238))),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           ),
         ),
       ],
@@ -1015,7 +1276,11 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF374151))),
+        Text(label,
+            style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF374151))),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
           value: value,
@@ -1023,10 +1288,17 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
           onChanged: onChanged,
           validator: validator,
           decoration: InputDecoration(
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD1D5DB))),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD1D5DB))),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF576238))),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Color(0xFFD1D5DB))),
+            enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Color(0xFFD1D5DB))),
+            focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Color(0xFF576238))),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           ),
         ),
       ],
@@ -1059,3 +1331,4 @@ class _BusManagementScreenState extends State<BusManagementScreen> with TickerPr
     );
   }
 }
+

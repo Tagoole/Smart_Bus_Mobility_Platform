@@ -6,6 +6,7 @@ import 'package:smart_bus_mobility_platform1/screens/bus_management_screen.dart'
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
 
+
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
 }

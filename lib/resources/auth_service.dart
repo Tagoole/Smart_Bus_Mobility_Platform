@@ -2,10 +2,14 @@
 import 'package:smart_bus_mobility_platform1/models/user_model.dart' as model;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AuthMethods {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   Future<String> signUpUser({
     required String email,
@@ -83,5 +87,68 @@ class AuthMethods {
     }
   }
 
-  
+  Future<Map<String, String>> signInWithGoogle() async {
+    try {
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        return {'status': 'Google sign in aborted'};
+      }
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      UserCredential userCredential = await _auth.signInWithCredential(credential);
+      // Optionally, add user to Firestore if new
+      final userDoc = await _firestore.collection('users').doc(userCredential.user!.uid).get();
+      if (!userDoc.exists) {
+        await _firestore.collection('users').doc(userCredential.user!.uid).set({
+          'email': userCredential.user!.email,
+          'role': 'user',
+          'username': userCredential.user!.displayName ?? '',
+          'contact': '',
+        });
+      }
+      return {'status': 'Success', 'role': 'user', 'uid': userCredential.user!.uid};
+    } catch (e) {
+      return {'status': e.toString()};
+    }
+  }
+
+  Future<Map<String, String>> signInWithFacebook() async {
+    try {
+      final LoginResult result = await FacebookAuth.instance.login();
+      if (result.status == LoginStatus.success) {
+        final OAuthCredential facebookAuthCredential = FacebookAuthProvider.credential(result.accessToken!.token);
+        UserCredential userCredential = await _auth.signInWithCredential(facebookAuthCredential);
+        // Optionally, add user to Firestore if new
+        final userDoc = await _firestore.collection('users').doc(userCredential.user!.uid).get();
+        if (!userDoc.exists) {
+          await _firestore.collection('users').doc(userCredential.user!.uid).set({
+            'email': userCredential.user!.email,
+            'role': 'user',
+            'username': userCredential.user!.displayName ?? '',
+            'contact': '',
+          });
+        }
+        return {'status': 'Success', 'role': 'user', 'uid': userCredential.user!.uid};
+      } else {
+        return {'status': result.message ?? 'Facebook sign in failed'};
+      }
+    } catch (e) {
+      return {'status': e.toString()};
+    }
+  }
+
+  Future<void> signInWithInstagram() async {
+    // Instagram login is not natively supported by Firebase Auth.
+    // This will open the Instagram login page in a browser as a placeholder.
+    const instagramAuthUrl = 'https://www.instagram.com/accounts/login/';
+    if (await canLaunch(instagramAuthUrl)) {
+      await launch(instagramAuthUrl);
+    } else {
+      throw 'Could not launch Instagram login';
+    }
+  }
 }
+

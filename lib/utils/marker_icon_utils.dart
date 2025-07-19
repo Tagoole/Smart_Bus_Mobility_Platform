@@ -146,3 +146,4 @@ class MarkerIcons {
   static BitmapDescriptor get driverMarker =>
       BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
 }
+

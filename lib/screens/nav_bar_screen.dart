@@ -5,7 +5,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 // Import all the screens
 import 'settings_screen.dart';
 import 'profile_screen.dart';
-import 'passenger_map_screen.dart';
 import 'customer_home_screen.dart';
 import 'bus_driver_home_screen.dart';
 import 'driver_map_screen.dart';
@@ -98,11 +97,6 @@ class _NavBarScreenState extends State<NavBarScreen> {
         icon: Icons.map,
         label: "Map",
         screen: const DriverMapScreen(),
-      ),
-      NavBarItem(
-        icon: Icons.confirmation_number,
-        label: "Tickets",
-        screen: const TicketScreen(),
       ),
       NavBarItem(
         icon: Icons.settings,
@@ -294,3 +288,4 @@ class HomeScreen extends StatelessWidget {
     );
   }
 }
+

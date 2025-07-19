@@ -9,6 +9,7 @@ class SignUpScreen extends StatefulWidget {
   State<SignUpScreen> createState() => _SignUpScreenState();
 }
 
+
 class _SignUpScreenState extends State<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
@@ -494,4 +495,5 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 }
+
 

@@ -6,3 +6,4 @@ sealed class TicketEvent extends Equatable {
   @override
   List<Object> get props => [];
 }
+
