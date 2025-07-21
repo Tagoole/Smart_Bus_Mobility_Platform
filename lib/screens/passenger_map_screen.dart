@@ -1,5 +1,3 @@
-
-
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -13,6 +11,7 @@ import 'package:smart_bus_mobility_platform1/screens/bus_route_preview_screen.da
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 
 const kGoogleApiKey = 'AIzaSyC2n6urW_4DUphPLUDaNGAW_VN53j0RP4s';
 
@@ -22,7 +21,6 @@ class PassengerMapScreen extends StatefulWidget {
   @override
   State<PassengerMapScreen> createState() => _PassengerMapScreenState();
 }
-
 
 class _PassengerMapScreenState extends State<PassengerMapScreen> {
   final Completer<GoogleMapController> _controller = Completer();
@@ -35,25 +33,21 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
 
   // Location tracking
   LatLng? _currentLocation;
+  LatLng? _pickupLocation;
+  LatLng? _destinationLocation;
   BitmapDescriptor? _busMarkerIcon;
   BitmapDescriptor? _userMarkerIcon;
   bool _isLoadingLocation = false;
-
-  // Search functionality
-  final TextEditingController _searchController = TextEditingController();
-  List<Map<String, dynamic>> _searchResults = [];
-  bool _isSearching = false;
 
   // Bus data
   List<Map<String, dynamic>> _availableBuses = [];
   final Set<Marker> _allMarkers = {};
   final Set<Marker> _searchMarkers = {};
-  final Set<Polyline> _polylines = {}; // Added for polylines
+  final Set<Polyline> _polylines = {};
   final Mode _mode = Mode.overlay;
   bool _isRefreshingBuses = false;
 
   LatLng? _busLocation;
-  LatLng? _pickupLocation;
 
   StreamSubscription<QuerySnapshot>? _bookingSubscription;
 
@@ -212,10 +206,32 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
           markerId: MarkerId('current_location'),
           position: _currentLocation!,
           icon: _userMarkerIcon!,
-          infoWindow: InfoWindow(
-            title: 'Your Location',
-            snippet: 'Current position',
-          ),
+  infoWindow: InfoWindow(
+    title: 'Your Location',
+    snippet: 'Current position onstage',
+  ),
+        ),
+      );
+    }
+
+    if (_pickupLocation != null && _userMarkerIcon != null) {
+      _allMarkers.add(
+        Marker(
+          markerId: MarkerId('pickup_location'),
+          position: _pickupLocation!,
+          icon: _userMarkerIcon!,
+          infoWindow: InfoWindow(title: 'Pickup Location'),
+        ),
+      );
+    }
+
+    if (_destinationLocation != null && _userMarkerIcon != null) {
+      _allMarkers.add(
+        Marker(
+          markerId: MarkerId('destination_location'),
+          position: _destinationLocation!,
+          icon: _userMarkerIcon!,
+          infoWindow: InfoWindow(title: 'Destination'),
         ),
       );
     }
@@ -245,69 +261,118 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     setState(() {});
   }
 
-  // New function to fetch and draw polylines using Google Directions API
   Future<void> _drawRoutePolyline(LatLng origin, LatLng destination) async {
+    if (origin.latitude == 0.0 ||
+        origin.longitude == 0.0 ||
+        destination.latitude == 0.0 ||
+        destination.longitude == 0.0) {
+      print('Invalid coordinates: origin=$origin, destination=$destination');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invalid coordinates provided'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     try {
       final String url =
-          'https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&key=$kGoogleApiKey';
+          'https://maps.googleapis.com/maps/api/directions/json'
+          '?origin=${origin.latitude},${origin.longitude}'
+          '&destination=${destination.latitude},${destination.longitude}'
+          '&mode=driving'
+          '&key=$kGoogleApiKey';
+
+      print('Fetching route from: $url');
       final response = await http.get(Uri.parse(url));
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        print('Directions API response status: ${data['status']}');
+
         if (data['status'] == 'OK') {
           final points = data['routes'][0]['overview_polyline']['points'];
-          final List<LatLng> polylinePoints = _decodePolyline(points);
+          final polylinePoints = PolylinePoints()
+              .decodePolyline(points)
+              .map((point) => LatLng(point.latitude, point.longitude))
+              .toList();
+          print('Decoded polyline points: ${polylinePoints.length}');
 
-          setState(() {
-            _polylines.clear();
-            _polylines.add(
-              Polyline(
-                polylineId: PolylineId('route'),
-                points: polylinePoints,
-                color: Colors.blue,
-                width: 5,
+          if (polylinePoints.isNotEmpty) {
+            setState(() {
+              _polylines.clear();
+              _polylines.add(
+                Polyline(
+                  polylineId: const PolylineId('route'),
+                  points: polylinePoints,
+                  color: Colors.blue,
+                  width: 5,
+                ),
+              );
+            });
+
+            final controller = _mapController ?? await _controller.future;
+            controller.animateCamera(
+              CameraUpdate.newLatLngBounds(
+                LatLngBounds(
+                  southwest: LatLng(
+                    origin.latitude < destination.latitude
+                        ? origin.latitude
+                        : destination.latitude,
+                    origin.longitude < destination.longitude
+                        ? origin.longitude
+                        : destination.longitude,
+                  ),
+                  northeast: LatLng(
+                    origin.latitude > destination.latitude
+                        ? origin.latitude
+                        : destination.latitude,
+                    origin.longitude > destination.longitude
+                        ? origin.longitude
+                        : destination.longitude,
+                  ),
+                ),
+                100.0,
               ),
             );
-          });
+          } else {
+            print('No polyline points decoded');
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Unable to generate route'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
         } else {
-          print('Directions API error: ${data['status']}');
+          print(
+              'Directions API error: ${data['status']} - ${data['error_message'] ?? 'No error message'}');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Directions API error: ${data['status']}'),
+              backgroundColor: Colors.red,
+            ),
+          );
         }
       } else {
-        print('Failed to fetch directions: ${response.statusCode}');
+        print('HTTP error: ${response.statusCode}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to fetch route: HTTP ${response.statusCode}'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } catch (e) {
       print('Error drawing polyline: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error fetching route: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
-  }
-
-  // Utility to decode polyline points
-  List<LatLng> _decodePolyline(encoded) {
-    List<LatLng> poly = [];
-    int index = 0, len = encoded.length;
-    int lat = 0, lng = 0;
-
-    while (index < len) {
-      int b, shift = 0, result = 0;
-      do {
-        b = encoded.codeUnitAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-      lat += dlat;
-
-      shift = 0;
-      result = 0;
-      do {
-        b = encoded.codeUnitAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-      lng += dlng;
-
-      poly.add(LatLng(lat / 1E5, lng / 1E5));
-    }
-    return poly;
   }
 
   void _showBusDetails(Map<String, dynamic> bus) {
@@ -353,11 +418,19 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     );
   }
 
-  // New function to show bus route polyline
   void _showBusRoute(Map<String, dynamic> bus) async {
     if (bus['currentLocation'] != null && _currentLocation != null) {
       final busLoc = bus['currentLocation'];
       final busLatLng = LatLng(busLoc['latitude'], busLoc['longitude']);
+      if (busLatLng.latitude == 0.0 || busLatLng.longitude == 0.0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Invalid bus location'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
       await _drawRoutePolyline(_currentLocation!, busLatLng);
       final controller = _mapController ?? await _controller.future;
       controller.animateCamera(
@@ -383,6 +456,13 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
           100.0,
         ),
       );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Current location or bus location unavailable'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -392,53 +472,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     );
   }
 
-  void _performSearch(String query) async {
-    if (query.isEmpty) {
-      setState(() {
-        _searchResults = [];
-        _isSearching = false;
-        _polylines.clear(); // Clear polylines when search is cleared
-      });
-      return;
-    }
-
-    setState(() {
-      _isSearching = true;
-    });
-
-    try {
-      final filteredBuses = _availableBuses.where((bus) {
-        final startPoint = bus['startPoint']?.toString().toLowerCase() ?? '';
-        final destination = bus['destination']?.toString().toLowerCase() ?? '';
-        final queryLower = query.toLowerCase();
-
-        return startPoint.contains(queryLower) ||
-            destination.contains(queryLower);
-      }).toList();
-
-      setState(() {
-        _searchResults = filteredBuses;
-        _isSearching = false;
-      });
-
-      // Show routes for filtered buses
-      if (filteredBuses.isNotEmpty && _currentLocation != null) {
-        final bus = filteredBuses.first;
-        final busLoc = bus['currentLocation'];
-        if (busLoc != null) {
-          final busLatLng = LatLng(busLoc['latitude'], busLoc['longitude']);
-          await _drawRoutePolyline(_currentLocation!, busLatLng);
-        }
-      }
-    } catch (e) {
-      print('Error performing search: $e');
-      setState(() {
-        _isSearching = false;
-      });
-    }
-  }
-
-  Future<void> _handleSearchButton() async {
+  Future<void> _handlePickupSelection() async {
     Prediction? p = await PlacesAutocomplete.show(
       context: context,
       apiKey: kGoogleApiKey,
@@ -447,7 +481,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
       strictbounds: false,
       types: [""],
       decoration: InputDecoration(
-        hintText: 'Search',
+        hintText: 'Select pickup location',
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
           borderSide: const BorderSide(color: Colors.white),
@@ -456,38 +490,86 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
       components: [Component(Component.country, "ug")],
     );
     if (p != null) {
-      await _displayPrediction(p);
+      await _setPickupLocation(p);
     }
   }
 
-  Future<void> _displayPrediction(Prediction p) async {
+  Future<void> _handleDestinationSelection() async {
+    Prediction? p = await PlacesAutocomplete.show(
+      context: context,
+      apiKey: kGoogleApiKey,
+      mode: _mode,
+      language: 'en',
+      strictbounds: false,
+      types: [""],
+      decoration: InputDecoration(
+        hintText: 'Select destination',
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(20),
+          borderSide: const BorderSide(color: Colors.white),
+        ),
+      ),
+      components: [Component(Component.country, "ug")],
+    );
+    if (p != null) {
+      await _setDestinationLocation(p);
+    }
+  }
+
+  Future<void> _setPickupLocation(Prediction p) async {
     GoogleMapsPlaces places = GoogleMapsPlaces(apiKey: kGoogleApiKey);
     PlacesDetailsResponse detail = await places.getDetailsByPlaceId(p.placeId!);
     final lat = detail.result.geometry!.location.lat;
     final lng = detail.result.geometry!.location.lng;
-    _searchMarkers.clear();
-    _searchMarkers.add(
-      Marker(
-        markerId: const MarkerId("search_result"),
-        position: LatLng(lat, lng),
-        icon: _userMarkerIcon ??
-            BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-        infoWindow: InfoWindow(title: detail.result.name),
-      ),
-    );
     setState(() {
       _pickupLocation = LatLng(lat, lng);
+      _searchMarkers.removeWhere((m) => m.markerId.value == 'pickup_location');
+      _searchMarkers.add(
+        Marker(
+          markerId: const MarkerId('pickup_location'),
+          position: _pickupLocation!,
+          icon: _userMarkerIcon ??
+              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+          infoWindow: InfoWindow(title: 'Pickup: ${detail.result.name}'),
+        ),
+      );
     });
 
-    // Draw polyline from current location to searched location
-    if (_currentLocation != null) {
-      await _drawRoutePolyline(_currentLocation!, _pickupLocation!);
+    final controller = _mapController ?? await _controller.future;
+    controller.animateCamera(CameraUpdate.newLatLngZoom(_pickupLocation!, 14.0));
+
+    if (_pickupLocation != null && _destinationLocation != null) {
+      await _drawRoutePolyline(_pickupLocation!, _destinationLocation!);
+      showAllAvailableBusesSheet();
     }
+  }
+
+  Future<void> _setDestinationLocation(Prediction p) async {
+    GoogleMapsPlaces places = GoogleMapsPlaces(apiKey: kGoogleApiKey);
+    PlacesDetailsResponse detail = await places.getDetailsByPlaceId(p.placeId!);
+    final lat = detail.result.geometry!.location.lat;
+    final lng = detail.result.geometry!.location.lng;
+    setState(() {
+      _destinationLocation = LatLng(lat, lng);
+      _searchMarkers.removeWhere((m) => m.markerId.value == 'destination_location');
+      _searchMarkers.add(
+        Marker(
+          markerId: const MarkerId('destination_location'),
+          position: _destinationLocation!,
+          icon: _userMarkerIcon ??
+              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+          infoWindow: InfoWindow(title: 'Destination: ${detail.result.name}'),
+        ),
+      );
+    });
 
     final controller = _mapController ?? await _controller.future;
-    controller
-        .animateCamera(CameraUpdate.newLatLngZoom(LatLng(lat, lng), 14.0));
-    showAllAvailableBusesSheet();
+    controller.animateCamera(CameraUpdate.newLatLngZoom(_destinationLocation!, 14.0));
+
+    if (_pickupLocation != null && _destinationLocation != null) {
+      await _drawRoutePolyline(_pickupLocation!, _destinationLocation!);
+      showAllAvailableBusesSheet();
+    }
   }
 
   void showAllAvailableBusesSheet() {
@@ -509,8 +591,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                   Icon(Icons.directions_bus, size: 32, color: Colors.grey[400]),
                   const SizedBox(width: 12),
                   const Text('All available buses:',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
                 ],
               ),
               const SizedBox(height: 12),
@@ -523,25 +604,21 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                     itemBuilder: (context, index) {
                       final bus = _availableBuses[index];
                       return Card(
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 0, vertical: 4),
+                        margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: ListTile(
                           leading: CircleAvatar(
                             backgroundColor: Colors.green[100],
-                            child: const Icon(Icons.directions_bus,
-                                color: Colors.green),
+                            child: const Icon(Icons.directions_bus, color: Colors.green),
                           ),
                           title: Text(
                             '${bus['startPoint'] ?? 'Unknown'} → ${bus['destination'] ?? 'Unknown'}',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          subtitle:
-                              Text('Bus: ${bus['numberPlate'] ?? 'Unknown'}'),
-                          trailing:
-                              const Icon(Icons.arrow_forward_ios, size: 16),
+                          subtitle: Text('Bus: ${bus['numberPlate'] ?? 'Unknown'}'),
+                          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                           onTap: () => _showBusDetailsScreen(context, bus),
                         ),
                       );
@@ -555,63 +632,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     );
   }
 
-  void _showAvailableBusesSheet(String placeName) {
-    final filteredBuses = _availableBuses.where((bus) {
-      final dest = (bus['destination'] ?? '').toString().toLowerCase();
-      final start = (bus['startPoint'] ?? '').toString().toLowerCase();
-      final query = placeName.toLowerCase();
-      return dest.contains(query) || start.contains(query);
-    }).toList();
-
-    if (filteredBuses.isEmpty) {
-      showAllAvailableBusesSheet();
-      return;
-    }
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return DraggableScrollableSheet(
-          expand: false,
-          initialChildSize: 0.5,
-          minChildSize: 0.3,
-          maxChildSize: 0.9,
-          builder: (context, scrollController) => ListView.builder(
-            controller: scrollController,
-            itemCount: filteredBuses.length,
-            itemBuilder: (context, index) {
-              final bus = filteredBuses[index];
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.green[100],
-                    child:
-                        const Icon(Icons.directions_bus, color: Colors.green),
-                  ),
-                  title: Text(
-                    '${bus['startPoint']} → ${bus['destination']}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text('Bus: ${bus['numberPlate']}'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () => _showBusDetailsScreen(context, bus),
-                ),
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-
   Future<void> _refreshAvailableBuses() async {
     setState(() {
       _isRefreshingBuses = true;
@@ -619,7 +639,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     await _loadAvailableBuses();
     setState(() {
       _isRefreshingBuses = false;
-      _polylines.clear(); // Clear polylines on refresh
+      _polylines.clear();
     });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Bus list refreshed!')),
@@ -628,7 +648,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
 
   @override
   void dispose() {
-    _searchController.dispose();
     _bookingSubscription?.cancel();
     super.dispose();
   }
@@ -645,7 +664,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
             },
             initialCameraPosition: _initialPosition,
             markers: _allMarkers.union(_searchMarkers),
-            polylines: _polylines, // Add polylines to the map
+            polylines: _polylines,
             myLocationEnabled: true,
             myLocationButtonEnabled: false,
             zoomControlsEnabled: false,
@@ -657,35 +676,50 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
             top: 40,
             left: 16,
             right: 16,
-            child: GestureDetector(
-              onTap: _handleSearchButton,
-              child: Container(
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 12),
-                    const Icon(Icons.search, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'Search for places...',
-                        style: TextStyle(color: Colors.grey, fontSize: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _handlePickupSelection,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
                       ),
+                      elevation: 4,
                     ),
-                  ],
+                    child: Text(
+                      _pickupLocation == null
+                          ? 'Select Pickup Location'
+                          : 'Pickup: ${_pickupLocation != null ? 'Set' : ''}',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ),
                 ),
-              ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _handleDestinationSelection,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      elevation: 4,
+                    ),
+                    child: Text(
+                      _destinationLocation == null
+                          ? 'Select Destination'
+                          : 'Destination: ${_destinationLocation != null ? 'Set' : ''}',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           Positioned(
@@ -754,8 +788,7 @@ void _showBusDetailsScreen(BuildContext context, Map<String, dynamic> bus) {
                   Expanded(
                     child: Text(
                       '${bus['startPoint'] ?? 'Unknown'} → ${bus['destination'] ?? 'Unknown'}',
-                      style:
-                          TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -808,4 +841,3 @@ void _showBusDetailsScreen(BuildContext context, Map<String, dynamic> bus) {
     ),
   );
 }
-
