@@ -10,12 +10,12 @@ import 'package:smart_bus_mobility_platform1/utils/directions_model.dart';
 import 'package:smart_bus_mobility_platform1/screens/admin_search_screen.dart';
 import 'dart:convert';
 import 'dart:math';
+import 'package:flutter_polyline_points/flutter_polyline_points.dart'; // Add this import
 
-const kGoogleApiKey = 'AIzaSyC2n6urW_4DUphPLUDaNGAW_VN53j0RP4s';
+const kGoogleApiKey = 'YOUR_API_KEY'; // Replace with your valid Google Maps API key
 
 class BusManagementScreen extends StatefulWidget {
   const BusManagementScreen({super.key});
-
 
   @override
   State<BusManagementScreen> createState() => _BusManagementScreenState();
@@ -207,10 +207,13 @@ class _BusManagementScreenState extends State<BusManagementScreen>
         destination: _destinationLatLng!,
       );
 
-      if (directions != null && directions.polylinePoints != null && directions.polylinePoints.isNotEmpty) {
+      print('Directions response: $directions');
+      print('Polyline points count: ${directions?.polylinePoints.length}');
+
+      if (directions != null && directions.polylinePoints.isNotEmpty) {
         // Convert List<PointLatLng> to List<LatLng>
         List<LatLng> routeCoords = directions.polylinePoints
-            .map((point) => LatLng(point.latitude, point.longitude))
+            .map((point) => LatLng(point.latitude!, point.longitude!))
             .toList();
 
         setState(() {
@@ -219,8 +222,7 @@ class _BusManagementScreenState extends State<BusManagementScreen>
             Polyline(
               polylineId: const PolylineId('route'),
               points: routeCoords,
-              
-             color: const Color(0xFF576238),
+              color: const Color(0xFF576238),
               width: 5,
             ),
           };
@@ -238,8 +240,8 @@ class _BusManagementScreenState extends State<BusManagementScreen>
               position: _destinationLatLng!,
               icon: BitmapDescriptor.defaultMarkerWithHue(
                   BitmapDescriptor.hueRed),
-              infoWindow: InfoWindow(
-                  title: 'Destination: ${_destinationController.text}'),
+              infoWindow:
+                  InfoWindow(title: 'Destination: ${_destinationController.text}'),
             ),
           };
         });
@@ -249,6 +251,14 @@ class _BusManagementScreenState extends State<BusManagementScreen>
             CameraUpdate.newLatLngBounds(_getBounds(routeCoords), 50),
           );
         }
+      } else {
+        print('No valid route found');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No valid route found between the selected points'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } catch (e) {
       print('Error fetching route: $e');
@@ -337,11 +347,13 @@ class _BusManagementScreenState extends State<BusManagementScreen>
     if (selectedDriverEmail == null ||
         selectedVehicleModel == null ||
         _startLatLng == null ||
-        _destinationLatLng == null) {
+        _destinationLatLng == null ||
+        _routePolylines.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Please complete all required fields'),
-            backgroundColor: Colors.red),
+          content: Text('Please complete all required fields and ensure a valid route is selected'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -359,13 +371,9 @@ class _BusManagementScreenState extends State<BusManagementScreen>
         'destination': _destinationController.text.trim(),
         'destinationLat': _destinationLatLng!.latitude,
         'destinationLng': _destinationLatLng!.longitude,
-        'routePolyline': _routePolylines.isNotEmpty
-            ? _routePolylines.first.points
-                .map((p) => {'lat': p.latitude, 'lng': p.longitude})
-                .toList()
-            : [_startLatLng!, _destinationLatLng!]
-                .map((p) => {'lat': p.latitude, 'lng': p.longitude})
-                .toList(),
+        'routePolyline': _routePolylines.first.points
+            .map((p) => {'lat': p.latitude, 'lng': p.longitude})
+            .toList(),
         'fare': double.parse(_fareController.text.trim()),
         'departureTime': _departureTimeController.text.trim().isNotEmpty
             ? _departureTimeController.text.trim()
@@ -373,7 +381,7 @@ class _BusManagementScreenState extends State<BusManagementScreen>
         'seatCapacity': seatCapacity,
         'availableSeats': seatCapacity,
         'status': 'active',
-        'isAvailable': true, // Add this field explicitly
+        'isAvailable': true,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
         'currentLocation': {
@@ -406,8 +414,9 @@ class _BusManagementScreenState extends State<BusManagementScreen>
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Bus added successfully!'),
-            backgroundColor: Colors.green),
+          content: Text('Bus added successfully!'),
+          backgroundColor: Colors.green,
+        ),
       );
     } catch (e) {
       print('Error adding bus: $e');
@@ -426,8 +435,9 @@ class _BusManagementScreenState extends State<BusManagementScreen>
       await _loadBuses();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Bus deleted successfully!'),
-            backgroundColor: Colors.green),
+          content: Text('Bus deleted successfully!'),
+          backgroundColor: Colors.green,
+        ),
       );
     } catch (e) {
       print('Error deleting bus: $e');
@@ -1330,7 +1340,11 @@ class _BusManagementScreenState extends State<BusManagementScreen>
       ),
     );
   }
+<<<<<<< HEAD
 }
 
 
 
+=======
+}
+>>>>>>> origin/dev
