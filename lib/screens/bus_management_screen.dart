@@ -1340,11 +1340,4 @@ class _BusManagementScreenState extends State<BusManagementScreen>
       ),
     );
   }
-<<<<<<< HEAD
 }
-
-
-
-=======
-}
->>>>>>> origin/dev
