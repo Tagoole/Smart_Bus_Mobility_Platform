@@ -34,7 +34,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         centerTitle: true,
         backgroundColor:
-            isDarkMode ? const Color(0xFF1F1F1F) : const Color.fromARGB(255, 0, 255, 98),
+            isDarkMode ? const Color(0xFF1F1F1F) : Colors.green[700],
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -88,7 +88,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: 'Location',
                 trailing: Switch(
                   value: locationEnabled,
-                  activeColor: const Color.fromARGB(255, 0, 255, 55),
+                  activeColor:  Colors.green[700],
                   onChanged: (value) {
                     setState(() {
                       locationEnabled = value;
@@ -102,7 +102,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: 'Dark Mode',
                 trailing: Switch(
                   value: isDarkMode,
-                  activeColor: const Color.fromARGB(255, 0, 255, 64),
+                  activeColor: Colors.green[700],
                   onChanged: (value) async {
                     await themeProvider.setDarkMode(value);
                   },
@@ -423,7 +423,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Text(
                   'Save',
                   style: TextStyle(
-                    color: const Color.fromARGB(255, 0, 255, 64),
+                    color: Colors.green[700],
                   ),
                 ),
                 onPressed: () async {

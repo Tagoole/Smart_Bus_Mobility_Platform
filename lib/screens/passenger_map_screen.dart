@@ -766,6 +766,27 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
       ),
     );
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments as Map?;
+    if (args != null && args['clearBooking'] == true) {
+      _clearAllBookingState();
+    }
+  }
+
+  void _clearAllBookingState() {
+    setState(() {
+      // Reset all variables related to previous bookings, overlays, markers, etc.
+      // Replace these with your actual variable names!
+      _pickupLocation = null;
+      _destinationLocation = null;
+      _searchMarkers.clear();
+      _polylines.clear();
+      // ...reset any other relevant state variables you use for bookings or overlays
+    });
+  }
 }
 
 void _showBusDetailsScreen(BuildContext context, Map<String, dynamic> bus) {
@@ -830,7 +851,7 @@ void _showBusDetailsScreen(BuildContext context, Map<String, dynamic> bus) {
                         ),
                       );
                     },
-                    child: Text('Preview Route'),
+                    child: Text('Contiue'),
                   ),
                 ],
               ),

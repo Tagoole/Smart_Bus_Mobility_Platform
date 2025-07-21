@@ -8,7 +8,10 @@ import 'package:smart_bus_mobility_platform1/widgets/live_bus_details_sheet.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'dart:async';
-import 'dart:math';
+import 'dart:math' as math;
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 
 const String googleApiKey = 'YOUR_GOOGLE_MAPS_API_KEY';
 
@@ -63,12 +66,24 @@ class _TrackBusScreenState extends State<TrackBusScreen> {
 
           if (busDoc.exists) {
             final busData = busDoc.data()!;
-            buses.add({
+            final enhancedBookingData = {
               'bookingId': bookingDoc.id,
               'bookingData': bookingData,
               'busData': busData,
               'busId': busId,
-            });
+            };
+
+            if (bookingData['routePoints'] != null) {
+              final routePoints = bookingData['routePoints'] as List<LatLng>;
+              enhancedBookingData['routePoints'] = routePoints
+                  .map((point) => {
+                        'latitude': point.latitude,
+                        'longitude': point.longitude,
+                      })
+                  .toList();
+            }
+
+            buses.add(enhancedBookingData);
           }
         }
       }
@@ -323,7 +338,17 @@ class _BusTrackingDetailScreenState extends State<BusTrackingDetailScreen> {
   @override
   void initState() {
     super.initState();
+    _initializeRoutePolylineFromBooking();
     _initializeTracking();
+  }
+
+  void _initializeRoutePolylineFromBooking() {
+    final routePointsData = widget.booking['routePoints'] as List<dynamic>?;
+    if (routePointsData != null && routePointsData.isNotEmpty) {
+      routePolyline = routePointsData
+          .map((point) => LatLng(point['latitude'], point['longitude']))
+          .toList();
+    }
   }
 
   void _initializeTracking() {
@@ -363,16 +388,14 @@ class _BusTrackingDetailScreenState extends State<BusTrackingDetailScreen> {
                 location['longitude']?.toDouble() ?? 0.0,
               );
 
-              // Only update if location has changed significantly
-              if (busLocation == null ||
-                  _getDistance(busLocation!, newBusLocation) > 0.01) {
-                setState(() {
-                  busLocation = newBusLocation;
-                  connectionStatus = 'Live tracking active';
-                });
+              setState(() {
+                busLocation = newBusLocation;
+                connectionStatus = 'Live tracking active';
+              });
 
-                _updateRouteAndETA();
-                _animateToShowBothLocations();
+              // Calculate route whenever bus location updates
+              if (passengerLocation != null) {
+                _calculateAndDrawRoute(busLocation!, passengerLocation!);
               }
             }
           }
@@ -423,16 +446,40 @@ class _BusTrackingDetailScreenState extends State<BusTrackingDetailScreen> {
           isLoading = true;
         });
 
-        final result = await _getRouteAndEta(busLocation!, passengerLocation!);
+        // Get route from Google Directions API
+        final url = 'https://maps.googleapis.com/maps/api/directions/json'
+            '?origin=${busLocation!.latitude},${busLocation!.longitude}'
+            '&destination=${passengerLocation!.latitude},${passengerLocation!.longitude}'
+            '&mode=driving'
+            '&key=$googleApiKey';
 
-        setState(() {
-          routePolyline = result['polyline'];
-          etaMinutes = result['eta'];
-          distanceKm = result['distance'];
-          routeInfo = result['routeInfo'];
-          isLoading = false;
-        });
+        final response = await http.get(Uri.parse(url));
+        final data = json.decode(response.body);
+
+        if (data['status'] == 'OK') {
+          // Extract route points from response
+          final points = data['routes'][0]['overview_polyline']['points'];
+          final duration = data['routes'][0]['legs'][0]['duration']['value'];
+          final distance = data['routes'][0]['legs'][0]['distance']['value'];
+
+          // Decode polyline points
+          final polylinePoints = PolylinePoints()
+              .decodePolyline(points)
+              .map((point) => LatLng(point.latitude, point.longitude))
+              .toList();
+
+          setState(() {
+            routePolyline = polylinePoints;
+            etaMinutes = (duration / 60).round();
+            distanceKm = distance / 1000;
+            isLoading = false;
+          });
+
+          // Animate camera to show both locations
+          _animateToShowBothLocations();
+        }
       } catch (e) {
+        print('Error updating route: $e');
         setState(() {
           isLoading = false;
           connectionStatus = 'Route calculation failed';
@@ -481,11 +528,64 @@ class _BusTrackingDetailScreenState extends State<BusTrackingDetailScreen> {
         (point2.latitude - point1.latitude) * (3.14159 / 180);
     final double deltaLng =
         (point2.longitude - point1.longitude) * (3.14159 / 180);
-    final double a = pow(sin(deltaLat / 2), 2) +
-        cos(lat1Rad) * cos(lat2Rad) * pow(sin(deltaLng / 2), 2);
-    final double c = 2 * asin(sqrt(a));
+    final double a = math.pow(math.sin(deltaLat / 2), 2) +
+        math.cos(lat1Rad) *
+            math.cos(lat2Rad) *
+            math.pow(math.sin(deltaLng / 2), 2);
+    final double c = 2 * math.asin(math.sqrt(a));
 
     return earthRadius * c;
+  }
+
+  Future<void> _calculateAndDrawRoute(LatLng start, LatLng end) async {
+    try {
+      final url = 'https://maps.googleapis.com/maps/api/directions/json'
+          '?origin=${start.latitude},${start.longitude}'
+          '&destination=${end.latitude},${end.longitude}'
+          '&mode=driving'
+          '&key=$googleApiKey';
+
+      final response = await http.get(Uri.parse(url));
+      final data = json.decode(response.body);
+
+      if (data['status'] == 'OK') {
+        final points = data['routes'][0]['overview_polyline']['points'];
+        final duration = data['routes'][0]['legs'][0]['duration']['value'];
+        final distance = data['routes'][0]['legs'][0]['distance']['value'];
+
+        final polylinePoints = PolylinePoints()
+            .decodePolyline(points)
+            .map((point) => LatLng(point.latitude, point.longitude))
+            .toList();
+
+        setState(() {
+          routePolyline = polylinePoints;
+          etaMinutes = (duration / 60).round();
+          distanceKm = distance / 1000;
+          isLoading = false;
+        });
+
+        // Animate map to show the entire route
+        if (mapController != null) {
+          final bounds = LatLngBounds(
+            southwest: LatLng(
+              math.min(start.latitude, end.latitude),
+              math.min(start.longitude, end.longitude),
+            ),
+            northeast: LatLng(
+              math.max(start.latitude, end.latitude),
+              math.max(start.longitude, end.longitude),
+            ),
+          );
+
+          mapController!.animateCamera(
+            CameraUpdate.newLatLngBounds(bounds, 100),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error calculating route: $e');
+    }
   }
 
   @override
@@ -497,217 +597,224 @@ class _BusTrackingDetailScreenState extends State<BusTrackingDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Track Your Bus'),
-        backgroundColor: Colors.green[700],
-        foregroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+    return WillPopScope(
+      onWillPop: () async {
+        // Pop until we reach the home screen
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Track Your Bus'),
+          backgroundColor: Colors.green[700],
+          foregroundColor: Colors.white,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              // Pop until we reach the home screen
+              Navigator.of(context).popUntil((route) => route.isFirst);
+            },
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: () => _fetchBusLocationAndRoute(),
+            ),
+          ],
         ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: () => _fetchBusLocationAndRoute(),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Status and Info Card
-          Container(
-            width: double.infinity,
-            margin: EdgeInsets.all(16),
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
-                  spreadRadius: 2,
-                  blurRadius: 5,
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.directions_bus,
-                        color: Colors.blue[700], size: 28),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.booking['destination'] ?? 'Your Bus',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            connectionStatus,
-                            style: TextStyle(
-                              color: connectionStatus.contains('Live')
-                                  ? Colors.green
-                                  : connectionStatus.contains('error')
-                                      ? Colors.red
-                                      : Colors.orange,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildInfoTile(
-                      icon: Icons.access_time,
-                      label: 'ETA',
-                      value: isLoading ? '...' : '$etaMinutes min',
-                      color: Colors.green,
-                    ),
-                    _buildInfoTile(
-                      icon: Icons.route,
-                      label: 'Distance',
-                      value: isLoading
-                          ? '...'
-                          : '${distanceKm.toStringAsFixed(1)} km',
-                      color: Colors.green,
-                    ),
-                    _buildInfoTile(
-                      icon: Icons.speed,
-                      label: 'Status',
-                      value: busLocation != null ? 'En Route' : 'Locating...',
-                      color: Colors.orange,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // Map
-          Expanded(
-            child: isLoading && busLocation == null
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text('Locating your bus...'),
-                      ],
-                    ),
-                  )
-                : (busLocation == null || passengerLocation == null)
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.location_off,
-                                size: 48, color: Colors.grey),
-                            SizedBox(height: 16),
-                            Text('Bus or pickup location not available'),
-                            SizedBox(height: 8),
-                            ElevatedButton(
-                              onPressed: () => _fetchBusLocationAndRoute(),
-                              child: Text('Retry'),
-                            ),
-                          ],
-                        ),
-                      )
-                    : GoogleMap(
-                        onMapCreated: (GoogleMapController controller) {
-                          mapController = controller;
-                          _animateToShowBothLocations();
-                        },
-                        initialCameraPosition: CameraPosition(
-                          target: busLocation!,
-                          zoom: 13,
-                        ),
-                        markers: {
-                          Marker(
-                            markerId: MarkerId('bus'),
-                            position: busLocation!,
-                            infoWindow: InfoWindow(
-                              title: 'Your Bus',
-                              snippet: 'Live location',
-                            ),
-                            icon: BitmapDescriptor.defaultMarkerWithHue(
-                                BitmapDescriptor.hueBlue),
-                          ),
-                          Marker(
-                            markerId: MarkerId('pickup'),
-                            position: passengerLocation!,
-                            infoWindow: InfoWindow(
-                              title: 'Pickup Location',
-                              snippet: 'Your waiting point',
-                            ),
-                            icon: BitmapDescriptor.defaultMarkerWithHue(
-                                BitmapDescriptor.hueGreen),
-                          ),
-                        },
-                        polylines: routePolyline.isNotEmpty
-                            ? {
-                                Polyline(
-                                  polylineId: PolylineId('route'),
-                                  points: routePolyline,
-                                  color: Colors.blue,
-                                  width: 4,
-                                  patterns: [
-                                    PatternItem.dash(20),
-                                    PatternItem.gap(10)
-                                  ],
-                                ),
-                              }
-                            : {},
-                        myLocationEnabled: false,
-                        zoomControlsEnabled: true,
-                        mapToolbarEnabled: false,
-                      ),
-          ),
-
-          // Bottom info panel
-          if (routeInfo.isNotEmpty)
+        body: Column(
+          children: [
+            // Status and Info Card
             Container(
               width: double.infinity,
-              padding: EdgeInsets.all(16),
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.grey[50],
-                border: Border(top: BorderSide(color: Colors.grey[300]!)),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.2),
+                    spreadRadius: 2,
+                    blurRadius: 5,
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    'Route Information',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
+                  Row(
+                    children: [
+                      Icon(Icons.directions_bus,
+                          color: Colors.blue[700], size: 28),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.booking['destination'] ?? 'Your Bus',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              connectionStatus,
+                              style: TextStyle(
+                                color: connectionStatus.contains('Live')
+                                    ? Colors.green
+                                    : connectionStatus.contains('error')
+                                        ? Colors.red
+                                        : Colors.orange,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 8),
-                  Text(
-                    routeInfo,
-                    style: TextStyle(color: Colors.grey[600]),
+                  SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildInfoTile(
+                        icon: Icons.access_time,
+                        label: 'ETA',
+                        value: isLoading ? '...' : '$etaMinutes min',
+                        color: Colors.green,
+                      ),
+                      _buildInfoTile(
+                        icon: Icons.route,
+                        label: 'Distance',
+                        value: isLoading
+                            ? '...'
+                            : '${distanceKm.toStringAsFixed(1)} km',
+                        color: Colors.green,
+                      ),
+                      _buildInfoTile(
+                        icon: Icons.speed,
+                        label: 'Status',
+                        value: busLocation != null ? 'En Route' : 'Locating...',
+                        color: Colors.orange,
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-        ],
+
+            // Map
+            Expanded(
+              child: isLoading && busLocation == null
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 16),
+                          Text('Locating your bus...'),
+                        ],
+                      ),
+                    )
+                  : (busLocation == null || passengerLocation == null)
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.location_off,
+                                  size: 48, color: Colors.grey),
+                              SizedBox(height: 16),
+                              Text('Bus or pickup location not available'),
+                              SizedBox(height: 8),
+                              ElevatedButton(
+                                onPressed: () => _fetchBusLocationAndRoute(),
+                                child: Text('Retry'),
+                              ),
+                            ],
+                          ),
+                        )
+                      : GoogleMap(
+                          onMapCreated: (GoogleMapController controller) {
+                            mapController = controller;
+                            _animateToShowBothLocations();
+                          },
+                          initialCameraPosition: CameraPosition(
+                            target: busLocation!,
+                            zoom: 13,
+                          ),
+                          markers: {
+                            Marker(
+                              markerId: MarkerId('bus'),
+                              position: busLocation!,
+                              infoWindow: InfoWindow(
+                                title: 'Your Bus',
+                                snippet: 'Live location',
+                              ),
+                              icon: BitmapDescriptor.defaultMarkerWithHue(
+                                  BitmapDescriptor.hueBlue),
+                            ),
+                            Marker(
+                              markerId: MarkerId('pickup'),
+                              position: passengerLocation!,
+                              infoWindow: InfoWindow(
+                                title: 'Pickup Location',
+                                snippet: 'Your waiting point',
+                              ),
+                              icon: BitmapDescriptor.defaultMarkerWithHue(
+                                  BitmapDescriptor.hueGreen),
+                            ),
+                          },
+                          polylines: {
+                            if (routePolyline.isNotEmpty)
+                              Polyline(
+                                polylineId: const PolylineId('route'),
+                                points: routePolyline,
+                                color: Colors.blue,
+                                width: 4,
+                                patterns: [
+                                  PatternItem.dash(20),
+                                  PatternItem.gap(10)
+                                ],
+                              ),
+                          },
+                          myLocationEnabled: false,
+                          zoomControlsEnabled: true,
+                          mapToolbarEnabled: false,
+                        ),
+            ),
+
+            // Bottom info panel
+            if (routeInfo.isNotEmpty)
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  border: Border(top: BorderSide(color: Colors.grey[300]!)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Route Information',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      routeInfo,
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -738,72 +845,5 @@ class _BusTrackingDetailScreenState extends State<BusTrackingDetailScreen> {
         ),
       ],
     );
-  }
-
-  Future<Map<String, dynamic>> _getRouteAndEta(
-      LatLng origin, LatLng destination) async {
-    final url =
-        'https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&key=$googleApiKey&mode=driving&traffic_model=best_guess&departure_time=now';
-
-    try {
-      final response = await http.get(Uri.parse(url));
-      final data = json.decode(response.body);
-
-      if (data['status'] == 'OK' && data['routes'].isNotEmpty) {
-        final route = data['routes'][0];
-        final leg = route['legs'][0];
-
-        final encodedPolyline = route['overview_polyline']['points'];
-        final duration = leg['duration']['value']; // in seconds
-        final distance = leg['distance']['value']; // in meters
-        final routeDescription =
-            leg['start_address'] + ' to ' + leg['end_address'];
-
-        List<LatLng> polylinePoints = _decodePolyline(encodedPolyline);
-
-        return {
-          'polyline': polylinePoints,
-          'eta': (duration / 60).round(), // minutes
-          'distance': distance / 1000.0, // kilometers
-          'routeInfo': 'Via ${routeDescription}',
-        };
-      } else {
-        throw Exception('No route found: ${data['status']}');
-      }
-    } catch (e) {
-      print('Error fetching route: $e');
-      throw Exception('Failed to fetch directions: $e');
-    }
-  }
-
-  List<LatLng> _decodePolyline(String encoded) {
-    List<LatLng> polyline = [];
-    int index = 0, len = encoded.length;
-    int lat = 0, lng = 0;
-
-    while (index < len) {
-      int b, shift = 0, result = 0;
-      do {
-        b = encoded.codeUnitAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-      lat += dlat;
-
-      shift = 0;
-      result = 0;
-      do {
-        b = encoded.codeUnitAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-      lng += dlng;
-
-      polyline.add(LatLng(lat / 1e5, lng / 1e5));
-    }
-
-    return polyline;
   }
 }

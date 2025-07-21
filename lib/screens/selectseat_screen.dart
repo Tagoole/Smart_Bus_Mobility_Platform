@@ -395,14 +395,13 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () {
-                        Navigator.of(context).pop(); // Close dialog
-                        // Navigate to NavBarScreen with navbar
-                        Navigator.of(context).pushAndRemoveUntil(
-                          MaterialPageRoute(
-                            builder: (_) => NavBarScreen(
-                                userRole: 'passenger', initialTab: 0),
-                          ),
-                          (route) => false,
+                        Navigator.pushNamed(
+                          context,
+                          '/payment',
+                          arguments: {
+                            'totalFare': totalFare,
+                            'bookingId': bookingId,
+                          },
                         );
                       },
                       style: ElevatedButton.styleFrom(
@@ -414,7 +413,7 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
                         ),
                       ),
                       child: const Text(
-                        'Go to Dashboard',
+                        'Pay Here',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
