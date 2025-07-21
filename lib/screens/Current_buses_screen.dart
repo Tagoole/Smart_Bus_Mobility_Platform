@@ -74,8 +74,7 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
             if (busDoc.exists) {
               final busData = busDoc.data()!;
 
-              if (busData['status'] == 'active' ||
-                  busData['currentLocation'] != null) {
+              if (busData['status'] == 'active' || busData['currentLocation'] != null) {
                 // Calculate ETA and add route information
                 final enhancedBusInfo = await _enhanceBusInfo({
                   'bookingId': bookingDoc.id,
@@ -96,12 +95,11 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
     });
   }
 
-  Future<Map<String, dynamic>> _enhanceBusInfo(
-      Map<String, dynamic> busInfo) async {
+  Future<Map<String, dynamic>> _enhanceBusInfo(Map<String, dynamic> busInfo) async {
     final busData = busInfo['busData'];
     final bookingData = busInfo['bookingData'];
 
-    // Get current location and pickup location
+    // Get the bus's current location (driver's location) and the user's pickup location.
     final currentLocation = busData['currentLocation'];
     final pickupLocation = bookingData['pickupLocation'];
 
@@ -111,35 +109,23 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
         final eta = await _calculateETA(currentLocation, pickupLocation);
         busInfo['eta'] = eta;
 
-        // Generate route polyline points with proper LatLng objects
-        final routePoints =
-            await _generateRoutePoints(currentLocation, pickupLocation);
+        // Generate route polyline points from the driver's location to the user's pickup location.
+        final routePoints = await _generateRoutePoints(currentLocation, pickupLocation);
         busInfo['routePoints'] = routePoints;
-
-        // Convert LatLng objects to Map format for serialization
-        busInfo['routePointsData'] = routePoints
-            .map((point) => {
-                  'latitude': point.latitude,
-                  'longitude': point.longitude,
-                })
-            .toList();
       } catch (e) {
         print('Error enhancing bus info: $e');
         busInfo['eta'] = 'Calculating...';
         busInfo['routePoints'] = <LatLng>[];
-        busInfo['routePointsData'] = <Map<String, double>>[];
       }
     } else {
       busInfo['eta'] = 'Location unavailable';
       busInfo['routePoints'] = <LatLng>[];
-      busInfo['routePointsData'] = <Map<String, double>>[];
     }
 
     return busInfo;
   }
 
-  Future<String> _calculateETA(Map<String, dynamic> currentLocation,
-      Map<String, dynamic> pickupLocation) async {
+  Future<String> _calculateETA(Map<String, dynamic> currentLocation, Map<String, dynamic> pickupLocation) async {
     try {
       final double currentLat = currentLocation['latitude']?.toDouble() ?? 0.0;
       final double currentLng = currentLocation['longitude']?.toDouble() ?? 0.0;
@@ -147,14 +133,12 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
       final double pickupLng = pickupLocation['longitude']?.toDouble() ?? 0.0;
 
       // Calculate straight-line distance using Haversine formula
-      final double distance =
-          _calculateDistance(currentLat, currentLng, pickupLat, pickupLng);
+      final double distance = _calculateDistance(currentLat, currentLng, pickupLat, pickupLng);
 
       // Estimate time based on average city speed (30 km/h) with traffic factor (1.5x)
       final double avgSpeedKmh = 30.0;
       final double trafficFactor = 1.5;
-      final double estimatedTimeHours =
-          (distance * trafficFactor) / avgSpeedKmh;
+      final double estimatedTimeHours = (distance * trafficFactor) / avgSpeedKmh;
       final int estimatedMinutes = (estimatedTimeHours * 60).round();
 
       if (estimatedMinutes < 1) {
@@ -172,18 +156,15 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
     }
   }
 
-  double _calculateDistance(
-      double lat1, double lng1, double lat2, double lng2) {
+  double _calculateDistance(double lat1, double lng1, double lat2, double lng2) {
     const double earthRadius = 6371; // Earth's radius in kilometers
 
     final double dLat = _degreesToRadians(lat2 - lat1);
     final double dLng = _degreesToRadians(lng2 - lng1);
 
     final double a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(_degreesToRadians(lat1)) *
-            cos(_degreesToRadians(lat2)) *
-            sin(dLng / 2) *
-            sin(dLng / 2);
+        cos(_degreesToRadians(lat1)) * cos(_degreesToRadians(lat2)) *
+        sin(dLng / 2) * sin(dLng / 2);
 
     final double c = 2 * atan2(sqrt(a), sqrt(1 - a));
 
@@ -194,53 +175,37 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
     return degrees * (pi / 180);
   }
 
-  Future<List<LatLng>> _generateRoutePoints(
-      Map<String, dynamic> start, Map<String, dynamic> end) async {
+  /// Generates a polyline route from a start point (driver's location) to an end point (user's pickup location).
+  Future<List<LatLng>> _generateRoutePoints(Map<String, dynamic> start, Map<String, dynamic> end) async {
     try {
+      // Extract coordinates for the start (driver) and end (user pickup) points.
       final double startLat = start['latitude']?.toDouble() ?? 0.0;
       final double startLng = start['longitude']?.toDouble() ?? 0.0;
       final double endLat = end['latitude']?.toDouble() ?? 0.0;
       final double endLng = end['longitude']?.toDouble() ?? 0.0;
 
-      // Validate coordinates - check for invalid or missing coordinates
-      if (startLat == 0.0 ||
-          startLng == 0.0 ||
-          endLat == 0.0 ||
-          endLng == 0.0 ||
-          start['latitude'] == null ||
-          start['longitude'] == null ||
-          end['latitude'] == null ||
-          end['longitude'] == null) {
-        print(
-            'Invalid coordinates detected: start($startLat, $startLng), end($endLat, $endLng)');
-        return <LatLng>[];
-      }
-
+      // In a real app, you would use a service like Google Directions API for an accurate road-based route.
+      // This demonstration creates a simple curved route for visualization.
       List<LatLng> routePoints = [];
 
-      // Add start point
+      // Add the starting point of the route (driver's current location).
       routePoints.add(LatLng(startLat, startLng));
 
-      // Generate intermediate points for a more realistic route
-      const int intermediatePoints = 10;
+      // Generate intermediate points to create a more realistic, curved route.
+      const int intermediatePoints = 8;
       for (int i = 1; i < intermediatePoints; i++) {
         final double ratio = i / intermediatePoints.toDouble();
 
-        // Linear interpolation with slight curve to simulate road following
+        // Linear interpolation with a curve factor.
         final double lat = startLat + (endLat - startLat) * ratio;
         final double lng = startLng + (endLng - startLng) * ratio;
 
-        // Add slight curve to make it look more like a real route
-        // Use a more realistic curve that simulates following roads
-        final double curveFactor =
-            sin(ratio * pi) * 0.001; // Reduced curve for realism
-        final double perpOffset =
-            cos(ratio * 2 * pi) * 0.0005; // Small perpendicular offset
-
-        routePoints.add(LatLng(lat + curveFactor, lng + perpOffset));
+        // Add a curve to make the polyline look more like a real road path.
+        final double curveFactor = sin(ratio * pi) * 0.002;
+        routePoints.add(LatLng(lat + curveFactor, lng + curveFactor));
       }
 
-      // Add end point
+      // Add the final destination point (user's pickup location).
       routePoints.add(LatLng(endLat, endLng));
 
       return routePoints;
@@ -251,81 +216,57 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
   }
 
   void _navigateToBusTracking(Map<String, dynamic> busInfo) {
-    try {
-      final bookingData = busInfo['bookingData'];
+    final bookingData = busInfo['bookingData'];
 
-      // Use the serialized route points data
-      final routePointsData =
-          busInfo['routePointsData'] as List<Map<String, dynamic>>? ??
-              <Map<String, dynamic>>[];
+    // Add route points to booking data for use in TrackBusScreen
+    final routePoints = busInfo['routePoints'] as List<LatLng>? ?? <LatLng>[];
+    final enhancedBookingData = Map<String, dynamic>.from(bookingData);
+    enhancedBookingData['routePoints'] = routePoints.map((point) => {
+      'latitude': point.latitude,
+      'longitude': point.longitude,
+    }).toList();
 
-      final enhancedBookingData = Map<String, dynamic>.from(bookingData);
-      enhancedBookingData['routePoints'] = routePointsData;
-      enhancedBookingData['busId'] = busInfo['busId'];
-      enhancedBookingData['eta'] = busInfo['eta'];
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => TrackBusScreen(booking: enhancedBookingData),
-        ),
-      );
-    } catch (e) {
-      print('Error navigating to bus tracking: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Unable to track bus. Please try again.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TrackBusScreen(booking: enhancedBookingData),
+      ),
+    );
   }
 
-  void _showBusDetails(
-      BuildContext context, Map<String, dynamic> busInfo) async {
-    try {
-      final booking = busInfo['bookingData'];
-      final pickupLocation = booking['pickupLocation'];
-      BitmapDescriptor? passengerIcon;
+  void _showBusDetails(BuildContext context, Map<String, dynamic> busInfo) async {
+    final booking = busInfo['bookingData'];
+    final pickupLocation = booking['pickupLocation'];
+    final routePoints = busInfo['routePoints'] as List<LatLng>? ?? <LatLng>[];
+    BitmapDescriptor? passengerIcon;
 
-      if (pickupLocation != null) {
-        try {
-          passengerIcon = await MarkerIcons.passengerIcon;
-        } catch (e) {
-          print('Error loading passenger icon: $e');
-        }
+    if (pickupLocation != null) {
+      try {
+        passengerIcon = await MarkerIcons.passengerIcon;
+      } catch (e) {
+        print('Error loading passenger icon: $e');
       }
-
-      // Use the serialized route points data
-      final routePointsData =
-          busInfo['routePointsData'] as List<Map<String, dynamic>>? ??
-              <Map<String, dynamic>>[];
-
-      final enhancedBookingData = Map<String, dynamic>.from(booking);
-      enhancedBookingData['routePoints'] = routePointsData;
-      enhancedBookingData['eta'] = busInfo['eta'];
-
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        builder: (context) => LiveBusDetailsSheet(
-          busId: busInfo['busId'],
-          booking: enhancedBookingData,
-          passengerIcon: passengerIcon,
-        ),
-      );
-    } catch (e) {
-      print('Error showing bus details: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Unable to load bus details. Please try again.'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
+
+    // Add route points to booking data for use in LiveBusDetailsSheet
+    final enhancedBookingData = Map<String, dynamic>.from(booking);
+    enhancedBookingData['routePoints'] = routePoints.map((point) => {
+      'latitude': point.latitude,
+      'longitude': point.longitude,
+    }).toList();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => LiveBusDetailsSheet(
+        busId: busInfo['busId'],
+        booking: enhancedBookingData,
+        passengerIcon: passengerIcon,
+      ),
+    );
   }
 
   String _getBusStatus(Map<String, dynamic> busData) {
@@ -373,16 +314,13 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
     });
   }
 
-  // Handle back navigation properly
-  Future<bool> _onWillPop() async {
-    Navigator.pop(context);
-    return false;
-  }
-
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: _onWillPop,
+      onWillPop: () async {
+        Navigator.pop(context);
+        return false;
+      },
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Track Current Buses'),
@@ -451,13 +389,11 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.error_outline,
-                              size: 64, color: Colors.red),
+                          const Icon(Icons.error_outline, size: 64, color: Colors.red),
                           const SizedBox(height: 16),
                           const Text(
                             'Error loading buses',
-                            style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold),
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 8),
                           Text('${snapshot.error}'),
@@ -531,8 +467,7 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
                     child: ListView.separated(
                       padding: const EdgeInsets.all(16),
                       itemCount: buses.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 12),
+                      separatorBuilder: (context, index) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final busInfo = buses[index];
                         final booking = busInfo['bookingData'];
@@ -565,8 +500,7 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
                                         decoration: BoxDecoration(
                                           color: statusColor,
                                           shape: BoxShape.circle,
-                                          border: Border.all(
-                                              color: Colors.white, width: 2),
+                                          border: Border.all(color: Colors.white, width: 2),
                                         ),
                                       ),
                                     ),
@@ -574,8 +508,7 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
                                 ),
                                 title: Text(
                                   '${booking['destination'] ?? booking['route'] ?? 'Unknown Route'}',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold),
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
                                 ),
                                 subtitle: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -590,10 +523,8 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
                                           ),
                                           decoration: BoxDecoration(
                                             color: statusColor.withOpacity(0.1),
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                            border: Border.all(
-                                                color: statusColor, width: 1),
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(color: statusColor, width: 1),
                                           ),
                                           child: Text(
                                             busStatus,
@@ -605,8 +536,7 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
                                           ),
                                         ),
                                         const SizedBox(width: 8),
-                                        const Icon(Icons.access_time,
-                                            size: 14, color: Colors.grey),
+                                        const Icon(Icons.access_time, size: 14, color: Colors.grey),
                                         const SizedBox(width: 4),
                                         Text(
                                           'ETA: $eta',
@@ -622,15 +552,12 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
                                     if (booking['pickupLocation'] != null)
                                       Row(
                                         children: [
-                                          const Icon(Icons.location_on,
-                                              size: 14, color: Colors.green),
+                                          const Icon(Icons.location_on, size: 14, color: Colors.green),
                                           const SizedBox(width: 4),
                                           Expanded(
                                             child: Text(
                                               'Pickup: ${booking['pickupAddress'] ?? 'Custom Location'}',
-                                              style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.grey[600]),
+                                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                                               overflow: TextOverflow.ellipsis,
                                             ),
                                           ),
@@ -639,35 +566,28 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
                                     if (bus['numberPlate'] != null)
                                       Row(
                                         children: [
-                                          const Icon(Icons.confirmation_number,
-                                              size: 14, color: Colors.blue),
+                                          const Icon(Icons.confirmation_number, size: 14, color: Colors.blue),
                                           const SizedBox(width: 4),
                                           Text(
                                             'Plate: ${bus['numberPlate']}',
-                                            style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey[600]),
+                                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                                           ),
                                         ],
                                       ),
                                     if (bus['driverName'] != null)
                                       Row(
                                         children: [
-                                          const Icon(Icons.person,
-                                              size: 14, color: Colors.orange),
+                                          const Icon(Icons.person, size: 14, color: Colors.orange),
                                           const SizedBox(width: 4),
                                           Text(
                                             'Driver: ${bus['driverName']}',
-                                            style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey[600]),
+                                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                                           ),
                                         ],
                                       ),
                                   ],
                                 ),
-                                trailing: const Icon(Icons.arrow_forward_ios,
-                                    size: 18),
+                                trailing: const Icon(Icons.arrow_forward_ios, size: 18),
                                 onTap: () {
                                   _showBusDetails(context, busInfo);
                                 },
@@ -681,16 +601,13 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
                                   children: [
                                     Expanded(
                                       child: OutlinedButton.icon(
-                                        icon: const Icon(Icons.info_outline,
-                                            size: 18),
+                                        icon: const Icon(Icons.info_outline, size: 18),
                                         label: const Text('Details'),
                                         style: OutlinedButton.styleFrom(
                                           foregroundColor: Colors.blue[700],
-                                          side: BorderSide(
-                                              color: Colors.blue[700]!),
+                                          side: BorderSide(color: Colors.blue[700]!),
                                           shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(8),
+                                            borderRadius: BorderRadius.circular(8),
                                           ),
                                         ),
                                         onPressed: () {
@@ -702,18 +619,14 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
                                     Expanded(
                                       flex: 2,
                                       child: ElevatedButton.icon(
-                                        icon: const Icon(
-                                            Icons.location_searching,
-                                            size: 18),
+                                        icon: const Icon(Icons.location_searching, size: 18),
                                         label: const Text('Track Live'),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.blue[700],
                                           foregroundColor: Colors.white,
-                                          padding: const EdgeInsets.symmetric(
-                                              vertical: 12),
+                                          padding: const EdgeInsets.symmetric(vertical: 12),
                                           shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(8),
+                                            borderRadius: BorderRadius.circular(8),
                                           ),
                                         ),
                                         onPressed: () {

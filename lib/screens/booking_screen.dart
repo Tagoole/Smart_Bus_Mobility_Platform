@@ -14,7 +14,6 @@ import 'package:smart_bus_mobility_platform1/widgets/map_zoom_controls.dart';
 import 'package:smart_bus_mobility_platform1/utils/marker_icon_utils.dart';
 import 'dart:async'; // Added for Timer and StreamSubscription
 
-
 void main() {
   runApp(const BusBooking());
 }
@@ -1388,4 +1387,3 @@ class _FindBusScreenState extends State<FindBusScreen> {
     );
   }
 }
-
