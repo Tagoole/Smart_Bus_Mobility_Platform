@@ -87,7 +87,7 @@ class _SignInScreenState extends State<SignInScreen> {
     switch (role.toLowerCase()) {
       case 'admin':
         print('Navigating to admin screen');
-        targetRoute = AppRoutes.busManagementScreen;
+        targetRoute = AppRoutes.adminScreen;
         break;
       case 'user':
         print('Navigating to passenger map screen');
