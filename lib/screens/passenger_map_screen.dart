@@ -39,6 +39,10 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   BitmapDescriptor? _userMarkerIcon;
   bool _isLoadingLocation = false;
 
+  // Text controllers for manual input
+  final TextEditingController _pickupController = TextEditingController();
+  final TextEditingController _destinationController = TextEditingController();
+
   // Bus data
   List<Map<String, dynamic>> _availableBuses = [];
   final Set<Marker> _allMarkers = {};
@@ -56,6 +60,8 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     super.initState();
     _initializeMap();
     _listenToBookings();
+    _pickupController.addListener(_updatePickupFromText);
+    _destinationController.addListener(_updateDestinationFromText);
   }
 
   void _listenToBookings() {
@@ -84,7 +90,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
               _pickupLocation = LatLng(pickup['latitude'], pickup['longitude']);
               _busLocation = LatLng(busLoc['latitude'], busLoc['longitude']);
             });
-            // Draw polyline for confirmed booking
             if (_pickupLocation != null && _busLocation != null) {
               _drawRoutePolyline(_pickupLocation!, _busLocation!);
             }
@@ -181,12 +186,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
         });
       }
 
-      print('--- Fetched Buses (${buses.length}) ---');
-      for (var bus in buses) {
-        print(bus);
-      }
-      print('-------------------------------');
-
       setState(() {
         _availableBuses = buses;
       });
@@ -206,10 +205,10 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
           markerId: MarkerId('current_location'),
           position: _currentLocation!,
           icon: _userMarkerIcon!,
-  infoWindow: InfoWindow(
-    title: 'Your Location',
-    snippet: 'Current position onstage',
-  ),
+          infoWindow: InfoWindow(
+            title: 'Your Location',
+            snippet: 'Current position',
+          ),
         ),
       );
     }
@@ -284,20 +283,16 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
           '&mode=driving'
           '&key=$kGoogleApiKey';
 
-      print('Fetching route from: $url');
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('Directions API response status: ${data['status']}');
-
         if (data['status'] == 'OK') {
           final points = data['routes'][0]['overview_polyline']['points'];
           final polylinePoints = PolylinePoints()
               .decodePolyline(points)
               .map((point) => LatLng(point.latitude, point.longitude))
               .toList();
-          print('Decoded polyline points: ${polylinePoints.length}');
 
           if (polylinePoints.isNotEmpty) {
             setState(() {
@@ -336,33 +331,8 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                 100.0,
               ),
             );
-          } else {
-            print('No polyline points decoded');
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Unable to generate route'),
-                backgroundColor: Colors.red,
-              ),
-            );
           }
-        } else {
-          print(
-              'Directions API error: ${data['status']} - ${data['error_message'] ?? 'No error message'}');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Directions API error: ${data['status']}'),
-              backgroundColor: Colors.red,
-            ),
-          );
         }
-      } else {
-        print('HTTP error: ${response.statusCode}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to fetch route: HTTP ${response.statusCode}'),
-            backgroundColor: Colors.red,
-          ),
-        );
       }
     } catch (e) {
       print('Error drawing polyline: $e');
@@ -481,11 +451,8 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
       strictbounds: false,
       types: [""],
       decoration: InputDecoration(
-        hintText: 'Select pickup location',
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: const BorderSide(color: Colors.white),
-        ),
+        hintText: 'Type or select pickup location',
+        border: InputBorder.none,
       ),
       components: [Component(Component.country, "ug")],
     );
@@ -503,11 +470,8 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
       strictbounds: false,
       types: [""],
       decoration: InputDecoration(
-        hintText: 'Select destination',
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: const BorderSide(color: Colors.white),
-        ),
+        hintText: 'Type or select destination',
+        border: InputBorder.none,
       ),
       components: [Component(Component.country, "ug")],
     );
@@ -523,6 +487,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     final lng = detail.result.geometry!.location.lng;
     setState(() {
       _pickupLocation = LatLng(lat, lng);
+      _pickupController.text = detail.result.name;
       _searchMarkers.removeWhere((m) => m.markerId.value == 'pickup_location');
       _searchMarkers.add(
         Marker(
@@ -551,6 +516,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     final lng = detail.result.geometry!.location.lng;
     setState(() {
       _destinationLocation = LatLng(lat, lng);
+      _destinationController.text = detail.result.name;
       _searchMarkers.removeWhere((m) => m.markerId.value == 'destination_location');
       _searchMarkers.add(
         Marker(
@@ -564,12 +530,70 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     });
 
     final controller = _mapController ?? await _controller.future;
-    controller.animateCamera(CameraUpdate.newLatLngZoom(_destinationLocation!, 14.0));
+    controller
+        .animateCamera(CameraUpdate.newLatLngZoom(_destinationLocation!, 14.0));
 
     if (_pickupLocation != null && _destinationLocation != null) {
       await _drawRoutePolyline(_pickupLocation!, _destinationLocation!);
       showAllAvailableBusesSheet();
     }
+  }
+
+  void _updatePickupFromText() {
+    if (_pickupController.text.isNotEmpty && _pickupLocation == null) {
+      // Simulate geocode for simplicity (in practice, use a geocoder API)
+      // This is a placeholder; actual geocode logic would be needed
+      setState(() {
+        _pickupLocation = _currentLocation; // Default to current location for now
+        _searchMarkers.removeWhere((m) => m.markerId.value == 'pickup_location');
+        _searchMarkers.add(
+          Marker(
+            markerId: const MarkerId('pickup_location'),
+            position: _pickupLocation!,
+            icon: _userMarkerIcon ??
+                BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+            infoWindow: InfoWindow(title: 'Pickup: ${_pickupController.text}'),
+          ),
+        );
+      });
+    }
+  }
+
+  void _updateDestinationFromText() {
+    if (_destinationController.text.isNotEmpty && _destinationLocation == null) {
+      // Simulate geocode for simplicity (in practice, use a geocoder API)
+      setState(() {
+        _destinationLocation = _currentLocation; // Default to current location for now
+        _searchMarkers.removeWhere((m) => m.markerId.value == 'destination_location');
+        _searchMarkers.add(
+          Marker(
+            markerId: const MarkerId('destination_location'),
+            position: _destinationLocation!,
+            icon: _userMarkerIcon ??
+                BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+            infoWindow: InfoWindow(title: 'Destination: ${_destinationController.text}'),
+          ),
+        );
+      });
+    }
+  }
+
+  void _clearPickup() {
+    setState(() {
+      _pickupLocation = null;
+      _pickupController.clear();
+      _searchMarkers.removeWhere((m) => m.markerId.value == 'pickup_location');
+      _polylines.clear();
+    });
+  }
+
+  void _clearDestination() {
+    setState(() {
+      _destinationLocation = null;
+      _destinationController.clear();
+      _searchMarkers.removeWhere((m) => m.markerId.value == 'destination_location');
+      _polylines.clear();
+    });
   }
 
   void showAllAvailableBusesSheet() {
@@ -648,6 +672,8 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
 
   @override
   void dispose() {
+    _pickupController.dispose();
+    _destinationController.dispose();
     _bookingSubscription?.cancel();
     super.dispose();
   }
@@ -679,43 +705,89 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: _handlePickupSelection,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black,
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      elevation: 4,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[300]!),
                     ),
-                    child: Text(
-                      _pickupLocation == null
-                          ? 'Select Pickup Location'
-                          : 'Pickup: ${_pickupLocation != null ? 'Set' : ''}',
-                      style: TextStyle(fontSize: 16),
+                    child: Row(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            'Pick Up',
+                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[600]),
+                          ),
+                        ),
+                        Expanded(
+                          child: TextField(
+                            controller: _pickupController,
+                            onTap: _handlePickupSelection,
+                            decoration: InputDecoration(
+                              hintText: 'Type or select location',
+                              border: InputBorder.none,
+                              suffixIcon: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(Icons.edit, size: 16),
+                                    onPressed: _handlePickupSelection,
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.clear, size: 16),
+                                    onPressed: _clearPickup,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
                 SizedBox(width: 8),
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: _handleDestinationSelection,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black,
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      elevation: 4,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange),
                     ),
-                    child: Text(
-                      _destinationLocation == null
-                          ? 'Select Destination'
-                          : 'Destination: ${_destinationLocation != null ? 'Set' : ''}',
-                      style: TextStyle(fontSize: 16),
+                    child: Row(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            'Where To',
+                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[600]),
+                          ),
+                        ),
+                        Expanded(
+                          child: TextField(
+                            controller: _destinationController,
+                            onTap: _handleDestinationSelection,
+                            decoration: InputDecoration(
+                              hintText: 'Type or select location',
+                              border: InputBorder.none,
+                              suffixIcon: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(Icons.edit, size: 16),
+                                    onPressed: _handleDestinationSelection,
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.clear, size: 16),
+                                    onPressed: _clearDestination,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
