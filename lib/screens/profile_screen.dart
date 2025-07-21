@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'personal_data_screen.dart';
 import 'nav_bar_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'ticket_screen.dart';
+import 'payment_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -12,6 +15,8 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final int _selectedIndex = 4; // Profile tab index
+  Map<String, dynamic>? userData;
+  bool isLoading = true;
 
   Future<void> _logout() async {
     // Show confirmation dialog
@@ -68,9 +73,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+  }
+
+  Future<void> _fetchUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      print('[DEBUG] User data from Firestore: ${doc.data()}');
+
+      setState(() {
+        userData = doc.data();
+        isLoading = false;
+      });
+
+      // Debug: Print individual fields
+      print('[DEBUG] Name: ${userData?['username']}');
+      print('[DEBUG] Email: ${userData?['email']}');
+      print('[DEBUG] Phone: ${userData?['contact']}');
+      print('[DEBUG] Profile Image: ${userData?['profileImageUrl']}');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return Center(child: CircularProgressIndicator());
+    }
+
+    final name = userData?['username'] ?? 'No Name';
+    final email = userData?['email'] ?? 'No Email';
+    final phone = userData?['contact'] ?? 'No Phone';
+    final imageUrl = userData?['profileImageUrl'] ?? '';
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -152,49 +194,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Column(
                           children: [
                             // Profile Picture
-                            GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const PersonalData(),
-                                  ),
-                                );
-                              },
-                              child: Stack(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 60,
-                                    backgroundColor: Colors.green[100],
-                                    backgroundImage:
-                                        null, // TODO: Add user profile image
-                                    child: Icon(
-                                      Icons.person,
-                                      size: 60,
-                                      color: Colors.green[700],
-                                    ),
-                                  ),
-                                  Positioned(
-                                    bottom: 0,
-                                    right: 0,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: Colors.green[700],
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: Colors.white,
-                                          width: 3,
-                                        ),
-                                      ),
-                                      child: const Icon(
-                                        Icons.camera_alt,
-                                        color: Colors.white,
-                                        size: 20,
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                            CircleAvatar(
+                              radius: 60,
+                              backgroundColor: Colors.green[700],
+                              child: Text(
+                                name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                                style: TextStyle(
+                                  fontSize: 40,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
 
@@ -202,7 +211,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                             // User Name
                             Text(
-                              'John Doe',
+                              name,
                               style: TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
@@ -214,44 +223,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                             // User Email
                             Text(
-                              'john.doe@example.com',
+                              email,
                               style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.grey[600],
                               ),
                             ),
 
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 8),
 
-                            // Edit Profile Button
-                            SizedBox(
-                              width: double.infinity,
-                              height: 50,
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green[700],
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(25),
-                                  ),
-                                  elevation: 5,
-                                ),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          const PersonalData(),
-                                    ),
-                                  );
-                                },
-                                child: const Text(
-                                  'Edit Profile',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                            // User Phone
+                            Text(
+                              phone,
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey[600],
                               ),
                             ),
                           ],
@@ -269,7 +255,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const PersonalData(),
+                              builder: (context) => PersonalData(
+                                initialName: name,
+                                initialEmail: email,
+                                initialPhone: phone,
+                              ),
                             ),
                           );
                         },
@@ -282,7 +272,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         title: 'My Tickets',
                         subtitle: 'View your ticket history',
                         onTap: () {
-                          _onItemTapped(1); // Go to Tickets
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => TicketScreen()),
+                          );
+                          // Or, if using named routes:
+                          // Navigator.pushNamed(context, '/ticketScreen');
                         },
                       ),
 
@@ -304,7 +300,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         title: 'Payment Methods',
                         subtitle: 'Manage your payment options',
                         onTap: () {
-                          // TODO: Navigate to payment methods
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => PaymentScreen(),
+                            ),
+                          );
                         },
                       ),
 
@@ -342,67 +343,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       const SizedBox(height: 30),
 
-                      // Stats Section
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.1),
-                              blurRadius: 10,
-                              offset: const Offset(0, 5),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Your Stats',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green[700],
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _buildStatCard(
-                                    icon: Icons.confirmation_number,
-                                    value: '24',
-                                    label: 'Tickets',
-                                    color: Colors.blue,
-                                  ),
-                                ),
-                                const SizedBox(width: 15),
-                                Expanded(
-                                  child: _buildStatCard(
-                                    icon: Icons.directions_bus,
-                                    value: '156',
-                                    label: 'Rides',
-                                    color: Colors.green,
-                                  ),
-                                ),
-                                const SizedBox(width: 15),
-                                Expanded(
-                                  child: _buildStatCard(
-                                    icon: Icons.star,
-                                    value: '4.8',
-                                    label: 'Rating',
-                                    color: Colors.orange,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-
                       const SizedBox(height: 100), // Extra space for bottom nav
                     ],
                   ),
@@ -410,40 +350,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ],
           ),
-        ),
-      ),
-      // Bottom Navigation Bar
-      bottomNavigationBar: Container(
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-        decoration: BoxDecoration(
-          color: Colors.green.withValues(alpha: 0.8),
-          borderRadius: BorderRadius.circular(30),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 15,
-              offset: const Offset(0, -3),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildNavItem(icon: Icons.home, index: 0, label: "Home"),
-            _buildNavItem(
-              icon: Icons.confirmation_number,
-              index: 1,
-              label: "Tickets",
-            ),
-            _buildNavItem(
-              icon: Icons.location_on,
-              index: 2,
-              label: "Live Location",
-            ),
-            _buildNavItem(icon: Icons.settings, index: 3, label: "Settings"),
-            _buildNavItem(icon: Icons.person, index: 4, label: "Profile"),
-          ],
         ),
       ),
     );
@@ -595,4 +501,3 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // If profile tab (index 4), stay on current screen
   }
 }
-
