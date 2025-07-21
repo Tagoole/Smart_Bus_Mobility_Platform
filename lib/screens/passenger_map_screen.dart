@@ -39,6 +39,10 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   BitmapDescriptor? _userMarkerIcon;
   bool _isLoadingLocation = false;
 
+  // Text controllers for manual input
+  final TextEditingController _pickupController = TextEditingController();
+  final TextEditingController _destinationController = TextEditingController();
+
   // Bus data
   List<Map<String, dynamic>> _availableBuses = [];
   final Set<Marker> _allMarkers = {};
@@ -48,7 +52,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   bool _isRefreshingBuses = false;
 
   LatLng? _busLocation;
-
+  Map<String, dynamic>? _selectedBus;
   StreamSubscription<QuerySnapshot>? _bookingSubscription;
 
   @override
@@ -56,6 +60,8 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     super.initState();
     _initializeMap();
     _listenToBookings();
+    _pickupController.addListener(_updatePickupFromText);
+    _destinationController.addListener(_updateDestinationFromText);
   }
 
   void _listenToBookings() {
@@ -84,7 +90,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
               _pickupLocation = LatLng(pickup['latitude'], pickup['longitude']);
               _busLocation = LatLng(busLoc['latitude'], busLoc['longitude']);
             });
-            // Draw polyline for confirmed booking
             if (_pickupLocation != null && _busLocation != null) {
               _drawRoutePolyline(_pickupLocation!, _busLocation!);
             }
@@ -181,12 +186,6 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
         });
       }
 
-      print('--- Fetched Buses (${buses.length}) ---');
-      for (var bus in buses) {
-        print(bus);
-      }
-      print('-------------------------------');
-
       setState(() {
         _availableBuses = buses;
       });
@@ -206,10 +205,10 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
           markerId: MarkerId('current_location'),
           position: _currentLocation!,
           icon: _userMarkerIcon!,
-  infoWindow: InfoWindow(
-    title: 'Your Location',
-    snippet: 'Current position onstage',
-  ),
+          infoWindow: InfoWindow(
+            title: 'Your Location',
+            snippet: 'Current position',
+          ),
         ),
       );
     }
@@ -252,7 +251,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
               snippet:
                   '${bus['startPoint'] ?? 'Unknown'} → ${bus['destination'] ?? 'Unknown'}',
             ),
-            onTap: () => _showBusDetailsScreen(context, bus),
+            onTap: () => _selectBus(bus),
           ),
         );
       }
@@ -284,20 +283,16 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
           '&mode=driving'
           '&key=$kGoogleApiKey';
 
-      print('Fetching route from: $url');
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('Directions API response status: ${data['status']}');
-
         if (data['status'] == 'OK') {
           final points = data['routes'][0]['overview_polyline']['points'];
           final polylinePoints = PolylinePoints()
               .decodePolyline(points)
               .map((point) => LatLng(point.latitude, point.longitude))
               .toList();
-          print('Decoded polyline points: ${polylinePoints.length}');
 
           if (polylinePoints.isNotEmpty) {
             setState(() {
@@ -336,33 +331,8 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                 100.0,
               ),
             );
-          } else {
-            print('No polyline points decoded');
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Unable to generate route'),
-                backgroundColor: Colors.red,
-              ),
-            );
           }
-        } else {
-          print(
-              'Directions API error: ${data['status']} - ${data['error_message'] ?? 'No error message'}');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Directions API error: ${data['status']}'),
-              backgroundColor: Colors.red,
-            ),
-          );
         }
-      } else {
-        print('HTTP error: ${response.statusCode}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to fetch route: HTTP ${response.statusCode}'),
-            backgroundColor: Colors.red,
-          ),
-        );
       }
     } catch (e) {
       print('Error drawing polyline: $e');
@@ -375,100 +345,19 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     }
   }
 
-  void _showBusDetails(Map<String, dynamic> bus) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Bus Details'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Plate: ${bus['numberPlate'] ?? 'Unknown'}'),
-            SizedBox(height: 8),
-            Text(
-                'Route: ${bus['startPoint'] ?? 'Unknown'} → ${bus['destination'] ?? 'Unknown'}'),
-            SizedBox(height: 8),
-            Text('Driver: ${bus['driverName'] ?? 'Unknown'}'),
-            SizedBox(height: 8),
-            Text('Available Seats: ${bus['availableSeats'] ?? 'Unknown'}'),
-          ],
+  void _selectBus(Map<String, dynamic> bus) {
+    setState(() {
+      _selectedBus = bus;
+    });
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SeatSelectionScreen(
+          bus: bus,
+          pickupLocation: _pickupLocation!,
+          destinationLocation: _destinationLocation!,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Close'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _bookBus(bus);
-            },
-            child: Text('Book This Bus'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showBusRoute(bus);
-            },
-            child: Text('View Route'),
-          ),
-        ],
       ),
-    );
-  }
-
-  void _showBusRoute(Map<String, dynamic> bus) async {
-    if (bus['currentLocation'] != null && _currentLocation != null) {
-      final busLoc = bus['currentLocation'];
-      final busLatLng = LatLng(busLoc['latitude'], busLoc['longitude']);
-      if (busLatLng.latitude == 0.0 || busLatLng.longitude == 0.0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Invalid bus location'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-      await _drawRoutePolyline(_currentLocation!, busLatLng);
-      final controller = _mapController ?? await _controller.future;
-      controller.animateCamera(
-        CameraUpdate.newLatLngBounds(
-          LatLngBounds(
-            southwest: LatLng(
-              _currentLocation!.latitude < busLatLng.latitude
-                  ? _currentLocation!.latitude
-                  : busLatLng.latitude,
-              _currentLocation!.longitude < busLatLng.longitude
-                  ? _currentLocation!.longitude
-                  : busLatLng.longitude,
-            ),
-            northeast: LatLng(
-              _currentLocation!.latitude > busLatLng.latitude
-                  ? _currentLocation!.latitude
-                  : busLatLng.latitude,
-              _currentLocation!.longitude > busLatLng.longitude
-                  ? _currentLocation!.longitude
-                  : busLatLng.longitude,
-            ),
-          ),
-          100.0,
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Current location or bus location unavailable'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  void _bookBus(Map<String, dynamic> bus) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Booking functionality coming soon!')),
     );
   }
 
@@ -481,11 +370,8 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
       strictbounds: false,
       types: [""],
       decoration: InputDecoration(
-        hintText: 'Select pickup location',
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: const BorderSide(color: Colors.white),
-        ),
+        hintText: 'Type or select pickup location',
+        border: InputBorder.none,
       ),
       components: [Component(Component.country, "ug")],
     );
@@ -503,11 +389,8 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
       strictbounds: false,
       types: [""],
       decoration: InputDecoration(
-        hintText: 'Select destination',
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: const BorderSide(color: Colors.white),
-        ),
+        hintText: 'Type or select destination',
+        border: InputBorder.none,
       ),
       components: [Component(Component.country, "ug")],
     );
@@ -523,6 +406,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     final lng = detail.result.geometry!.location.lng;
     setState(() {
       _pickupLocation = LatLng(lat, lng);
+      _pickupController.text = detail.result.name;
       _searchMarkers.removeWhere((m) => m.markerId.value == 'pickup_location');
       _searchMarkers.add(
         Marker(
@@ -539,6 +423,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     controller.animateCamera(CameraUpdate.newLatLngZoom(_pickupLocation!, 14.0));
 
     if (_pickupLocation != null && _destinationLocation != null) {
+      await _saveLocations();
       await _drawRoutePolyline(_pickupLocation!, _destinationLocation!);
       showAllAvailableBusesSheet();
     }
@@ -551,6 +436,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     final lng = detail.result.geometry!.location.lng;
     setState(() {
       _destinationLocation = LatLng(lat, lng);
+      _destinationController.text = detail.result.name;
       _searchMarkers.removeWhere((m) => m.markerId.value == 'destination_location');
       _searchMarkers.add(
         Marker(
@@ -564,12 +450,96 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     });
 
     final controller = _mapController ?? await _controller.future;
-    controller.animateCamera(CameraUpdate.newLatLngZoom(_destinationLocation!, 14.0));
+    controller
+        .animateCamera(CameraUpdate.newLatLngZoom(_destinationLocation!, 14.0));
 
     if (_pickupLocation != null && _destinationLocation != null) {
+      await _saveLocations();
       await _drawRoutePolyline(_pickupLocation!, _destinationLocation!);
       showAllAvailableBusesSheet();
     }
+  }
+
+  Future<void> _saveLocations() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'pickupLocation': {
+          'latitude': _pickupLocation!.latitude,
+          'longitude': _pickupLocation!.longitude,
+          'name': _pickupController.text,
+        },
+        'destinationLocation': {
+          'latitude': _destinationLocation!.latitude,
+          'longitude': _destinationLocation!.longitude,
+          'name': _destinationController.text,
+        },
+      }, SetOptions(merge: true));
+    } catch (e) {
+      print('Error saving locations: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error saving locations: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _updatePickupFromText() {
+    if (_pickupController.text.isNotEmpty && _pickupLocation == null) {
+      setState(() {
+        _pickupLocation = _currentLocation;
+        _searchMarkers.removeWhere((m) => m.markerId.value == 'pickup_location');
+        _searchMarkers.add(
+          Marker(
+            markerId: const MarkerId('pickup_location'),
+            position: _pickupLocation!,
+            icon: _userMarkerIcon ??
+                BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+            infoWindow: InfoWindow(title: 'Pickup: ${_pickupController.text}'),
+          ),
+        );
+      });
+    }
+  }
+
+  void _updateDestinationFromText() {
+    if (_destinationController.text.isNotEmpty && _destinationLocation == null) {
+      setState(() {
+        _destinationLocation = _currentLocation;
+        _searchMarkers.removeWhere((m) => m.markerId.value == 'destination_location');
+        _searchMarkers.add(
+          Marker(
+            markerId: const MarkerId('destination_location'),
+            position: _destinationLocation!,
+            icon: _userMarkerIcon ??
+                BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+            infoWindow: InfoWindow(title: 'Destination: ${_destinationController.text}'),
+          ),
+        );
+      });
+    }
+  }
+
+  void _clearPickup() {
+    setState(() {
+      _pickupLocation = null;
+      _pickupController.clear();
+      _searchMarkers.removeWhere((m) => m.markerId.value == 'pickup_location');
+      _polylines.clear();
+    });
+  }
+
+  void _clearDestination() {
+    setState(() {
+      _destinationLocation = null;
+      _destinationController.clear();
+      _searchMarkers.removeWhere((m) => m.markerId.value == 'destination_location');
+      _polylines.clear();
+    });
   }
 
   void showAllAvailableBusesSheet() {
@@ -619,7 +589,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                           ),
                           subtitle: Text('Bus: ${bus['numberPlate'] ?? 'Unknown'}'),
                           trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                          onTap: () => _showBusDetailsScreen(context, bus),
+                          onTap: () => _selectBus(bus),
                         ),
                       );
                     },
@@ -648,6 +618,8 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
 
   @override
   void dispose() {
+    _pickupController.dispose();
+    _destinationController.dispose();
     _bookingSubscription?.cancel();
     super.dispose();
   }
@@ -679,43 +651,89 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: _handlePickupSelection,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black,
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      elevation: 4,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[300]!),
                     ),
-                    child: Text(
-                      _pickupLocation == null
-                          ? 'Select Pickup Location'
-                          : 'Pickup: ${_pickupLocation != null ? 'Set' : ''}',
-                      style: TextStyle(fontSize: 16),
+                    child: Row(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            'Pick Up',
+                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[600]),
+                          ),
+                        ),
+                        Expanded(
+                          child: TextField(
+                            controller: _pickupController,
+                            onTap: _handlePickupSelection,
+                            decoration: InputDecoration(
+                              hintText: 'Type or select location',
+                              border: InputBorder.none,
+                              suffixIcon: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(Icons.edit, size: 16),
+                                    onPressed: _handlePickupSelection,
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.clear, size: 16),
+                                    onPressed: _clearPickup,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
                 SizedBox(width: 8),
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: _handleDestinationSelection,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black,
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      elevation: 4,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange),
                     ),
-                    child: Text(
-                      _destinationLocation == null
-                          ? 'Select Destination'
-                          : 'Destination: ${_destinationLocation != null ? 'Set' : ''}',
-                      style: TextStyle(fontSize: 16),
+                    child: Row(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            'Where To',
+                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[600]),
+                          ),
+                        ),
+                        Expanded(
+                          child: TextField(
+                            controller: _destinationController,
+                            onTap: _handleDestinationSelection,
+                            decoration: InputDecoration(
+                              hintText: 'Type or select location',
+                              border: InputBorder.none,
+                              suffixIcon: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(Icons.edit, size: 16),
+                                    onPressed: _handleDestinationSelection,
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.clear, size: 16),
+                                    onPressed: _clearDestination,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -763,6 +781,284 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class SeatSelectionScreen extends StatefulWidget {
+  final Map<String, dynamic> bus;
+  final LatLng pickupLocation;
+  final LatLng destinationLocation;
+
+  const SeatSelectionScreen({
+    super.key,
+    required this.bus,
+    required this.pickupLocation,
+    required this.destinationLocation,
+  });
+
+  @override
+  State<SeatSelectionScreen> createState() => _SeatSelectionScreenState();
+}
+
+class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
+  List<int> selectedSeats = [];
+  List<int> bookedSeats = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBookedSeats();
+  }
+
+  Future<void> _loadBookedSeats() async {
+    try {
+      final bookingsSnapshot = await FirebaseFirestore.instance
+          .collection('bookings')
+          .where('busId', isEqualTo: widget.bus['busId'])
+          .where('status', isEqualTo: 'confirmed')
+          .get();
+
+      List<int> tempBookedSeats = [];
+      for (var doc in bookingsSnapshot.docs) {
+        if (doc.data()['seatNumber'] != null) {
+          tempBookedSeats.add(doc.data()['seatNumber']);
+        }
+      }
+
+      setState(() {
+        bookedSeats = tempBookedSeats;
+        isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading booked seats: $e');
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  void _toggleSeatSelection(int seatNumber) {
+    setState(() {
+      if (selectedSeats.contains(seatNumber)) {
+        selectedSeats.remove(seatNumber);
+      } else {
+        selectedSeats.add(seatNumber);
+      }
+    });
+  }
+
+  void _proceedToPayment() {
+    if (selectedSeats.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select at least one seat')),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PaymentScreen(
+          bus: widget.bus,
+          pickupLocation: widget.pickupLocation,
+          destinationLocation: widget.destinationLocation,
+          selectedSeats: selectedSeats,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final totalSeats = widget.bus['totalSeats'] ?? 40; // Default to 40 seats
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Select Seats - ${widget.bus['numberPlate'] ?? 'Unknown'}'),
+      ),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  Text(
+                    'Route: ${widget.bus['startPoint'] ?? 'Unknown'} → ${widget.bus['destination'] ?? 'Unknown'}',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: GridView.builder(
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 4,
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                        childAspectRatio: 1,
+                      ),
+                      itemCount: totalSeats,
+                      itemBuilder: (context, index) {
+                        final seatNumber = index + 1;
+                        final isBooked = bookedSeats.contains(seatNumber);
+                        final isSelected = selectedSeats.contains(seatNumber);
+
+                        return GestureDetector(
+                          onTap: isBooked ? null : () => _toggleSeatSelection(seatNumber),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: isBooked
+                                  ? Colors.grey
+                                  : isSelected
+                                      ? Colors.green
+                                      : Colors.blue[100],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '$seatNumber',
+                                style: TextStyle(
+                                  color: isBooked ? Colors.white : Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: selectedSeats.isEmpty ? null : _proceedToPayment,
+                    child: const Text('Proceed to Payment'),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+}
+
+class PaymentScreen extends StatefulWidget {
+  final Map<String, dynamic> bus;
+  final LatLng pickupLocation;
+  final LatLng destinationLocation;
+  final List<int> selectedSeats;
+
+  const PaymentScreen({
+    super.key,
+    required this.bus,
+    required this.pickupLocation,
+    required this.destinationLocation,
+    required this.selectedSeats,
+  });
+
+  @override
+  State<PaymentScreen> createState() => _PaymentScreenState();
+}
+
+class _PaymentScreenState extends State<PaymentScreen> {
+  bool isProcessing = false;
+
+  Future<void> _processPayment() async {
+    setState(() {
+      isProcessing = true;
+    });
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Create booking for each selected seat
+      for (var seatNumber in widget.selectedSeats) {
+        await FirebaseFirestore.instance.collection('bookings').add({
+          'userId': user.uid,
+          'busId': widget.bus['busId'],
+          'seatNumber': seatNumber,
+          'pickupLocation': {
+            'latitude': widget.pickupLocation.latitude,
+            'longitude': widget.pickupLocation.longitude,
+          },
+          'destinationLocation': {
+            'latitude': widget.destinationLocation.latitude,
+            'longitude': widget.destinationLocation.longitude,
+          },
+          'status': 'confirmed',
+          'createdAt': FieldValue.serverTimestamp(),
+          'fare': widget.bus['fare'] ?? 0,
+        });
+
+        // Update bus available seats
+        final availableSeats = widget.bus['availableSeats'] ?? widget.bus['totalSeats'] ?? 40;
+        await FirebaseFirestore.instance
+            .collection('buses')
+            .doc(widget.bus['busId'])
+            .update({
+          'availableSeats': availableSeats - 1,
+        });
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Payment successful! Booking confirmed.')),
+      );
+
+      // Navigate back to dashboard
+      Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (route) => false);
+    } catch (e) {
+      print('Error processing payment: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Payment failed: $e'), backgroundColor: Colors.red),
+      );
+    } finally {
+      setState(() {
+        isProcessing = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final fare = widget.bus['fare'] ?? 0;
+    final totalFare = fare * widget.selectedSeats.length;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Payment'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Bus: ${widget.bus['numberPlate'] ?? 'Unknown'}',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              'Route: ${widget.bus['startPoint'] ?? 'Unknown'} → ${widget.bus['destination'] ?? 'Unknown'}',
+              style: const TextStyle(fontSize: 16),
+            ),
+            Text(
+              'Selected Seats: ${widget.selectedSeats.join(', ')}',
+              style: const TextStyle(fontSize: 16),
+            ),
+            Text(
+              'Total Fare: UGX $totalFare',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: isProcessing ? null : _processPayment,
+              child: isProcessing
+                  ? const CircularProgressIndicator()
+                  : const Text('Confirm Payment'),
+            ),
+          ],
+        ),
       ),
     );
   }
