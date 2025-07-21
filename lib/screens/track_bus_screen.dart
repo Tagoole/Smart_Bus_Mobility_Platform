@@ -142,7 +142,7 @@ class _TrackBusScreenState extends State<TrackBusScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Track Your Buses'),
-        backgroundColor: Colors.blue[700],
+        backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -270,7 +270,7 @@ class _TrackBusScreenState extends State<TrackBusScreen> {
                           icon: Icon(Icons.location_searching),
                           label: Text('Track Bus'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue[700],
+                            backgroundColor: Colors.green[700],
                             foregroundColor: Colors.white,
                             padding: EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
@@ -500,8 +500,14 @@ class _BusTrackingDetailScreenState extends State<BusTrackingDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Track Your Bus'),
-        backgroundColor: Colors.blue[700],
+        backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
         actions: [
           IconButton(
             icon: Icon(Icons.refresh),
@@ -578,7 +584,7 @@ class _BusTrackingDetailScreenState extends State<BusTrackingDetailScreen> {
                       value: isLoading
                           ? '...'
                           : '${distanceKm.toStringAsFixed(1)} km',
-                      color: Colors.blue,
+                      color: Colors.green,
                     ),
                     _buildInfoTile(
                       icon: Icons.speed,

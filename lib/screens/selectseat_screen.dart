@@ -271,6 +271,16 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
+      // Update the bus's bookedSeats in Firestore
+      final busDocRef = FirebaseFirestore.instance
+          .collection('buses')
+          .doc(widget.busModel!.busId);
+      await busDocRef.set({
+        'bookedSeats': {
+          for (var seat in selectedSeats) seat.toString(): user.uid,
+        }
+      }, SetOptions(merge: true));
+
       // Send notification for booking confirmation
       try {
         final notificationService = NotificationService();

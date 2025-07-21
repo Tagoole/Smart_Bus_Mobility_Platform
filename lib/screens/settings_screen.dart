@@ -34,7 +34,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         centerTitle: true,
         backgroundColor:
-            isDarkMode ? const Color(0xFF1F1F1F) : const Color(0xFF007AFF),
+            isDarkMode ? const Color(0xFF1F1F1F) : const Color.fromARGB(255, 0, 255, 98),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -88,7 +88,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: 'Location',
                 trailing: Switch(
                   value: locationEnabled,
-                  activeColor: const Color(0xFF007AFF),
+                  activeColor: const Color.fromARGB(255, 0, 255, 55),
                   onChanged: (value) {
                     setState(() {
                       locationEnabled = value;
@@ -102,7 +102,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: 'Dark Mode',
                 trailing: Switch(
                   value: isDarkMode,
-                  activeColor: const Color(0xFF007AFF),
+                  activeColor: const Color.fromARGB(255, 0, 255, 64),
                   onChanged: (value) async {
                     await themeProvider.setDarkMode(value);
                   },
@@ -199,7 +199,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: 'Rate Driver',
                 leading: const Icon(
                   Icons.star_outline,
-                  color: Color(0xFF007AFF),
+                  color: Colors.green,
                   size: 20,
                 ),
                 trailing: Icon(
@@ -423,7 +423,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Text(
                   'Save',
                   style: TextStyle(
-                    color: const Color(0xFF007AFF),
+                    color: const Color.fromARGB(255, 0, 255, 64),
                   ),
                 ),
                 onPressed: () async {
@@ -667,7 +667,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 color: Provider.of<ThemeProvider>(context, listen: false)
                         .isDarkMode
                     ? Colors.white
-                    : Colors.blue,
+                    : Colors.green,
               ),
               const SizedBox(width: 16),
               Text(

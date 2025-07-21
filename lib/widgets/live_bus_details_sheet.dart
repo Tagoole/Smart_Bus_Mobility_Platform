@@ -6,8 +6,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:http/http.dart' as http;
-
-const String googleApiKey = 'YOUR_GOOGLE_MAPS_API_KEY';
+import 'package:smart_bus_mobility_platform1/utils/google_api_key.dart';
 
 class LiveBusDetailsSheet extends StatefulWidget {
   final String busId;
@@ -31,6 +30,7 @@ class _LiveBusDetailsSheetState extends State<LiveBusDetailsSheet> {
   int etaMinutes = 0;
   bool isLoading = true;
   Timer? _timer;
+  GoogleMapController? _mapController;
 
   @override
   void initState() {
@@ -69,6 +69,7 @@ class _LiveBusDetailsSheetState extends State<LiveBusDetailsSheet> {
   @override
   void dispose() {
     _timer?.cancel();
+    _mapController?.dispose();
     super.dispose();
   }
 
@@ -113,6 +114,7 @@ class _LiveBusDetailsSheetState extends State<LiveBusDetailsSheet> {
             etaMinutes = result['eta'];
             isLoading = false;
           });
+          _fitMapBounds();
         } catch (routeError) {
           print('Error fetching route: $routeError');
           setState(() {
@@ -132,17 +134,42 @@ class _LiveBusDetailsSheetState extends State<LiveBusDetailsSheet> {
     }
   }
 
+  void _fitMapBounds() {
+    if (_mapController == null ||
+        busLocation == null ||
+        passengerLocation == null) return;
+
+    try {
+      final bounds = LatLngBounds(
+        southwest: LatLng(
+          math.min(busLocation!.latitude, passengerLocation!.latitude),
+          math.min(busLocation!.longitude, passengerLocation!.longitude),
+        ),
+        northeast: LatLng(
+          math.max(busLocation!.latitude, passengerLocation!.latitude),
+          math.max(busLocation!.longitude, passengerLocation!.longitude),
+        ),
+      );
+
+      _mapController!.animateCamera(
+        CameraUpdate.newLatLngBounds(bounds, 50.0),
+      );
+    } catch (e) {
+      print('Error fitting map bounds: $e');
+    }
+  }
+
   Future<Map<String, dynamic>> getRouteAndEta(
       LatLng origin, LatLng destination) async {
     try {
       // Check if API key is properly configured
-      if (googleApiKey == 'YOUR_GOOGLE_MAPS_API_KEY') {
+      if (googleAPIKey.isEmpty) {
         // Fallback to simple distance calculation if API key is not configured
         return _calculateSimpleRoute(origin, destination);
       }
 
       final url =
-          'https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&key=$googleApiKey';
+          'https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&key=$googleAPIKey';
 
       final response = await http.get(Uri.parse(url)).timeout(
         const Duration(seconds: 10),
@@ -311,7 +338,12 @@ class _LiveBusDetailsSheetState extends State<LiveBusDetailsSheet> {
       children: [
         Row(
           children: [
-            const Icon(Icons.directions_bus, color: Colors.green, size: 32),
+            IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () {
+                Navigator.pop(context);
+              },
+            ),
             const SizedBox(width: 12),
             const Text(
               'Live Bus Tracking',
@@ -336,43 +368,51 @@ class _LiveBusDetailsSheetState extends State<LiveBusDetailsSheet> {
         Container(
           height: 220,
           margin: const EdgeInsets.only(top: 16),
-          child: GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: busLocation!,
-              zoom: 13,
-            ),
-            markers: {
-              Marker(
-                markerId: const MarkerId('bus'),
-                position: busLocation!,
-                infoWindow: const InfoWindow(title: 'Bus Location'),
-                icon: BitmapDescriptor.defaultMarkerWithHue(
-                  BitmapDescriptor.hueBlue,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: GoogleMap(
+              onMapCreated: (GoogleMapController controller) {
+                _mapController = controller;
+                _fitMapBounds();
+              },
+              initialCameraPosition: CameraPosition(
+                target: busLocation!,
+                zoom: 13,
+              ),
+              markers: {
+                Marker(
+                  markerId: const MarkerId('bus'),
+                  position: busLocation!,
+                  infoWindow: const InfoWindow(title: 'Bus Location'),
+                  icon: BitmapDescriptor.defaultMarkerWithHue(
+                    BitmapDescriptor.hueBlue,
+                  ),
                 ),
-              ),
-              Marker(
-                markerId: const MarkerId('passenger'),
-                position: passengerLocation!,
-                infoWindow: const InfoWindow(title: 'Your Pickup Location'),
-                icon: widget.passengerIcon ??
-                    BitmapDescriptor.defaultMarkerWithHue(
-                      BitmapDescriptor.hueGreen,
-                    ),
-              ),
-            },
-            polylines: routePolyline.isNotEmpty
-                ? {
-                    Polyline(
-                      polylineId: const PolylineId('route'),
-                      points: routePolyline,
-                      color: Colors.orange,
-                      width: 5,
-                    ),
-                  }
-                : {},
-            zoomControlsEnabled: false,
-            myLocationButtonEnabled: false,
-            liteModeEnabled: true,
+                Marker(
+                  markerId: const MarkerId('passenger'),
+                  position: passengerLocation!,
+                  infoWindow: const InfoWindow(title: 'Your Pickup Location'),
+                  icon: widget.passengerIcon ??
+                      BitmapDescriptor.defaultMarkerWithHue(
+                        BitmapDescriptor.hueGreen,
+                      ),
+                ),
+              },
+              polylines: routePolyline.isNotEmpty
+                  ? {
+                      Polyline(
+                        polylineId: const PolylineId('route'),
+                        points: routePolyline,
+                        color: Colors.blue,
+                        width: 5,
+                      ),
+                    }
+                  : {},
+              zoomControlsEnabled: true,
+              myLocationButtonEnabled: false,
+              mapToolbarEnabled: true,
+              compassEnabled: true,
+            ),
           ),
         ),
         const Padding(

@@ -345,7 +345,7 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                      valueColor: AlwaysStoppedAnimation<Color>(Color.fromARGB(255, 33, 243, 114)),
                       strokeWidth: 3,
                     ),
                     SizedBox(height: 16),
@@ -488,7 +488,7 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
                                   children: [
                                     Icon(
                                       Icons.directions_bus,
-                                      color: Colors.blue[700],
+                                      color: Colors.green[700],
                                       size: 32,
                                     ),
                                     Positioned(
@@ -566,7 +566,7 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
                                     if (bus['numberPlate'] != null)
                                       Row(
                                         children: [
-                                          const Icon(Icons.confirmation_number, size: 14, color: Colors.blue),
+                                          const Icon(Icons.confirmation_number, size: 14, color: Colors.green),
                                           const SizedBox(width: 4),
                                           Text(
                                             'Plate: ${bus['numberPlate']}',
@@ -604,8 +604,8 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
                                         icon: const Icon(Icons.info_outline, size: 18),
                                         label: const Text('Details'),
                                         style: OutlinedButton.styleFrom(
-                                          foregroundColor: Colors.blue[700],
-                                          side: BorderSide(color: Colors.blue[700]!),
+                                          foregroundColor: Colors.green[700],
+                                          side: BorderSide(color: Colors.green[700]!),
                                           shape: RoundedRectangleBorder(
                                             borderRadius: BorderRadius.circular(8),
                                           ),
@@ -622,7 +622,7 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
                                         icon: const Icon(Icons.location_searching, size: 18),
                                         label: const Text('Track Live'),
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.blue[700],
+                                          backgroundColor: Colors.green[700],
                                           foregroundColor: Colors.white,
                                           padding: const EdgeInsets.symmetric(vertical: 12),
                                           shape: RoundedRectangleBorder(
