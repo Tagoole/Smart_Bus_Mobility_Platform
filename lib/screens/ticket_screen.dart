@@ -10,7 +10,6 @@ class TicketScreen extends StatefulWidget {
   State<TicketScreen> createState() => _TicketScreenState();
 }
 
-
 class _TicketScreenState extends State<TicketScreen> {
   List<Map<String, dynamic>> _bookings = [];
   bool _isLoading = true;
@@ -40,7 +39,6 @@ class _TicketScreenState extends State<TicketScreen> {
       final snapshot = await FirebaseFirestore.instance
           .collection('bookings')
           .where('userId', isEqualTo: user.uid)
-          .orderBy('bookingTime', descending: true)
           .get();
 
       final List<Map<String, dynamic>> bookings = [];
@@ -63,6 +61,16 @@ class _TicketScreenState extends State<TicketScreen> {
           });
         }
       }
+
+      // Sort bookings by creation time in descending order
+      bookings.sort((a, b) {
+        final aTime = a['createdAt'] as Timestamp?;
+        final bTime = b['createdAt'] as Timestamp?;
+        if (aTime == null && bTime == null) return 0;
+        if (aTime == null) return 1;
+        if (bTime == null) return -1;
+        return bTime.compareTo(aTime); // Descending order
+      });
 
       setState(() {
         _bookings = bookings;
@@ -171,18 +179,35 @@ class _TicketScreenState extends State<TicketScreen> {
           ? Center(child: Text('Not logged in.'))
           : StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
-                  .collection('tickets')
-                  .where('userId', isEqualTo: user.uid)
-                  .orderBy('createdAt', descending: true)
+                  .collection('bookings')
+                  .where('userId',
+                      isEqualTo: FirebaseAuth.instance.currentUser!.uid)
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text('Error loading tickets: ${snapshot.error}'),
+                  );
+                }
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                   return _buildEmptyState();
                 }
                 final tickets = snapshot.data!.docs;
+                // Sort tickets by creation time in memory
+                tickets.sort((a, b) {
+                  final aData = a.data() as Map<String, dynamic>;
+                  final bData = b.data() as Map<String, dynamic>;
+                  final aTime = aData['createdAt'] as Timestamp?;
+                  final bTime = bData['createdAt'] as Timestamp?;
+                  if (aTime == null && bTime == null) return 0;
+                  if (aTime == null) return 1;
+                  if (bTime == null) return -1;
+                  return bTime.compareTo(aTime); // Descending order
+                });
+
                 return ListView.builder(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -192,6 +217,8 @@ class _TicketScreenState extends State<TicketScreen> {
                     final data = doc.data();
                     if (data == null) return SizedBox.shrink();
                     final ticket = data as Map<String, dynamic>;
+                    // Add the document ID to the ticket data
+                    ticket['id'] = doc.id;
                     return _buildTicketCard(ticket);
                   },
                 );
@@ -269,14 +296,27 @@ class _TicketScreenState extends State<TicketScreen> {
   }
 
   Widget _buildTicketCard(Map<String, dynamic> ticket) {
-    final price = ticket['price'] ?? 0;
+    // Get the correct fields from the booking data
+    final totalFare = ticket['totalFare'] ?? 0.0;
     final isPaid = ticket['isPaid'] ?? false;
-    final routeId = ticket['routeId'] ?? '';
-    final busId = ticket['busId'] ?? '';
-    final bookingId = ticket['bookingId'] ?? '';
-    final dateTime = ticket['dateTime'] is Timestamp
-        ? (ticket['dateTime'] as Timestamp).toDate()
+    final status = ticket['status'] ?? 'pending';
+    final departureDate = ticket['departureDate'] is Timestamp
+        ? (ticket['departureDate'] as Timestamp).toDate()
         : DateTime.now();
+    final destination =
+        ticket['destination'] ?? ticket['route'] ?? 'Unknown Destination';
+    final pickupAddress = ticket['pickupAddress'] ?? 'Unknown Pickup';
+    final bookingId = ticket['id'] ?? 'Unknown ID';
+    final busId = ticket['busId'];
+
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance.collection('buses').doc(busId).get(),
+      builder: (context, busSnapshot) {
+        String busPlate = 'Unknown Bus';
+        if (busSnapshot.hasData && busSnapshot.data!.exists) {
+          final busData = busSnapshot.data!.data() as Map<String, dynamic>?;
+          busPlate = busData?['numberPlate'] ?? 'Unknown Bus';
+        }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -296,16 +336,117 @@ class _TicketScreenState extends State<TicketScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Ticket ID: $bookingId', style: const TextStyle(fontWeight: FontWeight.bold)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Ticket #${bookingId.substring(0, 8)}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(status, departureDate),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        _getStatusText(status, departureDate),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Icon(Icons.directions_bus,
+                        color: Colors.green[700], size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Bus: $busPlate',
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.location_on, color: Colors.blue[700], size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'To: $destination',
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.access_time,
+                        color: Colors.orange[700], size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Date: ${DateFormat('MMM dd, yyyy - HH:mm').format(departureDate)}',
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.attach_money,
+                        color: Colors.green[700], size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Amount: UGX ${totalFare.toStringAsFixed(0)}',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green[700],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
             const SizedBox(height: 8),
-            Text('Bus ID: $busId'),
-            Text('Route: $routeId'),
-            Text('Date: ${DateFormat('yyyy-MM-dd HH:mm').format(dateTime)}'),
-            Text('Price: UGX $price'),
-            Text('Paid: ${isPaid ? 'Yes' : 'No'}'),
+                Row(
+                  children: [
+                    Icon(
+                      isPaid ? Icons.check_circle : Icons.cancel,
+                      color: isPaid ? Colors.green[700] : Colors.red[700],
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Payment: ${isPaid ? 'Yes' : 'No'}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: isPaid ? Colors.green[700] : Colors.red[700],
+                      ),
+                    ),
+                  ],
+                ),
           ],
         ),
       ),
+        );
+      },
     );
   }
 
@@ -399,4 +540,3 @@ class _TicketScreenState extends State<TicketScreen> {
     );
   }
 }
-
