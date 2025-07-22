@@ -30,7 +30,7 @@ for /r %%f in (*.*) do (
     echo Modified : %%f
 
     git add "%%f"
-    git commit -m "Add empty line to %%~nxf"
+    git commit -m "Added and modified -- %%~nxf"
     echo Committed: %%f
 )
 
