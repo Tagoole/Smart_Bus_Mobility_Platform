@@ -501,3 +501,4 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // If profile tab (index 4), stay on current screen
   }
 }
+
