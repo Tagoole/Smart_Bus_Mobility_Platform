@@ -71,6 +71,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
   // Timer for passenger data refresh
   Timer? _passengerRefreshTimer;
+  Timer? _etaRefreshTimer;
 
   @override
   void initState() {
@@ -88,6 +89,13 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     _passengerRefreshTimer = Timer.periodic(Duration(minutes: 1), (timer) {
       if (mounted) {
         _loadPassengers();
+      }
+    });
+
+    // ETA refresh timer (1.5 minutes)
+    _etaRefreshTimer = Timer.periodic(Duration(seconds: 90), (timer) {
+      if (mounted) {
+        _updateAllPassengerEtas();
       }
     });
 
@@ -540,93 +548,91 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     print('Waypoints: $waypoints');
 
     try {
-      List<LatLng> fullRoutePoints = [];
-      double totalDistance = 0;
-      double totalDuration = 0;
+      // Use a single Directions API call with all waypoints (excluding first and last)
+      final origin = waypoints.first;
+      final destination = waypoints.last;
+      final intermediateWaypoints = waypoints.length > 2 ? waypoints.sublist(1, waypoints.length - 1) : null;
 
-      for (int i = 0; i < waypoints.length - 1; i++) {
-        final origin = waypoints[i];
-        final destination = waypoints[i + 1];
+      final directions = await _directionsRepository.getDirections(
+        origin: origin,
+        destination: destination,
+        waypoints: intermediateWaypoints,
+      );
 
-        // Skip duplicate consecutive waypoints
-        if (origin.latitude == destination.latitude && origin.longitude == destination.longitude) {
-          print('Skipping duplicate consecutive waypoint at index $i');
-          continue;
+      if (directions != null && directions.polylinePoints.isNotEmpty) {
+        final fullRoutePoints = directions.polylinePoints
+            .map((point) => LatLng(point.latitude, point.longitude))
+            .toList();
+        print('Got ${fullRoutePoints.length} polyline points from Directions API');
+
+        setState(() {
+          _polylines.add(
+            Polyline(
+              polylineId: PolylineId('full_route'),
+              points: fullRoutePoints,
+              color: Colors.blue,
+              width: 5,
+              patterns: [
+                PatternItem.dash(20),
+                PatternItem.gap(10),
+              ],
+            ),
+          );
+        });
+
+        // Optionally update total distance/time if available
+        if (directions.totalDistance.isNotEmpty) {
+          _routeDistanceText = directions.totalDistance;
+        }
+        if (directions.totalDuration.isNotEmpty) {
+          _routeDurationText = directions.totalDuration;
         }
 
-        print('Getting directions for segment $i: $origin to $destination');
-
-        final directions = await _directionsRepository.getDirections(
-          origin: origin,
-          destination: destination,
-        );
-
-        List<LatLng> points = [];
-        if (directions != null && directions.polylinePoints.isNotEmpty) {
-          points = directions.polylinePoints
-              .map((point) => LatLng(point.latitude, point.longitude))
-              .toList();
-          print('Segment $i: Got ${points.length} polyline points');
-        } else {
-          // Always add a straight line if API fails
-          points = [origin, destination];
-          print('Failed to get directions for segment $i, using straight line');
+        // Adjust camera to show the route
+        if (_mapController != null && fullRoutePoints.isNotEmpty) {
+          final bounds = _calculateBounds(fullRoutePoints);
+          print('Adjusting camera to bounds: $bounds');
+          _mapController!.animateCamera(
+            CameraUpdate.newLatLngBounds(bounds, 50),
+          );
         }
-
-        // Ensure the segment is connected to the previous
-        if (fullRoutePoints.isNotEmpty &&
-            (fullRoutePoints.last.latitude != points.first.latitude ||
-             fullRoutePoints.last.longitude != points.first.longitude)) {
-          // If the last point of the previous segment is not the first of this, connect them
-          fullRoutePoints.add(points.first);
+      } else {
+        print('Directions API did not return a valid polyline, falling back to segmented polylines.');
+        // Fallback: draw segmented polylines between each pair of waypoints
+        List<LatLng> allPoints = [];
+        for (int i = 0; i < waypoints.length - 1; i++) {
+          final segOrigin = waypoints[i];
+          final segDest = waypoints[i + 1];
+          final segDirections = await _directionsRepository.getDirections(
+            origin: segOrigin,
+            destination: segDest,
+          );
+          if (segDirections != null && segDirections.polylinePoints.isNotEmpty) {
+            final segPoints = segDirections.polylinePoints
+                .map((point) => LatLng(point.latitude, point.longitude))
+                .toList();
+            // Avoid duplicate points
+            if (allPoints.isNotEmpty && allPoints.last == segPoints.first) {
+              allPoints.addAll(segPoints.skip(1));
+            } else {
+              allPoints.addAll(segPoints);
+            }
+          } else {
+            // Fallback: straight line
+            allPoints.add(segOrigin);
+            allPoints.add(segDest);
+          }
         }
-
-        // Add all points except the first if already present
-        if (fullRoutePoints.isNotEmpty &&
-            fullRoutePoints.last.latitude == points.first.latitude &&
-            fullRoutePoints.last.longitude == points.first.longitude) {
-          fullRoutePoints.addAll(points.skip(1));
-        } else {
-          fullRoutePoints.addAll(points);
-        }
-
-        // Extract numeric distance value (remove "km" or "mi")
-        if (directions != null) {
-          final distanceText = directions.totalDistance;
-          final distanceValue = double.tryParse(
-                  distanceText.replaceAll(RegExp(r'[^0-9.]'), '')) ??
-              0;
-          totalDistance += distanceValue;
-        }
-      }
-
-      print('Total route has ${fullRoutePoints.length} points, distance: ${totalDistance.toStringAsFixed(1)} km');
-
-      setState(() {
-        _polylines.add(
-          Polyline(
-            polylineId: PolylineId('full_route'),
-            points: fullRoutePoints,
-            color: Colors.blue,
-            width: 5,
-            patterns: [
-              PatternItem.dash(20),
-              PatternItem.gap(10),
-            ],
-          ),
-        );
-        if (totalDistance > 0) {
-          _totalRouteDistance = totalDistance;
-          _routeDistanceText = '${totalDistance.toStringAsFixed(1)} km';
-        }
-      });
-
-      if (_mapController != null && fullRoutePoints.isNotEmpty) {
-        final bounds = _calculateBounds(fullRoutePoints);
-        print('Adjusting camera to bounds: $bounds');
-        _mapController!.animateCamera(
-          CameraUpdate.newLatLngBounds(bounds, 50),
-        );
+        setState(() {
+          _polylines.add(
+            Polyline(
+              polylineId: PolylineId('full_route'),
+              points: allPoints,
+              color: Colors.red,
+              width: 5,
+            ),
+          );
+        });
       }
     } catch (e) {
       print('Error creating waypoint polyline: $e');
@@ -964,6 +970,8 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         // Always use the custom passenger icon
         final icon = _passengerMarkerIcon ?? BitmapDescriptor.defaultMarker;
 
+        final eta = _passengerEtas[bookingId] ?? 'Calculating...';
+
         _allMarkers.add(
           Marker(
             markerId: MarkerId('booking_$bookingId'),
@@ -974,7 +982,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
             infoWindow: InfoWindow(
               title: 'Passenger ${i + 1}: $userName',
               snippet:
-                  '${selectedSeats.length} seats • ${totalPassengers} people • ${passenger['pickupAddress']}' + (count > 1 ? ' (Overlapping)' : ''),
+                  '${selectedSeats.length} seats • ${totalPassengers} people • ${passenger['pickupAddress']}' + (count > 1 ? ' (Overlapping)' : '') + '\nETA: $eta',
             ),
             onTap: () => _showPassengerDetails(passenger),
           ),
@@ -1378,10 +1386,33 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   @override
   void dispose() {
     _passengerRefreshTimer?.cancel();
+    _etaRefreshTimer?.cancel();
     if (_mapController != null) {
       _mapController!.dispose();
     }
     super.dispose();
+  }
+
+  // Store ETAs for each passenger by bookingId
+  Map<String, String> _passengerEtas = {};
+
+  Future<void> _updateAllPassengerEtas() async {
+    if (_driverLocation == null) return;
+    for (var passenger in _passengers) {
+      final bookingId = passenger['bookingId'];
+      final pickup = passenger['pickupLocation'];
+      if (pickup != null) {
+        final pickupLatLng = LatLng(pickup['latitude'], pickup['longitude']);
+        final directions = await _directionsRepository.getDirections(
+          origin: _driverLocation!,
+          destination: pickupLatLng,
+        );
+        final eta = directions?.totalDuration ?? 'N/A';
+        setState(() {
+          _passengerEtas[bookingId] = eta;
+        });
+      }
+    }
   }
 
   @override
