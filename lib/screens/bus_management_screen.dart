@@ -11,8 +11,10 @@ import 'package:smart_bus_mobility_platform1/screens/admin_search_screen.dart';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart'; // Add this import
+import 'package:intl/intl.dart';
 
-const kGoogleApiKey = 'YOUR_API_KEY'; // Replace with your valid Google Maps API key
+const kGoogleApiKey =
+    'YOUR_API_KEY'; // Replace with your valid Google Maps API key
 
 class BusManagementScreen extends StatefulWidget {
   const BusManagementScreen({super.key});
@@ -43,6 +45,14 @@ class _BusManagementScreenState extends State<BusManagementScreen>
   final _destinationController = TextEditingController();
   final _fareController = TextEditingController();
   final _departureTimeController = TextEditingController();
+  final _dayController = TextEditingController(); // For typing the date
+
+  // Dropdown selections for date and time
+  int? _selectedYear;
+  int? _selectedMonth;
+  int? _selectedHour;
+  int? _selectedMinute;
+  String _selectedAmPm = 'AM';
 
   // Dropdown selections
   String? selectedDriverEmail;
@@ -95,6 +105,7 @@ class _BusManagementScreenState extends State<BusManagementScreen>
     _destinationController.dispose();
     _fareController.dispose();
     _departureTimeController.dispose();
+    _dayController.dispose(); // Dispose the new controller
     _mapController?.dispose();
     super.dispose();
   }
@@ -240,8 +251,8 @@ class _BusManagementScreenState extends State<BusManagementScreen>
               position: _destinationLatLng!,
               icon: BitmapDescriptor.defaultMarkerWithHue(
                   BitmapDescriptor.hueRed),
-              infoWindow:
-                  InfoWindow(title: 'Destination: ${_destinationController.text}'),
+              infoWindow: InfoWindow(
+                  title: 'Destination: ${_destinationController.text}'),
             ),
           };
         });
@@ -351,7 +362,8 @@ class _BusManagementScreenState extends State<BusManagementScreen>
         _routePolylines.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please complete all required fields and ensure a valid route is selected'),
+          content: Text(
+              'Please complete all required fields and ensure a valid route is selected'),
           backgroundColor: Colors.red,
         ),
       );
@@ -375,8 +387,18 @@ class _BusManagementScreenState extends State<BusManagementScreen>
             .map((p) => {'lat': p.latitude, 'lng': p.longitude})
             .toList(),
         'fare': double.parse(_fareController.text.trim()),
-        'departureTime': _departureTimeController.text.trim().isNotEmpty
-            ? _departureTimeController.text.trim()
+        'departureTime': (_selectedYear != null &&
+                _selectedMonth != null &&
+                _dayController.text.isNotEmpty &&
+                _selectedHour != null &&
+                _selectedMinute != null)
+            ? DateTime(
+                _selectedYear!,
+                _selectedMonth!,
+                int.parse(_dayController.text),
+                (_selectedHour! % 12) + (_selectedAmPm == 'PM' ? 12 : 0),
+                _selectedMinute!,
+              ).toIso8601String()
             : null,
         'seatCapacity': seatCapacity,
         'availableSeats': seatCapacity,
@@ -832,6 +854,23 @@ class _BusManagementScreenState extends State<BusManagementScreen>
                 ),
               ],
             ),
+            if (bus.departureTime != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),
+                child: Row(
+                  children: [
+                    const Icon(Icons.access_time,
+                        size: 16, color: Color(0xFF576238)),
+                    const SizedBox(width: 6),
+                    Text(
+                      DateFormat('MMM d, yyyy – hh:mm a')
+                          .format(bus.departureTime!),
+                      style: const TextStyle(
+                          fontSize: 13, color: Color(0xFF576238)),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
@@ -859,6 +898,15 @@ class _BusManagementScreenState extends State<BusManagementScreen>
   }
 
   void _showAddBusDialog() {
+    // Clear previous selections when opening the dialog
+    _dayController.clear();
+    _departureTimeController.clear();
+    _selectedYear = null;
+    _selectedMonth = null;
+    _selectedHour = null;
+    _selectedMinute = null;
+    _selectedAmPm = 'AM';
+
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -1134,7 +1182,7 @@ class _BusManagementScreenState extends State<BusManagementScreen>
                         _buildTextField(
                           controller: _fareController,
                           label: 'Fare (UGX)',
-                          hint: '15000',
+                          hint: 'e.g., 15000',
                           keyboardType: TextInputType.number,
                           validator: (value) {
                             if (value == null || value.isEmpty)
@@ -1145,44 +1193,160 @@ class _BusManagementScreenState extends State<BusManagementScreen>
                           },
                         ),
                         const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF3F4F6),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFE5E7EB)),
+                        AbsorbPointer(
+                          child: _buildTextField(
+                            controller: _departureTimeController,
+                            label: 'Selected Departure Time',
+                            hint: 'Date and time will appear here',
                           ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.info_outline,
-                                  size: 16, color: Color(0xFF6B7280)),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                    'Seat Capacity: $seatCapacity seats (fixed for all buses)',
-                                    style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Color(0xFF6B7280))),
+                        ),
+                        const SizedBox(height: 12),
+                        // Date selection row
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: DropdownButtonFormField<int>(
+                                value: _selectedMonth,
+                                items: List.generate(12, (i) => i + 1)
+                                    .map((m) => DropdownMenuItem(
+                                        value: m,
+                                        child: Text(DateFormat('MMM')
+                                            .format(DateTime(2000, m)))))
+                                    .toList(),
+                                onChanged: (val) =>
+                                    setState(() => _selectedMonth = val),
+                                decoration:
+                                    const InputDecoration(labelText: 'Month'),
+                                validator: (val) =>
+                                    val == null ? 'Required' : null,
                               ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildTextField(
+                                controller: _dayController,
+                                label: 'Date',
+                                hint: 'e.g., 25',
+                                keyboardType: TextInputType.number,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty)
+                                    return 'Required';
+                                  final day = int.tryParse(value);
+                                  if (day == null) return 'Invalid';
+                                  if (_selectedMonth != null &&
+                                      _selectedYear != null) {
+                                    final maxDays = _daysInMonth(
+                                        _selectedYear!, _selectedMonth!);
+                                    if (day < 1 || day > maxDays)
+                                      return '1-$maxDays';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: DropdownButtonFormField<int>(
+                                value: _selectedYear,
+                                items: List.generate(
+                                        2, (i) => DateTime.now().year + i)
+                                    .map((y) => DropdownMenuItem(
+                                        value: y, child: Text(y.toString())))
+                                    .toList(),
+                                onChanged: (val) =>
+                                    setState(() => _selectedYear = val),
+                                decoration:
+                                    const InputDecoration(labelText: 'Year'),
+                                validator: (val) =>
+                                    val == null ? 'Required' : null,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 16),
-                        _buildTextField(
-                          controller: _departureTimeController,
-                          label: 'Departure Time (Optional)',
-                          hint: '2024-01-15T10:00:00',
-                          validator: (value) {
-                            if (value != null && value.isNotEmpty) {
-                              try {
-                                DateTime.parse(value);
-                              } catch (e) {
-                                return 'Please enter valid date format (YYYY-MM-DDTHH:MM:SS)';
+                        const SizedBox(height: 12),
+                        // Time selection row
+                        Row(
+                          children: [
+                            Expanded(
+                              child: DropdownButtonFormField<int>(
+                                value: _selectedHour,
+                                items: List.generate(12, (i) => i + 1)
+                                    .map((h) => DropdownMenuItem(
+                                        value: h,
+                                        child:
+                                            Text(h.toString().padLeft(2, '0'))))
+                                    .toList(),
+                                onChanged: (val) =>
+                                    setState(() => _selectedHour = val),
+                                decoration:
+                                    const InputDecoration(labelText: 'Hour'),
+                                validator: (val) =>
+                                    val == null ? 'Required' : null,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: DropdownButtonFormField<int>(
+                                value: _selectedMinute,
+                                items: List.generate(12, (i) => i * 5)
+                                    .map((m) => DropdownMenuItem(
+                                        value: m,
+                                        child:
+                                            Text(m.toString().padLeft(2, '0'))))
+                                    .toList(),
+                                onChanged: (val) =>
+                                    setState(() => _selectedMinute = val),
+                                decoration:
+                                    const InputDecoration(labelText: 'Minute'),
+                                validator: (val) =>
+                                    val == null ? 'Required' : null,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: DropdownButtonFormField<String>(
+                                value: _selectedAmPm,
+                                items: ['AM', 'PM']
+                                    .map((p) => DropdownMenuItem(
+                                        value: p, child: Text(p)))
+                                    .toList(),
+                                onChanged: (val) =>
+                                    setState(() => _selectedAmPm = val ?? 'AM'),
+                                decoration:
+                                    const InputDecoration(labelText: 'AM/PM'),
+                              ),
+                            ),
+                          ],
+                        ),
+                        // Builder to update the display text field
+                        Builder(builder: (context) {
+                          if (_selectedYear != null &&
+                              _selectedMonth != null &&
+                              _dayController.text.isNotEmpty &&
+                              int.tryParse(_dayController.text) != null &&
+                              _selectedHour != null &&
+                              _selectedMinute != null) {
+                            final day = int.parse(_dayController.text);
+                            final hour = (_selectedHour! % 12) +
+                                (_selectedAmPm == 'PM' ? 12 : 0);
+                            final dt = DateTime(
+                              _selectedYear!,
+                              _selectedMonth!,
+                              day,
+                              hour,
+                              _selectedMinute!,
+                            );
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (mounted) {
+                                _departureTimeController.text =
+                                    DateFormat('MMM d, yyyy – hh:mm a')
+                                        .format(dt);
                               }
-                            }
-                            return null;
-                          },
-                        ),
+                            });
+                          }
+                          return const SizedBox.shrink();
+                        }),
                       ],
                     ),
                   ),
@@ -1340,5 +1504,9 @@ class _BusManagementScreenState extends State<BusManagementScreen>
       ),
     );
   }
-}
 
+  int _daysInMonth(int year, int month) {
+    if (month == 12) return 31;
+    return DateTime(year, month + 1, 0).day;
+  }
+}
