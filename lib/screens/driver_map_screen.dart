@@ -381,151 +381,71 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
   // Generate optimized route using BusRouteService
   Future<void> _generateOptimizedRoute() async {
-    // Check if we have the driver's location
     if (_driverLocation == null) {
       print('Driver location is null, attempting to get location');
       await _getCurrentLocation();
-
       if (_driverLocation == null) {
         print('Failed to get driver location');
         _showSnackBar('Unable to get your location. Please try again.');
         return;
       }
     }
-
-    // Check if we have passengers
     if (_passengers.isEmpty) {
       print('No passengers available for route generation');
       _showSnackBar('No passengers available for route generation');
       return;
     }
-
     try {
-      // Show loading indicator
       setState(() {
         _isLoading = true;
         _statusMessage = 'Optimizing route...';
       });
-
       print('Starting route generation with driver at: $_driverLocation');
       print('Number of passengers: ${_passengers.length}');
-
-      // Clear previous route data
       _routeService.clearAllPassengers();
       _polylines.clear();
 
-      // Add driver's current location as starting point
-      final driverStop = map_service.BusStop(
-        id: 'driver',
+      // Build start and end stops from admin-set points
+      final startStop = map_service.BusStop(
+        id: 'start',
+        location: map_service.LatLng(_driverBus!.startLat!, _driverBus!.startLng!),
+        name: _driverBus!.startPoint,
+      );
+      final endStop = map_service.BusStop(
+        id: 'end',
+        location: map_service.LatLng(_driverBus!.destinationLat!, _driverBus!.destinationLng!),
+        name: _driverBus!.destination,
+      );
+
+      // Build passenger stops
+      final passengerStops = _passengers.map((p) => map_service.BusStop(
+        id: p['userId'],
         location: map_service.LatLng(
-            _driverLocation!.latitude, _driverLocation!.longitude),
-        name: 'Driver Location',
+          p['pickupLocation']['latitude'],
+          p['pickupLocation']['longitude'],
+        ),
+        name: p['pickupAddress'] ?? 'Unknown',
+      )).toList();
+
+      // Optimize only the passenger stops using SOM
+      final som = map_service.BusRouteSOM(
+        coordinates: passengerStops.map((s) => s.location).toList(),
       );
+      await som.train();
+      final optimizedOrder = som.extractOptimalRoute();
+      final optimizedPickups = optimizedOrder.map((i) => passengerStops[i]).toList();
 
-      // Add driver as first stop
-      _routeService.addPassengerPickup(
-        'driver',
-        map_service.LatLng(
-            _driverLocation!.latitude, _driverLocation!.longitude),
-        'Driver Location',
-      );
-
-      // Add all visible passengers to the route service
-      for (var passenger in _passengers) {
-        if (passenger['pickupLocation'] != null) {
-          final location = passenger['pickupLocation'];
-          final latLng = map_service.LatLng(
-            location['latitude'],
-            location['longitude'],
-          );
-
-          _routeService.addPassengerPickup(
-            passenger['userId'],
-            latLng,
-            passenger['pickupAddress'] ?? 'Unknown location',
-          );
-        }
-      }
-
-      // Add bus destination if available
-      if (_driverBus != null &&
-          _driverBus!.destinationLat != null &&
-          _driverBus!.destinationLng != null) {
-        final destinationStop = map_service.BusStop(
-          id: 'destination',
-          location: map_service.LatLng(
-            _driverBus!.destinationLat!,
-            _driverBus!.destinationLng!,
-          ),
-          name: _driverBus!.destination,
-        );
-
-        // Add destination as last stop
-        _routeService.addPassengerPickup(
-          'destination',
-          map_service.LatLng(
-              _driverBus!.destinationLat!, _driverBus!.destinationLng!),
-          _driverBus!.destination,
-        );
-      }
-
-      // Force optimization
-      print('Forcing route optimization...');
-      await _routeService.optimizeNow();
-      print('Route optimization complete');
-
-      // Get optimized route coordinates
-      final routeCoordinates = _routeService.getOptimizedRouteCoordinates();
-      print('Got ${routeCoordinates.length} optimized route coordinates');
-
-      // Convert to Google Maps LatLng
-      final googleMapCoordinates = routeCoordinates
-          .map((point) => LatLng(point.latitude, point.longitude))
-          .toList();
-
-      // Get total distance and time
-      _totalRouteDistance = _routeService.getEstimatedTotalDistance() ?? 0;
-      _totalRouteTime = _routeService.getEstimatedTotalTime() ?? 0;
-      print(
-          'Total route distance: ${_totalRouteDistance.toStringAsFixed(1)} km');
-      print('Total route time: ${_totalRouteTime.toStringAsFixed(0)} min');
-
-      // Get ordered bus stops
-      final orderedStops = _routeService.getOrderedBusStops();
-      print('Got ${orderedStops.length} ordered stops');
-
-      // Create a list of LatLng points for each stop
-      final List<LatLng> waypoints = [];
-
-      // Start with driver location
-      if (_driverLocation != null) {
-        waypoints.add(_driverLocation!);
-      }
-
-      // Add each passenger location in optimized order
+      // Final ordered stops: start, optimized pickups, end
+      final orderedStops = [startStop, ...optimizedPickups, endStop];
+      print('[DEBUG] Ordered stops for route:');
       for (var stop in orderedStops) {
-        if (stop.id != 'driver' && stop.id != 'destination') {
-          waypoints
-              .add(LatLng(stop.location.latitude, stop.location.longitude));
-        }
+        print('  ${stop.name} at ${stop.location}');
       }
 
-      // Add destination if available
-      if (_driverBus != null &&
-          _driverBus!.destinationLat != null &&
-          _driverBus!.destinationLng != null) {
-        waypoints.add(
-            LatLng(_driverBus!.destinationLat!, _driverBus!.destinationLng!));
-      }
-
-      print('Created ${waypoints.length} waypoints for polyline');
-
-      // Now create a road-following polyline through all waypoints
+      // Create waypoints for Directions API
+      final waypoints = orderedStops.map((s) => LatLng(s.location.latitude, s.location.longitude)).toList();
       await _createWaypointPolyline(waypoints);
-
-      // Find nearest passenger for the detail view
       await _findNearestPassengerAndDrawRoute();
-
       setState(() {
         _isLoading = false;
         _statusMessage = '';
