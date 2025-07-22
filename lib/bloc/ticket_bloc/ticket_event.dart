@@ -7,3 +7,6 @@ sealed class TicketEvent extends Equatable {
   List<Object> get props => [];
 }
 
+
+
+

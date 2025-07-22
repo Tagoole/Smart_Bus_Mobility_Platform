@@ -147,3 +147,5 @@ class MarkerIcons {
       BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
 }
 
+
+

@@ -1427,3 +1427,5 @@ class SlideUpRoute extends PageRouteBuilder {
           transitionDuration: const Duration(milliseconds: 500),
         );
 }
+
+
