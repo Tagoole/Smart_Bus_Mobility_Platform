@@ -112,6 +112,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final email = userData?['email'] ?? 'No Email';
     final phone = userData?['contact'] ?? 'No Phone';
     final imageUrl = userData?['profileImageUrl'] ?? '';
+    final role = (userData?['role']?.toString().toLowerCase() ?? 'user');
 
     return Scaffold(
       body: Container(
@@ -143,7 +144,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       child: IconButton(
                         icon: const Icon(Icons.arrow_back, color: Colors.white),
-                        onPressed: () => _onItemTapped(0), // Go to Home
+                        onPressed: () async {
+                          // Try to get the user role from Firestore
+                          final user = FirebaseAuth.instance.currentUser;
+                          String? role;
+                          if (user != null) {
+                            final doc = await FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(user.uid)
+                                .get();
+                            role =
+                                doc.data()?['role']?.toString().toLowerCase();
+                          }
+                          if (role == 'driver') {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => NavBarScreen(
+                                      userRole: 'driver', initialTab: 0)),
+                              (route) => false,
+                            );
+                          } else if (role == 'admin') {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => NavBarScreen(
+                                      userRole: 'admin', initialTab: 0)),
+                              (route) => false,
+                            );
+                          } else {
+                            // Default: go to customer home
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => NavBarScreen(
+                                      userRole: 'user', initialTab: 0)),
+                              (route) => false,
+                            );
+                          }
+                        },
                       ),
                     ),
                     const Text(
@@ -265,24 +304,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         },
                       ),
 
-                      const SizedBox(height: 15),
-
-                      _buildProfileOption(
-                        icon: Icons.confirmation_number,
-                        title: 'My Tickets',
-                        subtitle: 'View your ticket history',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => TicketScreen()),
-                          );
-                          // Or, if using named routes:
-                          // Navigator.pushNamed(context, '/ticketScreen');
-                        },
-                      ),
-
-                      const SizedBox(height: 15),
+                      if (role == 'user' || role == 'passenger') ...[
+                        const SizedBox(height: 15),
+                        _buildProfileOption(
+                          icon: Icons.confirmation_number,
+                          title: 'My Tickets',
+                          subtitle: 'View your ticket history',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => TicketScreen()),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 15),
+                      ],
 
                       _buildProfileOption(
                         icon: Icons.location_on,
@@ -293,23 +330,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         },
                       ),
 
-                      const SizedBox(height: 15),
-
-                      _buildProfileOption(
-                        icon: Icons.payment,
-                        title: 'Payment Methods',
-                        subtitle: 'Manage your payment options',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => PaymentScreen(),
-                            ),
-                          );
-                        },
-                      ),
-
-                      const SizedBox(height: 15),
+                      if (role == 'user' || role == 'passenger') ...[
+                        const SizedBox(height: 15),
+                        _buildProfileOption(
+                          icon: Icons.payment,
+                          title: 'Payment Methods',
+                          subtitle: 'Manage your payment options',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => PaymentScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 15),
+                      ],
 
                       _buildProfileOption(
                         icon: Icons.notifications,
@@ -501,5 +538,3 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // If profile tab (index 4), stay on current screen
   }
 }
-
-
