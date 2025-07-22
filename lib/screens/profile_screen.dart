@@ -143,7 +143,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       child: IconButton(
                         icon: const Icon(Icons.arrow_back, color: Colors.white),
-                        onPressed: () => _onItemTapped(0), // Go to Home
+                        onPressed: () async {
+                          // Try to get the user role from Firestore
+                          final user = FirebaseAuth.instance.currentUser;
+                          String? role;
+                          if (user != null) {
+                            final doc = await FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(user.uid)
+                                .get();
+                            role =
+                                doc.data()?['role']?.toString().toLowerCase();
+                          }
+                          if (role == 'driver') {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => NavBarScreen(
+                                      userRole: 'driver', initialTab: 0)),
+                              (route) => false,
+                            );
+                          } else if (role == 'admin') {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => NavBarScreen(
+                                      userRole: 'admin', initialTab: 0)),
+                              (route) => false,
+                            );
+                          } else {
+                            // Default: go to customer home
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => NavBarScreen(
+                                      userRole: 'user', initialTab: 0)),
+                              (route) => false,
+                            );
+                          }
+                        },
                       ),
                     ),
                     const Text(
@@ -501,5 +539,3 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // If profile tab (index 4), stay on current screen
   }
 }
-
-
