@@ -88,6 +88,7 @@ dependencies:
   # Social sign-in dependencies
   google_sign_in: ^6.2.1
   flutter_facebook_auth: ^6.0.4
+  flutter_web_auth: ^0.5.0
 
 dev_dependencies:
   flutter_test:

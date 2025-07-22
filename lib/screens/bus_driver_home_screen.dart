@@ -268,6 +268,14 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                                   'Seats: ${_driverBus!.seatCapacity}',
                                 ),
                                 SizedBox(height: 4),
+                                // Departure Time (EAT)
+                                Text(
+                                  'Departure Time: ' +
+                                    (_driverBus!.departureTime != null
+                                      ? _formatEAT(_driverBus!.departureTime!)
+                                      : 'Not set'),
+                                ),
+                                SizedBox(height: 4),
                                 Row(
                                   children: [
                                     Text('Status: '),
@@ -375,6 +383,14 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
         ],
       ),
     );
+  }
+
+  String _formatEAT(DateTime dateTime) {
+    // Convert to East Africa Time (UTC+3)
+    final eat = dateTime.toUtc().add(const Duration(hours: 3));
+    return '${eat.year.toString().padLeft(4, '0')}-${eat.month.toString().padLeft(2, '0')}-${eat.day.toString().padLeft(2, '0')} '
+        '${eat.hour > 12 ? (eat.hour - 12).toString().padLeft(2, '0') : eat.hour.toString().padLeft(2, '0')}:${eat.minute.toString().padLeft(2, '0')}'
+        ' ${eat.hour >= 12 ? 'PM' : 'AM'} (EAT)';
   }
 }
 
