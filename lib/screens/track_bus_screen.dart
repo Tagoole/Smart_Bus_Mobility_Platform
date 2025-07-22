@@ -520,6 +520,18 @@ class _BusTrackingDetailScreenState extends State<BusTrackingDetailScreen> {
     }
   }
 
+  int _parseEta(String eta) {
+    if (eta.contains('min')) {
+      return int.tryParse(eta.replaceAll(' min', '')) ?? 0;
+    } else if (eta.contains('h')) {
+      final parts = eta.split('h ');
+      final hours = int.tryParse(parts[0]) ?? 0;
+      final minutes = int.tryParse(parts[1].replaceAll('m', '')) ?? 0;
+      return (hours * 60) + minutes;
+    }
+    return 0;
+  }
+
   double _getDistance(LatLng point1, LatLng point2) {
     const double earthRadius = 6371; // km
     final double lat1Rad = point1.latitude * (3.14159 / 180);
@@ -557,10 +569,14 @@ class _BusTrackingDetailScreenState extends State<BusTrackingDetailScreen> {
             .decodePolyline(points)
             .map((point) => LatLng(point.latitude, point.longitude))
             .toList();
-
+        // Prioritize the ETA from the booking data, which is updated periodically.
+        final bookingETA = widget.booking['eta'];
+        final calculatedEtaMinutes = (duration / 60).round();
         setState(() {
           routePolyline = polylinePoints;
-          etaMinutes = (duration / 60).round();
+          // Use booking ETA if available, otherwise use calculated ETA.
+          etaMinutes =
+              bookingETA != null ? _parseEta(bookingETA) : calculatedEtaMinutes;
           distanceKm = distance / 1000;
           isLoading = false;
         });

@@ -105,23 +105,34 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
     final currentLocation = busData['currentLocation'];
     final pickupLocation = bookingData['pickupLocation'];
 
-    if (currentLocation != null && pickupLocation != null) {
+    // Prioritize ETA from booking data, which is updated periodically.
+    if (bookingData['eta'] != null) {
+      busInfo['eta'] = bookingData['eta'];
+    } else if (currentLocation != null && pickupLocation != null) {
+      // Fallback to manual calculation if ETA is not available in booking data.
       try {
-        // Calculate ETA
         final eta = await _calculateETA(currentLocation, pickupLocation);
         busInfo['eta'] = eta;
+      } catch (e) {
+        print('Error calculating ETA fallback: $e');
+        busInfo['eta'] = 'Calculating...';
+      }
+    } else {
+      busInfo['eta'] = 'Location unavailable';
+    }
 
+    if (currentLocation != null && pickupLocation != null) {
+      try {
         // Generate route polyline points from the driver's location to the user's pickup location.
         final routePoints =
             await _generateRoutePoints(currentLocation, pickupLocation);
         busInfo['routePoints'] = routePoints;
       } catch (e) {
         print('Error enhancing bus info: $e');
-        busInfo['eta'] = 'Calculating...';
+        // Do not reset ETA, just handle route points error.
         busInfo['routePoints'] = <LatLng>[];
       }
     } else {
-      busInfo['eta'] = 'Location unavailable';
       busInfo['routePoints'] = <LatLng>[];
     }
 
