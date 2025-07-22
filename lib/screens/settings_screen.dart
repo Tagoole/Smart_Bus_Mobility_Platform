@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:smart_bus_mobility_platform1/utils/theme_provider.dart';
 import 'package:smart_bus_mobility_platform1/utils/notification_service.dart';
+import 'nav_bar_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -38,7 +39,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () async {
+            // Try to get the user role from Firestore
+            final user = FirebaseAuth.instance.currentUser;
+            String? role;
+            if (user != null) {
+              final doc = await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .get();
+              role = doc.data()?['role']?.toString().toLowerCase();
+            }
+            if (role == 'driver') {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (context) =>
+                        NavBarScreen(userRole: 'driver', initialTab: 0)),
+                (route) => false,
+              );
+            } else if (role == 'admin') {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (context) =>
+                        NavBarScreen(userRole: 'admin', initialTab: 0)),
+                (route) => false,
+              );
+            } else {
+              // Default: go to customer home
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (context) =>
+                        NavBarScreen(userRole: 'user', initialTab: 0)),
+                (route) => false,
+              );
+            }
+          },
         ),
       ),
       body: SingleChildScrollView(
@@ -88,7 +126,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: 'Location',
                 trailing: Switch(
                   value: locationEnabled,
-                  activeColor:  Colors.green[700],
+                  activeColor: Colors.green[700],
                   onChanged: (value) {
                     setState(() {
                       locationEnabled = value;
@@ -642,7 +680,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _deleteUserAccount() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-                ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('User not logged in'),
           backgroundColor: Colors.red,
@@ -1140,5 +1178,3 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 }
-
-
