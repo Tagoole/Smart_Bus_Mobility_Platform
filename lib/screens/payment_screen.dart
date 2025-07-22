@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'paymentsuccess_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class PaymentScreen extends StatefulWidget {
   const PaymentScreen({super.key});
@@ -413,8 +414,7 @@ class _PaymentScreen extends State<PaymentScreen> {
                     ),
                     actions: [
                       TextButton(
-                        onPressed: () =>
-                            Navigator.of(context).pop(pinController.text),
+                        onPressed: () => Navigator.of(context).pop(pinController.text),
                         child: const Text('OK'),
                       ),
                     ],
@@ -426,15 +426,20 @@ class _PaymentScreen extends State<PaymentScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      'UGX ${amountController.text} deducted from ${phoneController.text}',
+                      'UGX  [1m${amountController.text} [0m deducted from ${phoneController.text}',
                     ),
                     backgroundColor: Colors.green,
                   ),
                 );
-                bool paymentSuccess =
-                    true; // Replace with your actual payment result
+                bool paymentSuccess = true; // Replace with your actual payment result
 
                 if (paymentSuccess) {
+                  // Update booking as paid
+                  final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+                  final bookingId = args != null ? args['bookingId'] : null;
+                  if (bookingId != null) {
+                    await FirebaseFirestore.instance.collection('bookings').doc(bookingId).update({'isPaid': true});
+                  }
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -442,7 +447,7 @@ class _PaymentScreen extends State<PaymentScreen> {
                     ),
                   );
                 } else {
-                  
+                  // Handle payment failure if needed
                 }
               }
             },
