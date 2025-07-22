@@ -101,76 +101,52 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
       return;
     }
     final bus = widget.bus;
-    final busId = bus['busId'] ?? bus['id'];
-    final driverId = bus['driverId'];
-    try {
-      await FirebaseFirestore.instance.collection('bookings').add({
-        'userId': user.uid,
-        'busId': busId,
-        'driverId': driverId,
-        'pickupLocation': {
-          'latitude': _pickupCoords!.latitude,
-          'longitude': _pickupCoords!.longitude,
-        },
-        'dropoffLocation': _dropoffCoords != null
-            ? {
-                'latitude': _dropoffCoords!.latitude,
-                'longitude': _dropoffCoords!.longitude,
-              }
-            : null,
-        'bookingTime': FieldValue.serverTimestamp(),
-        'status': 'confirmed',
-      });
-      setState(() {
-        _showBusMarker = true;
-      });
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Column(
-            children: [
-              Icon(Icons.check_circle, color: Colors.green, size: 48),
-              SizedBox(height: 12),
-              Text('Booking Confirmed!', style: TextStyle(fontWeight: FontWeight.bold)),
-            ],
-          ),
-          content: Text(
-              'Your pickup${_dropoffCoords != null ? ' and dropoff' : ''} location${_dropoffCoords != null ? 's have' : ' has'} been saved and your bus is booked. Proceed to select the number of people and seats.'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-                Navigator.of(context).pop(); // Close preview screen
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => SelectSeatScreen(
-                      origin: bus['startPoint'],
-                      destination: bus['destination'],
-                      busProvider: bus['vehicleModel'] ?? '',
-                      plateNumber: bus['numberPlate'] ?? '',
-                      busModel: BusModel.fromJson(bus, bus['busId'] ?? bus['id'] ?? ''),
-                      pickupLocation: _pickupCoords,
-                      pickupAddress: pickupLocation,
-                      departureDate: null,
-                      returnDate: null,
-                      adultCount: 1,
-                      childrenCount: 0,
-                    ),
-                  ),
-                );
-              },
-              child: Text('Continue'), // Fixed: Replaced 'silver' with 'child'
-            ),
+    // Removed Firestore booking creation here. Only navigate to seat selection.
+    setState(() {
+      _showBusMarker = true;
+    });
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Column(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green, size: 48),
+            SizedBox(height: 12),
+            Text('Pickup Saved!', style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error saving booking: $e')),
-      );
-    }
+        content: Text(
+            'Your pickup${_dropoffCoords != null ? ' and dropoff' : ''} location${_dropoffCoords != null ? 's have' : ' has'} been saved. Proceed to select the number of people and seats.'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // Close dialog
+              Navigator.of(context).pop(); // Close preview screen
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => SelectSeatScreen(
+                    origin: bus['startPoint'],
+                    destination: bus['destination'],
+                    busProvider: bus['vehicleModel'] ?? '',
+                    plateNumber: bus['numberPlate'] ?? '',
+                    busModel: BusModel.fromJson(bus, bus['busId'] ?? bus['id'] ?? ''),
+                    pickupLocation: _pickupCoords,
+                    pickupAddress: pickupLocation,
+                    departureDate: null,
+                    returnDate: null,
+                    adultCount: 1,
+                    childrenCount: 0,
+                  ),
+                ),
+              );
+            },
+            child: Text('Continue'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

@@ -84,8 +84,8 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       }
     });
 
-    // Set up periodic refresh for passengers
-    _passengerRefreshTimer = Timer.periodic(Duration(minutes: 2), (timer) {
+    // Change the refresh timer to 1 minute
+    _passengerRefreshTimer = Timer.periodic(Duration(minutes: 1), (timer) {
       if (mounted) {
         _loadPassengers();
       }
@@ -277,7 +277,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
           .get();
 
       print(
-          'Found ${bookingsSnapshot.docs.length} bookings for bus ${_driverBus!.busId}');
+          'Found  [1m${bookingsSnapshot.docs.length} [0m bookings for bus ${_driverBus!.busId}');
 
       // Use a set to track unique booking IDs to avoid duplicates
       final Set<String> processedBookingIds = {};
@@ -287,6 +287,12 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         final bookingData = doc.data();
         final bookingId = doc.id;
         final userId = bookingData['userId'];
+
+        // Only process bookings with a valid pickupLocation
+        if (bookingData['pickupLocation'] == null) {
+          print('Skipping booking $bookingId: no pickupLocation');
+          continue;
+        }
 
         // Skip if we've already processed this booking
         if (processedBookingIds.contains(bookingId)) {
@@ -328,8 +334,10 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       // Close the loading dialog
       Navigator.of(context).pop();
 
+      // Only include passengers with valid pickupLocation
+      final filteredPassengers = passengers.where((p) => p['pickupLocation'] != null).toList();
       setState(() {
-        _passengers = passengers;
+        _passengers = filteredPassengers;
         _isLoading = false;
       });
 
@@ -342,17 +350,22 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         _showSnackBar('${_passengers.length} passengers loaded successfully');
       }
 
-      // Generate optimized route if we have passengers and driver location
-      if (_passengers.isNotEmpty && _driverLocation != null) {
-        await _generateOptimizedRoute();
+      // Debug prints for _loadPassengers
+      for (var p in passengers) {
+        if (p['pickupLocation'] == null) {
+          print('[DEBUG] Booking ${p['bookingId']} for user ${p['userName']} has no pickupLocation and will not be shown on the map.');
+        } else {
+          final loc = p['pickupLocation'];
+          print('[DEBUG] Booking ${p['bookingId']} for user ${p['userName']} at location (${loc['latitude']}, ${loc['longitude']}) will be shown.');
+        }
       }
-    } catch (e) {
-      // Close the loading dialog
-      Navigator.of(context).pop();
 
+    } catch (e) {
+      Navigator.of(context).pop();
       print('Error loading passengers: $e');
       setState(() {
         _isLoading = false;
+        _statusMessage = 'Error loading passengers:  [31m${e.toString()} [0m';
       });
       _showSnackBar('Error loading passengers: ${e.toString()}');
     }
@@ -527,59 +540,68 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     print('Waypoints: $waypoints');
 
     try {
-      // We'll build the polyline segment by segment
       List<LatLng> fullRoutePoints = [];
       double totalDistance = 0;
       double totalDuration = 0;
 
-      // Process waypoints in pairs to create route segments
       for (int i = 0; i < waypoints.length - 1; i++) {
         final origin = waypoints[i];
         final destination = waypoints[i + 1];
 
+        // Skip duplicate consecutive waypoints
+        if (origin.latitude == destination.latitude && origin.longitude == destination.longitude) {
+          print('Skipping duplicate consecutive waypoint at index $i');
+          continue;
+        }
+
         print('Getting directions for segment $i: $origin to $destination');
 
-        // Get directions between this pair of points
         final directions = await _directionsRepository.getDirections(
           origin: origin,
           destination: destination,
         );
 
-        if (directions != null) {
-          // Extract polyline points
-          final points = directions.polylinePoints
+        List<LatLng> points = [];
+        if (directions != null && directions.polylinePoints.isNotEmpty) {
+          points = directions.polylinePoints
               .map((point) => LatLng(point.latitude, point.longitude))
               .toList();
-
           print('Segment $i: Got ${points.length} polyline points');
+        } else {
+          // Always add a straight line if API fails
+          points = [origin, destination];
+          print('Failed to get directions for segment $i, using straight line');
+        }
 
-          // Add to our full route
+        // Ensure the segment is connected to the previous
+        if (fullRoutePoints.isNotEmpty &&
+            (fullRoutePoints.last.latitude != points.first.latitude ||
+             fullRoutePoints.last.longitude != points.first.longitude)) {
+          // If the last point of the previous segment is not the first of this, connect them
+          fullRoutePoints.add(points.first);
+        }
+
+        // Add all points except the first if already present
+        if (fullRoutePoints.isNotEmpty &&
+            fullRoutePoints.last.latitude == points.first.latitude &&
+            fullRoutePoints.last.longitude == points.first.longitude) {
+          fullRoutePoints.addAll(points.skip(1));
+        } else {
           fullRoutePoints.addAll(points);
+        }
 
-          // Extract numeric distance value (remove "km" or "mi")
+        // Extract numeric distance value (remove "km" or "mi")
+        if (directions != null) {
           final distanceText = directions.totalDistance;
           final distanceValue = double.tryParse(
                   distanceText.replaceAll(RegExp(r'[^0-9.]'), '')) ??
               0;
-
-          // Add to total
           totalDistance += distanceValue;
-
-          // Log segment
-          print(
-              'Route segment $i: ${directions.totalDistance}, ${directions.totalDuration}');
-        } else {
-          // If directions failed, just use a straight line
-          fullRoutePoints.add(origin);
-          fullRoutePoints.add(destination);
-          print('Failed to get directions for segment $i, using straight line');
         }
       }
 
-      print(
-          'Total route has ${fullRoutePoints.length} points, distance: ${totalDistance.toStringAsFixed(1)} km');
+      print('Total route has ${fullRoutePoints.length} points, distance: ${totalDistance.toStringAsFixed(1)} km');
 
-      // Update the polylines
       setState(() {
         _polylines.add(
           Polyline(
@@ -593,15 +615,12 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
             ],
           ),
         );
-
-        // Update total route stats if we calculated them
         if (totalDistance > 0) {
           _totalRouteDistance = totalDistance;
           _routeDistanceText = '${totalDistance.toStringAsFixed(1)} km';
         }
       });
 
-      // Adjust camera to show the route
       if (_mapController != null && fullRoutePoints.isNotEmpty) {
         final bounds = _calculateBounds(fullRoutePoints);
         print('Adjusting camera to bounds: $bounds');
@@ -900,6 +919,16 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   void _updateMarkers() {
     _allMarkers.clear();
 
+    // Map to count bookings per pickup location
+    final Map<String, int> locationCounts = {};
+    for (var passenger in _passengers) {
+      if (passenger['pickupLocation'] != null) {
+        final loc = passenger['pickupLocation'];
+        final key = '${loc['latitude']},${loc['longitude']}';
+        locationCounts[key] = (locationCounts[key] ?? 0) + 1;
+      }
+    }
+
     // Add driver location marker
     if (_driverLocation != null && _driverMarkerIcon != null) {
       _allMarkers.add(
@@ -920,7 +949,6 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     // Add passenger markers - one marker per booking
     for (int i = 0; i < _passengers.length; i++) {
       final passenger = _passengers[i];
-
       if (passenger['pickupLocation'] != null) {
         final location = passenger['pickupLocation'];
         final latLng = LatLng(location['latitude'], location['longitude']);
@@ -930,8 +958,10 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         final totalPassengers = adultCount + childrenCount;
         final selectedSeats = passenger['selectedSeats'] ?? [];
         final bookingId = passenger['bookingId'];
+        final key = '${location['latitude']},${location['longitude']}';
+        final count = locationCounts[key] ?? 1;
 
-        // Create one marker per booking
+        // Always use the custom passenger icon
         final icon = _passengerMarkerIcon ?? BitmapDescriptor.defaultMarker;
 
         _allMarkers.add(
@@ -944,7 +974,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
             infoWindow: InfoWindow(
               title: 'Passenger ${i + 1}: $userName',
               snippet:
-                  '${selectedSeats.length} seats • ${totalPassengers} people • ${passenger['pickupAddress']}',
+                  '${selectedSeats.length} seats • ${totalPassengers} people • ${passenger['pickupAddress']}' + (count > 1 ? ' (Overlapping)' : ''),
             ),
             onTap: () => _showPassengerDetails(passenger),
           ),
@@ -952,6 +982,15 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       }
     }
     setState(() {});
+
+    // Debug prints for _updateMarkers
+    for (int i = 0; i < _passengers.length; i++) {
+      final passenger = _passengers[i];
+      if (passenger['pickupLocation'] != null) {
+        final location = passenger['pickupLocation'];
+        print('[DEBUG] Adding marker for booking ${passenger['bookingId']} at (${location['latitude']}, ${location['longitude']})');
+      }
+    }
   }
 
   // Remove passenger from the map and route

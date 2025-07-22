@@ -23,6 +23,7 @@ class DirectionsRepository {
       queryParameters: {
         'origin': '${origin.latitude},${origin.longitude}',
         'destination': '${destination.latitude},${destination.longitude}',
+        'mode': 'walking', // Changed from default to walking
         'key': googleAPIKey, // Import your API key from a safe location
       },
     );

@@ -21,7 +21,6 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
   int _totalPassengers = 0;
   int _completedTrips = 0;
   double _totalEarnings = 0.0;
-  bool _isOnline = false;
 
   // Loading state
   bool _isLoading = true;
@@ -60,7 +59,6 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
         setState(() {
           _driverName = userData['name'] ?? userData['username'] ?? 'Driver';
           _driverEmail = userData['email'] ?? '';
-          _isOnline = userData['isOnline'] ?? false;
         });
       }
 
@@ -150,40 +148,7 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
     }
   }
 
-  // Toggle online status
-  Future<void> _toggleOnlineStatus() async {
-    try {
-      final userId = _getCurrentUserId();
-      if (userId == null) return;
-
-      final newStatus = !_isOnline;
-
-      await FirebaseFirestore.instance.collection('users').doc(userId).update({
-        'isOnline': newStatus,
-        'lastUpdated': FieldValue.serverTimestamp(),
-      });
-
-      setState(() {
-        _isOnline = newStatus;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content:
-              Text(newStatus ? 'You are now online' : 'You are now offline'),
-          backgroundColor: newStatus ? Colors.green : Colors.grey,
-        ),
-      );
-    } catch (e) {
-      print('Error toggling online status: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error updating status: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
+  // Remove all references to _isOnline, _toggleOnlineStatus, and related UI and state
 
   @override
   Widget build(BuildContext context) {
@@ -191,24 +156,7 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
       appBar: AppBar(
         title: Text('Driver Dashboard'),
         backgroundColor: Colors.green,
-        actions: [
-          Switch(
-            value: _isOnline,
-            onChanged: (value) {
-              _toggleOnlineStatus();
-            },
-            activeColor: Colors.white,
-            activeTrackColor: Colors.green[700],
-          ),
-          SizedBox(width: 8),
-          Text(
-            _isOnline ? 'Online' : 'Offline',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(width: 16),
-        ],
+        // Removed the online/offline switch and text
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
@@ -263,24 +211,9 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                                         SizedBox(height: 4),
                                         Row(
                                           children: [
-                                            Icon(
-                                              _isOnline
-                                                  ? Icons.circle
-                                                  : Icons.circle_outlined,
-                                              size: 12,
-                                              color: _isOnline
-                                                  ? Colors.green
-                                                  : Colors.grey,
-                                            ),
+                                            
                                             SizedBox(width: 4),
-                                            Text(
-                                              _isOnline ? 'Online' : 'Offline',
-                                              style: TextStyle(
-                                                color: _isOnline
-                                                    ? Colors.green
-                                                    : Colors.grey,
-                                              ),
-                                            ),
+                                            
                                           ],
                                         ),
                                       ],
@@ -375,123 +308,6 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                               _totalPassengers.toString(),
                               Icons.people,
                               Colors.blue,
-                            ),
-                          ),
-                          SizedBox(width: 16),
-                          Expanded(
-                            child: _buildStatCard(
-                              'Trips',
-                              _completedTrips.toString(),
-                              Icons.route,
-                              Colors.orange,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 16),
-                      _buildStatCard(
-                        'Total Earnings',
-                        'UGX ${_totalEarnings.toStringAsFixed(0)}',
-                        Icons.attach_money,
-                        Colors.green,
-                      ),
-
-                      SizedBox(height: 24),
-
-                      // Quick actions
-                      Text(
-                        'Quick Actions',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildActionButton(
-                              'Start Trip',
-                              Icons.play_arrow,
-                              Colors.green,
-                              () {
-                                // Switch to map tab in the NavBarScreen
-                                final parentNavBar =
-                                    DefaultTabController.of(context);
-                                if (parentNavBar != null) {
-                                  // If we're already in a NavBarScreen, just switch tabs
-                                  parentNavBar
-                                      .animateTo(1); // Index 1 is the Map tab
-                                } else {
-                                  // Otherwise navigate to the NavBarScreen with the Map tab selected
-                                  Navigator.pushReplacementNamed(
-                                    context,
-                                    '/driver_navbar',
-                                    arguments: 1, // Index for map tab
-                                  );
-                                }
-                              },
-                            ),
-                          ),
-                          SizedBox(width: 16),
-                          Expanded(
-                            child: _buildActionButton(
-                              'View Map',
-                              Icons.map,
-                              Colors.blue,
-                              () {
-                                // Switch to map tab in the NavBarScreen
-                                final parentNavBar =
-                                    DefaultTabController.of(context);
-                                if (parentNavBar != null) {
-                                  // If we're already in a NavBarScreen, just switch tabs
-                                  parentNavBar
-                                      .animateTo(1); // Index 1 is the Map tab
-                                } else {
-                                  // Otherwise navigate to the NavBarScreen with the Map tab selected
-                                  Navigator.pushReplacementNamed(
-                                    context,
-                                    '/driver_navbar',
-                                    arguments: 1, // Index for map tab
-                                  );
-                                }
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildActionButton(
-                              'View Passengers',
-                              Icons.people,
-                              Colors.orange,
-                              () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                        'Passenger list feature coming soon'),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          SizedBox(width: 16),
-                          Expanded(
-                            child: _buildActionButton(
-                              'Report Issue',
-                              Icons.report_problem,
-                              Colors.red,
-                              () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                        'Report issue feature coming soon'),
-                                  ),
-                                );
-                              },
                             ),
                           ),
                         ],
