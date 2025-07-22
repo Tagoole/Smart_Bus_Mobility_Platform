@@ -2,7 +2,7 @@
 REM =============================================
 REM Script: addline.bat
 REM Description: Adds an empty line to every file
-REM              in a specified folder (non-recursive)
+REM              in a specified folder (recursive)
 REM              and commits each file individually.
 REM Usage: 
 REM   1. addline.bat             --> runs in current folder
@@ -19,15 +19,15 @@ if not exist "%TARGET_FOLDER%" (
     exit /b 1
 )
 
-echo Adding empty line to all files in: "%TARGET_FOLDER%"
+echo Adding empty line to all files in: "%TARGET_FOLDER%" and subfolders
 
 REM Change to target directory
 pushd "%TARGET_FOLDER%"
 
-REM Loop through all files (non-recursive)
-for %%f in (*.*) do (
+REM Recursively loop through all files in all subfolders
+for /r %%f in (*.*) do (
     echo.>>"%%f"
-    echo Added empty line to: %%f
+    echo Modified : %%f
 
     git add "%%f"
     git commit -m "Add empty line to %%~nxf"
@@ -38,3 +38,4 @@ REM Return to original directory
 popd
 
 echo Done!
+
