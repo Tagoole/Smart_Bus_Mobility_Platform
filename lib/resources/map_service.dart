@@ -558,4 +558,4 @@ class BusRouteService {
   // Get number of current passengers
   int get passengerCount => _routeManager.busStops.length;
 }
-.
+
