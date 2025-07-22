@@ -7,3 +7,4 @@ sealed class BusEvent extends Equatable {
   List<Object> get props => [];
 }
 
+.
