@@ -60,6 +60,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   @override
   void initState() {
     super.initState();
+    print('🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥DEBUG: initState called');
     _initializeMap();
     _listenToBookings();
     _pickupController.addListener(_updatePickupFromText);
@@ -159,7 +160,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
 
       _updateMarkers();
     } catch (e) {
-      print('Error getting location: $e');
+      print('🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥Error getting location: $e');
       setState(() {
         _isLoadingLocation = false;
       });
@@ -174,30 +175,32 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   }
 
   Future<void> _loadAvailableBuses() async {
+    print('🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥DEBUG: _loadAvailableBuses called');
     try {
       final busesSnapshot = await FirebaseFirestore.instance
           .collection('buses')
           .where('isAvailable', isEqualTo: true)
           .get();
 
-      print('Fetched  [32m${busesSnapshot.docs.length} [0m buses'); // Debug print
-      for (var doc in busesSnapshot.docs) {
-        print('Bus data:  [36m${doc.data()} [0m'); // Debug print
-      }
-
+      print('🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥DEBUG: Fetched \u001b[32m${busesSnapshot.docs.length}\u001b[0m buses'); // Debug print
       final List<BusModel> buses = [];
       for (var doc in busesSnapshot.docs) {
-        final busData = doc.data();
-        buses.add(BusModel.fromJson(busData, doc.id));
+        print('🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥DEBUG: Bus data: \u001b[36m${doc.data()}\u001b[0m'); // Debug print
+        buses.add(BusModel.fromJson(doc.data(), doc.id));
       }
 
       setState(() {
         _availableBuses = buses;
+        print('**********************************************************************************************************');
+        print('🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥DEBUG: _availableBuses length after setState:  [35m${_availableBuses.length} [0m');
+        print('**********************************************************************************************************');
       });
 
       _updateMarkers();
     } catch (e) {
-      print('Error loading available buses: $e');
+      print('**********************************************************************************************************');
+      print('🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥 ERROR in _loadAvailableBuses: $e');
+      print('**********************************************************************************************************');
     }
   }
 
@@ -267,7 +270,9 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
         origin.longitude == 0.0 ||
         destination.latitude == 0.0 ||
         destination.longitude == 0.0) {
-      print('Invalid coordinates: origin=$origin, destination=$destination');
+      print('**********************************************************************************************************');
+      print('🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥Invalid coordinates: origin=$origin, destination=$destination');
+      print('**********************************************************************************************************');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Invalid coordinates provided'),
@@ -336,7 +341,9 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
         }
       }
     } catch (e) {
-      print('Error drawing polyline: $e');
+      print('**********************************************************************************************************');
+      print('🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥Error drawing polyline: $e');
+      print('**********************************************************************************************************');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error fetching route: $e'),
@@ -537,6 +544,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     controller
         .animateCamera(CameraUpdate.newLatLngZoom(_destinationLocation!, 14.0));
 
+    await _loadAvailableBuses();
     showAllAvailableBusesSheet();
   }
 
@@ -564,8 +572,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
 
   void _onDestinationChanged() async {
     if (_destinationController.text.isNotEmpty) {
-      // Geocode the destination text to LatLng (optional, if you want to update marker)
-      // For now, just show the bus list
+      await _loadAvailableBuses();
       showAllAvailableBusesSheet();
 
       // Optionally, update the marker if you have geocoding logic
