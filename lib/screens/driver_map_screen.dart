@@ -347,6 +347,9 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       setState(() {
         _passengers = filteredPassengers;
         _isLoading = false;
+        if (_passengers.isEmpty) {
+          _polylines.clear();
+        }
       });
 
       _updateMarkers();
@@ -468,6 +471,11 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     print('Waypoints: $waypoints');
 
     try {
+      // Always clear previous route polylines before drawing a new one
+      setState(() {
+        _polylines.removeWhere((polyline) => polyline.polylineId.value == 'full_route');
+      });
+
       // Use a single Directions API call with all waypoints (excluding first and last)
       final origin = waypoints.first;
       final destination = waypoints.last;
@@ -543,6 +551,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
             allPoints.add(segDest);
           }
         }
+        // Only add one polyline for the entire route
         setState(() {
           _polylines.add(
             Polyline(
@@ -969,6 +978,9 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     // Remove from local list
     setState(() {
       _passengers.removeWhere((p) => p['bookingId'] == bookingId);
+      if (_passengers.isEmpty) {
+        _polylines.clear();
+      }
     });
 
     // Update markers

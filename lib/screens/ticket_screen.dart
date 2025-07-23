@@ -130,7 +130,7 @@ class _TicketScreenState extends State<TicketScreen> {
     if (status == 'cancelled') return 'Cancelled';
     if (status == 'completed') return 'Completed';
     if (departureDate != null && departureDate.isBefore(DateTime.now())) {
-      return 'Expired';
+      return 'Active';
     }
     return 'Active';
   }
