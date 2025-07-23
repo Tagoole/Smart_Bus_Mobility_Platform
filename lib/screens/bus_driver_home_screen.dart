@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
+import 'package:intl/intl.dart';
 
 class BusDriverHomeScreen extends StatefulWidget {
   const BusDriverHomeScreen({Key? key}) : super(key: key);
@@ -268,11 +269,11 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                                   'Seats: ${_driverBus!.seatCapacity}',
                                 ),
                                 SizedBox(height: 4),
-                                // Departure Time (EAT)
+                                // Departure Time (EAT, user-friendly)
                                 Text(
                                   'Departure Time: ' +
                                     (_driverBus!.departureTime != null
-                                      ? _formatEAT(_driverBus!.departureTime!)
+                                      ? _formatUserFriendlyEAT(_driverBus!.departureTime!)
                                       : 'Not set'),
                                 ),
                                 SizedBox(height: 4),
@@ -385,12 +386,11 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
     );
   }
 
-  String _formatEAT(DateTime dateTime) {
+  String _formatUserFriendlyEAT(DateTime dateTime) {
     // Convert to East Africa Time (UTC+3)
     final eat = dateTime.toUtc().add(const Duration(hours: 3));
-    return '${eat.year.toString().padLeft(4, '0')}-${eat.month.toString().padLeft(2, '0')}-${eat.day.toString().padLeft(2, '0')} '
-        '${eat.hour > 12 ? (eat.hour - 12).toString().padLeft(2, '0') : eat.hour.toString().padLeft(2, '0')}:${eat.minute.toString().padLeft(2, '0')}'
-        ' ${eat.hour >= 12 ? 'PM' : 'AM'} (EAT)';
+    final formatter = DateFormat('MMM d, yyyy – hh:mm a');
+    return formatter.format(eat) + ' (EAT)';
   }
 }
 
