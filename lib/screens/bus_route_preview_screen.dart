@@ -11,7 +11,7 @@ import 'package:google_maps_webservice/places.dart';
 const kGoogleApiKey = 'AIzaSyC2n6urW_4DUphPLUDaNGAW_VN53j0RP4s';
 
 class BusRoutePreviewScreen extends StatefulWidget {
-  final Map<String, dynamic> bus;
+  final BusModel bus;
   const BusRoutePreviewScreen({super.key, required this.bus});
 
   @override
@@ -35,13 +35,13 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
   void initState() {
     super.initState();
     // Initialize with bus data
-    pickupLocation = widget.bus['startPoint'] ?? 'Select Pickup';
-    dropoffLocation = widget.bus['destination'] ?? 'Select Destination';
+    pickupLocation = widget.bus.startPoint;
+    dropoffLocation = widget.bus.destination;
     _pickupController.text = pickupLocation;
     _dropoffController.text = dropoffLocation;
 
-    final startLat = widget.bus['startLat'];
-    final startLng = widget.bus['startLng'];
+    final startLat = widget.bus.startLat;
+    final startLng = widget.bus.startLng;
     if (startLat != null && startLng != null) {
       _pickupCoords = LatLng(startLat, startLng);
       _busStartLatLng = _pickupCoords;
@@ -52,12 +52,8 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
   void _updatePolyline() {
     setState(() {
       polylines.clear();
-      final routePoints = widget.bus['routePolyline'] as List?;
-      List<LatLng> points = [];
-
-      if (routePoints != null) {
-        points = routePoints.map((p) => LatLng(p['lat'], p['lng'])).toList();
-      } else if (_pickupCoords != null && _dropoffCoords != null) {
+      List<LatLng> points = widget.bus.getRoutePolylinePoints();
+      if (points.isEmpty && _pickupCoords != null && _dropoffCoords != null) {
         points = [
           _pickupCoords!,
           LatLng(
@@ -150,12 +146,11 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => SelectSeatScreen(
-                    origin: bus['startPoint'],
-                    destination: bus['destination'],
-                    busProvider: bus['vehicleModel'] ?? '',
-                    plateNumber: bus['numberPlate'] ?? '',
-                    busModel:
-                        BusModel.fromJson(bus, bus['busId'] ?? bus['id'] ?? ''),
+                    origin: bus.startPoint,
+                    destination: bus.destination,
+                    busProvider: bus.vehicleModel,
+                    plateNumber: bus.numberPlate,
+                    busModel: bus,
                     pickupLocation: _pickupCoords,
                     pickupAddress: pickupLocation,
                     departureDate: null,

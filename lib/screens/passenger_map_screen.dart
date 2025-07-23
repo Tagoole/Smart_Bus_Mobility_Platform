@@ -12,6 +12,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
 
 const kGoogleApiKey = 'AIzaSyC2n6urW_4DUphPLUDaNGAW_VN53j0RP4s';
 
@@ -45,7 +46,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   final TextEditingController _destinationController = TextEditingController();
 
   // Bus data
-  List<Map<String, dynamic>> _availableBuses = [];
+  List<BusModel> _availableBuses = [];
   final Set<Marker> _allMarkers = {};
   final Set<Marker> _searchMarkers = {};
   final Set<Polyline> _polylines = {};
@@ -176,16 +177,18 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     try {
       final busesSnapshot = await FirebaseFirestore.instance
           .collection('buses')
-          .where('status', isEqualTo: 'active')
+          .where('isAvailable', isEqualTo: true)
           .get();
 
-      final List<Map<String, dynamic>> buses = [];
+      print('Fetched  [32m${busesSnapshot.docs.length} [0m buses'); // Debug print
+      for (var doc in busesSnapshot.docs) {
+        print('Bus data:  [36m${doc.data()} [0m'); // Debug print
+      }
+
+      final List<BusModel> buses = [];
       for (var doc in busesSnapshot.docs) {
         final busData = doc.data();
-        buses.add({
-          'busId': doc.id,
-          ...busData,
-        });
+        buses.add(BusModel.fromJson(busData, doc.id));
       }
 
       setState(() {
@@ -239,19 +242,16 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
 
     for (int i = 0; i < _availableBuses.length; i++) {
       final bus = _availableBuses[i];
-      if (bus['currentLocation'] != null && _busMarkerIcon != null) {
-        final location = bus['currentLocation'];
-        final latLng = LatLng(location['latitude'], location['longitude']);
-
+      final latLng = bus.getCurrentLocationLatLng();
+      if (latLng != null && _busMarkerIcon != null) {
         _allMarkers.add(
           Marker(
-            markerId: MarkerId('bus_${bus['busId']}'),
+            markerId: MarkerId('bus_${bus.busId}'),
             position: latLng,
             icon: _busMarkerIcon!,
             infoWindow: InfoWindow(
-              title: 'Bus ${bus['numberPlate'] ?? 'Unknown'}',
-              snippet:
-                  '${bus['startPoint'] ?? 'Unknown'} → ${bus['destination'] ?? 'Unknown'}',
+              title: 'Bus ${bus.numberPlate}',
+              snippet: '${bus.startPoint} → ${bus.destination}',
             ),
             onTap: () => _showBusDetailsScreen(context, bus),
           ),
@@ -653,11 +653,11 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                                 color: Colors.green),
                           ),
                           title: Text(
-                            '${bus['startPoint'] ?? 'Unknown'} → ${bus['destination'] ?? 'Unknown'}',
+                            '${bus.startPoint} → ${bus.destination}',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           subtitle:
-                              Text('Bus: ${bus['numberPlate'] ?? 'Unknown'}'),
+                              Text('Bus: ${bus.numberPlate}'),
                           trailing:
                               const Icon(Icons.arrow_forward_ios, size: 16),
                           onTap: () => _showBusDetailsScreen(context, bus),
@@ -835,7 +835,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   }
 }
 
-void _showBusDetailsScreen(BuildContext context, Map<String, dynamic> bus) {
+void _showBusDetailsScreen(BuildContext context, BusModel bus) {
   showDialog(
     context: context,
     builder: (context) => Dialog(
@@ -854,7 +854,7 @@ void _showBusDetailsScreen(BuildContext context, Map<String, dynamic> bus) {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      '${bus['startPoint'] ?? 'Unknown'} → ${bus['destination'] ?? 'Unknown'}',
+                      '${bus.startPoint} → ${bus.destination}',
                       style:
                           const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                     ),
@@ -862,19 +862,19 @@ void _showBusDetailsScreen(BuildContext context, Map<String, dynamic> bus) {
                 ],
               ),
               const SizedBox(height: 16),
-              Text('Bus Plate: ${bus['numberPlate'] ?? 'N/A'}',
+              Text('Bus Plate: ${bus.numberPlate}',
                   style: const TextStyle(fontSize: 16)),
-              Text('Driver: ${bus['driverId'] ?? 'N/A'}',
+              Text('Driver: ${bus.driverId}',
                   style: const TextStyle(fontSize: 16)),
-              Text('Vehicle Model: ${bus['vehicleModel'] ?? 'N/A'}',
+              Text('Vehicle Model: ${bus.vehicleModel}',
                   style: const TextStyle(fontSize: 16)),
-              Text('Available Seats: ${bus['availableSeats'] ?? 'N/A'}',
+              Text('Available Seats: ${bus.availableSeats}',
                   style: const TextStyle(fontSize: 16)),
-              Text('Fare: UGX ${bus['fare'] ?? 'N/A'}',
+              Text('Fare: UGX ${bus.fare}',
                   style: const TextStyle(fontSize: 16)),
-              Text('Route ID: ${bus['routeId'] ?? 'N/A'}',
+              Text('Route ID: ${bus.routeId}',
                   style: const TextStyle(fontSize: 16)),
-              Text('Status: ${bus['status'] ?? 'N/A'}',
+              Text('Available: ${bus.isAvailable ? 'Yes' : 'No'}',
                   style: const TextStyle(fontSize: 16)),
               const SizedBox(height: 24),
               Row(
