@@ -125,18 +125,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: Row(
+          title: const Row(
             children: [
               Icon(Icons.logout, color: Colors.red, size: 24),
               SizedBox(width: 8),
               Text('Logout'),
             ],
           ),
-          content: Text('Are you sure you want to logout?'),
+          content: const Text('Are you sure you want to logout?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: Text('Cancel'),
+              child: const Text('Cancel'),
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
@@ -144,7 +144,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 backgroundColor: Colors.red,
                 foregroundColor: Colors.white,
               ),
-              child: Text('Logout'),
+              child: const Text('Logout'),
             ),
           ],
         );
@@ -272,11 +272,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               ],
             ),
             const SizedBox(width: 24),
-            Expanded(
+            const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Admin Dashboard',
                     style: TextStyle(
                       fontSize: 28,
@@ -284,8 +284,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                       color: Color(0xFF111827),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  const Text(
+                  SizedBox(height: 4),
+                  Text(
                     'Manage your routes and operations efficiently',
                     style: TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
                   ),
@@ -778,15 +778,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               if (action['featured'] == true)
                 Container(
                   margin: const EdgeInsets.only(bottom: 16),
-                  child: Row(
+                  child: const Row(
                     children: [
                       Icon(
                         Icons.star,
-                        color: const Color(0xFFFFD95D),
+                        color: Color(0xFFFFD95D),
                         size: 16,
                       ),
-                      const SizedBox(width: 8),
-                      const Text(
+                      SizedBox(width: 8),
+                      Text(
                         'FEATURED',
                         style: TextStyle(
                           fontSize: 10,

@@ -182,7 +182,7 @@ class _PersonalDataState extends State<PersonalData> {
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) return Center(child: CircularProgressIndicator());
+    if (isLoading) return const Center(child: CircularProgressIndicator());
 
     final username = userData?['username'] ?? 'No Name';
     final email = userData?['email'] ?? 'No Email';
@@ -222,7 +222,7 @@ class _PersonalDataState extends State<PersonalData> {
                           Navigator.pushReplacement(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => ProfileScreen(),
+                              builder: (context) => const ProfileScreen(),
                             ),
                           );
                         },
@@ -267,7 +267,7 @@ class _PersonalDataState extends State<PersonalData> {
                         backgroundColor: Colors.green[700],
                         child: Text(
                           username.isNotEmpty ? username[0].toUpperCase() : 'U',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 40,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
@@ -335,7 +335,7 @@ class _PersonalDataState extends State<PersonalData> {
             children: [
               Text(
                 label,
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.yellow,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,

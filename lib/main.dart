@@ -47,7 +47,7 @@ void main() async {
   // Initialize Firebase based on platform
   if (kIsWeb) {
     await Firebase.initializeApp(
-      options: FirebaseOptions(
+      options: const FirebaseOptions(
         apiKey: "AIzaSyAr7u8PTywBlRtm98NuqNzxPNF2w77vp9s",
         appId: "1:300946521439:web:127b0355935b896df28aea",
         messagingSenderId: "300946521439",
@@ -57,7 +57,7 @@ void main() async {
     );
   } else if (Platform.isAndroid) {
     await Firebase.initializeApp(
-      options: FirebaseOptions(
+      options: const FirebaseOptions(
         apiKey: "AIzaSyAr7u8PTywBlRtm98NuqNzxPNF2w77vp9s",
         appId: "1:300946521439:android:1699793b44477bfaf28aea",
         messagingSenderId: "300946521439",
@@ -79,7 +79,7 @@ void main() async {
     // Don't crash the app, just log the error
   };
   
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -97,85 +97,84 @@ class MyApp extends StatelessWidget {
             theme: themeProvider.lightTheme,
             darkTheme: themeProvider.darkTheme,
             themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-            home: const BusDriverHomeScreen(),
-            //routes: {
-            //  ...AppRoutes.getRoutes(), // Spread your existing routes
-            //  '/': (context) => StreamBuilder(
-            //    stream: FirebaseAuth.instance.authStateChanges(),
-            //    builder: (context, snapshot) {
-            //      if (snapshot.connectionState == ConnectionState.active) {
-            //        if (snapshot.hasData) {
-            //          // User is authenticated, get their role and route accordingly
-            //          return FutureBuilder<DocumentSnapshot>(
-            //            future: FirebaseFirestore.instance
-            //                .collection('users')
-            //                .doc(snapshot.data!.uid)
-            //                .get(),
-            //            builder: (context, userSnapshot) {
-            //              if (userSnapshot.connectionState == ConnectionState.waiting) {
-            //                return Center(
-            //                  child: CircularProgressIndicator(
-            //                    color: themeProvider.isDarkMode
-            //                        ? Colors.white
-            //                        : Colors.green[700],
-            //                  ),
-            //                );
-            //              }
-            //              if (userSnapshot.hasData && userSnapshot.data!.exists) {
-            //                final userData = userSnapshot.data!.data() as Map<String, dynamic>;
-            //                final role = userData['role']?.toString().toLowerCase() ?? '';
-            //                // Route based on user role
-            //                switch (role) {
-            //                  case 'admin':
-            //                    return NavBarScreen(userRole: 'admin');
-            //                  case 'driver':
-            //                    return NavBarScreen(userRole: 'driver');
-            //                  case 'user':
-            //                  default:
-            //                    return NavBarScreen(userRole: role);
-            //                }
-            //              } else {
-            //                // Fallback to signin screen if role fetch fails
-            //                return SignInScreen();
-            //              }
-            //            },
-            //          );
-            //        } else if (snapshot.hasError) {
-            //          return Center(child: Text('${snapshot.error}'));
-            //        }
-            //      } else if (snapshot.connectionState == ConnectionState.waiting) {
-            //        return Center(
-            //          child: CircularProgressIndicator(
-            //            color: themeProvider.isDarkMode
-            //                ? Colors.white
-            //                : Colors.green[700],
-            //          ),
-            //        );
-            //      }
-            //      return SignInScreen();
-            //    },
-            //  ),
-            //  '/signup': (context) => const SignUpScreen(),
-            //  '/signin': (context) => const SignInScreen(),
-            //  '/forgotpassword': (context) => const ForgotPasswordScreen(),
-            //  '/emailverification': (context) => const EmailVerificationScreen(),
-            //  '/forgotpassword2': (context) => const ForgotPasswordScreen2(),
-            //  '/profilescreen': (context) => const profile.ProfileScreen(),
-            //  '/personaldata': (context) => const PersonalData(),
-            //  '/navbar': (context) => NavBarHelper.getNavBarForCurrentUser(),
-            //  '/login': (context) => SignInScreen(),
-            //  '/payment': (context) => PaymentScreen(),
-            //  '/verifyEmail': (context) => EmailVerificationScreen(),
-            //  '/forgotPassword': (context) => ForgotPasswordScreen(),
-            //  '/admin': (context) => AdminDashboardScreen(),
-            //  '/passenger': (context) => BusTrackingScreen(),
-            //  '/busdriver': (context) => NavBarScreen(userRole: 'driver'),
-            //  '/currentBus': (context) => const CurrentBusesScreen(), // Added const and comma
-            //  '/trackBus': (context) {
-            //    final booking = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-            //    return TrackBusScreen(booking: booking);
-            //  },
-            //},
+            routes: {
+              ...AppRoutes.getRoutes(), // Spread your existing routes
+              '/': (context) => StreamBuilder(
+                stream: FirebaseAuth.instance.authStateChanges(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.active) {
+                    if (snapshot.hasData) {
+                      // User is authenticated, get their role and route accordingly
+                      return FutureBuilder<DocumentSnapshot>(
+                        future: FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(snapshot.data!.uid)
+                            .get(),
+                        builder: (context, userSnapshot) {
+                          if (userSnapshot.connectionState == ConnectionState.waiting) {
+                            return Center(
+                              child: CircularProgressIndicator(
+                                color: themeProvider.isDarkMode
+                                    ? Colors.white
+                                    : Colors.green[700],
+                              ),
+                            );
+                          }
+                          if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                            final userData = userSnapshot.data!.data() as Map<String, dynamic>;
+                            final role = userData['role']?.toString().toLowerCase() ?? '';
+                            // Route based on user role
+                            switch (role) {
+                              case 'admin':
+                                return const NavBarScreen(userRole: 'admin');
+                              case 'driver':
+                                return const NavBarScreen(userRole: 'driver');
+                              case 'user':
+                              default:
+                                return NavBarScreen(userRole: role);
+                            }
+                          } else {
+                            // Fallback to signin screen if role fetch fails
+                            return const SignInScreen();
+                          }
+                        },
+                      );
+                    } else if (snapshot.hasError) {
+                      return Center(child: Text('${snapshot.error}'));
+                    }
+                  } else if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(
+                      child: CircularProgressIndicator(
+                        color: themeProvider.isDarkMode
+                            ? Colors.white
+                            : Colors.green[700],
+                      ),
+                    );
+                  }
+                  return const SignInScreen();
+                },
+              ),
+              '/signup': (context) => const SignUpScreen(),
+              '/signin': (context) => const SignInScreen(),
+              '/forgotpassword': (context) => const ForgotPasswordScreen(),
+              '/emailverification': (context) => const EmailVerificationScreen(),
+              '/forgotpassword2': (context) => const ForgotPasswordScreen2(),
+              '/profilescreen': (context) => const profile.ProfileScreen(),
+              '/personaldata': (context) => const PersonalData(),
+              '/navbar': (context) => NavBarHelper.getNavBarForCurrentUser(),
+              '/login': (context) => const SignInScreen(),
+              '/payment': (context) => const PaymentScreen(),
+              '/verifyEmail': (context) => const EmailVerificationScreen(),
+              '/forgotPassword': (context) => const ForgotPasswordScreen(),
+              '/admin': (context) => const AdminDashboardScreen(),
+              '/passenger': (context) => const BusTrackingScreen(),
+              '/busdriver': (context) => const NavBarScreen(userRole: 'driver'),
+              '/currentBus': (context) => const CurrentBusesScreen(), // Added const and comma
+              '/trackBus': (context) {
+                final booking = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+                return TrackBusScreen(booking: booking);
+              },
+            },
           );
         },
       ),

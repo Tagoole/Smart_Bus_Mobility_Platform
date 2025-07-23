@@ -99,14 +99,14 @@ class _FindBusScreenState extends State<FindBusScreen> {
   // Set up automatic refresh mechanisms
   void _setupAutoRefresh() {
     // Refresh bus availability every 3 minutes
-    Timer.periodic(Duration(minutes: 3), (timer) {
+    Timer.periodic(const Duration(minutes: 3), (timer) {
       if (mounted) {
         _loadAllActiveBuses();
       }
     });
 
     // Refresh active bookings every 2 minutes
-    Timer.periodic(Duration(minutes: 2), (timer) {
+    Timer.periodic(const Duration(minutes: 2), (timer) {
       if (mounted) {
         _checkActiveBookings();
       }
@@ -227,7 +227,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => PassengerMapScreen(),
+        builder: (context) => const PassengerMapScreen(),
       ),
     );
 
@@ -259,7 +259,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
   Future<void> _updatePickupLocation() async {
     if (currentBooking == null || bookingId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text("No active booking found"),
           backgroundColor: Colors.red,
         ),
@@ -291,7 +291,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text("Pickup location updated successfully!"),
           backgroundColor: Colors.green,
         ),
@@ -469,13 +469,13 @@ class _FindBusScreenState extends State<FindBusScreen> {
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 1,
-        actions: [
+        actions: const [
           Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: EdgeInsets.all(8.0),
             child: CircleAvatar(
               radius: 20,
               backgroundColor: Colors.green,
-              child: const Icon(Icons.person, color: Colors.white, size: 24),
+              child: Icon(Icons.person, color: Colors.white, size: 24),
             ),
           ),
         ],
@@ -508,7 +508,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
 
   // Build active booking section
   Widget _buildActiveBookingSection() {
-    if (currentBooking == null) return SizedBox.shrink();
+    if (currentBooking == null) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.all(16.0),
@@ -517,7 +517,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Color(0xFFE0E0E0).withValues(alpha: 0.1),
+            color: const Color(0xFFE0E0E0).withValues(alpha: 0.1),
             spreadRadius: 1,
             blurRadius: 5,
             offset: const Offset(0, 2),
@@ -527,7 +527,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
               Icon(Icons.check_circle, color: Colors.green, size: 24),
               SizedBox(width: 8),
@@ -541,7 +541,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
               ),
             ],
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           _buildBookingInfoRow("Bus", currentBooking!.numberPlate),
           _buildBookingInfoRow(
             "Route",
@@ -557,21 +557,21 @@ class _FindBusScreenState extends State<FindBusScreen> {
             "Total",
             "UGX ${(currentBooking!.fare * (adultCount + childrenCount)).toStringAsFixed(0)}",
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: _updatePickupLocation,
-                  icon: Icon(Icons.edit_location),
-                  label: Text("Update Pickup"),
+                  icon: const Icon(Icons.edit_location),
+                  label: const Text("Update Pickup"),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue,
                     foregroundColor: Colors.white,
                   ),
                 ),
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () {
@@ -583,8 +583,8 @@ class _FindBusScreenState extends State<FindBusScreen> {
                       selectedBus = null;
                     });
                   },
-                  icon: Icon(Icons.add),
-                  label: Text("Book Another"),
+                  icon: const Icon(Icons.add),
+                  label: const Text("Book Another"),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     foregroundColor: Colors.white,
@@ -608,14 +608,14 @@ class _FindBusScreenState extends State<FindBusScreen> {
             width: 80,
             child: Text(
               "$label:",
-              style: TextStyle(
+              style: const TextStyle(
                 fontWeight: FontWeight.w500,
                 color: Color(0xFF757575),
               ),
             ),
           ),
           Expanded(
-            child: Text(value, style: TextStyle(fontWeight: FontWeight.w600)),
+            child: Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -654,7 +654,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
       endLabel = 'To: ${selectedBus!.destination}';
     }
     if (start == null || end == null) {
-      return SizedBox.shrink();
+      return const SizedBox.shrink();
     }
     // Fetch the route polyline when both points are available
     if (_routeInfo == null && !_isLoadingRoute) {
@@ -669,7 +669,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 8,
-            offset: Offset(0, 4),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -682,16 +682,16 @@ class _FindBusScreenState extends State<FindBusScreen> {
                 _mapController = controller;
               },
               initialCameraPosition: CameraPosition(target: start, zoom: 12),
-              polylines: {}, // Polyline drawing disabled due to missing polylinePoints in Directions
+              polylines: const {}, // Polyline drawing disabled due to missing polylinePoints in Directions
               markers: {
                 Marker(
-                  markerId: MarkerId('start'),
+                  markerId: const MarkerId('start'),
                   position: start,
                   infoWindow: InfoWindow(title: startLabel),
                   icon: MarkerIcons.startMarker,
                 ),
                 Marker(
-                  markerId: MarkerId('end'),
+                  markerId: const MarkerId('end'),
                   position: end,
                   infoWindow: InfoWindow(title: endLabel),
                   icon: MarkerIcons.endMarker,
@@ -720,7 +720,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Color(0xFFE0E0E0).withValues(alpha: 0.1),
+            color: const Color(0xFFE0E0E0).withValues(alpha: 0.1),
             spreadRadius: 1,
             blurRadius: 5,
             offset: const Offset(0, 2),
@@ -744,14 +744,14 @@ class _FindBusScreenState extends State<FindBusScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              border: Border.all(color: Color(0xFFE0E0E0)),
+              border: Border.all(color: const Color(0xFFE0E0E0)),
               borderRadius: BorderRadius.circular(8),
             ),
             child: DropdownButtonFormField<BusModel>(
               value: selectedBus,
-              hint: Text('Select a bus route'),
+              hint: const Text('Select a bus route'),
               isExpanded: true,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(vertical: 12),
               ),
@@ -760,7 +760,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
                   value: bus,
                   child: Text(
                     '${bus.startPoint} → ${bus.destination} (${bus.vehicleModel})',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                     overflow: TextOverflow.ellipsis,
                   ),
                 );
@@ -1025,9 +1025,9 @@ class _FindBusScreenState extends State<FindBusScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Color(0xFFFAFAFA),
+              color: const Color(0xFFFAFAFA),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Color(0xFFE0E0E0)),
+              border: Border.all(color: const Color(0xFFE0E0E0)),
             ),
             child: Column(
               children: [
@@ -1072,7 +1072,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: _selectPickupLocation,
-                  icon: Icon(Icons.location_on),
+                  icon: const Icon(Icons.location_on),
                   label: Text(pickupAddress),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
@@ -1141,7 +1141,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
 
   Widget _buildAvailableBusesList() {
     if (isLoadingBuses) {
-      return Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator());
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1149,9 +1149,9 @@ class _FindBusScreenState extends State<FindBusScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
+            const Text(
               "Selected Bus",
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: Colors.green,
@@ -1218,7 +1218,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
                       ),
                       Text(
                         bus.numberPlate,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 12,
                           color: Color(0xFF757575),
                         ),
@@ -1280,7 +1280,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
                   ),
                   Text(
                     '${bus.availableSeats} seats left',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF757575)),
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF757575)),
                   ),
                 ],
               ),
@@ -1299,7 +1299,7 @@ class _FindBusScreenState extends State<FindBusScreen> {
                           color: Colors.green,
                         ),
                       ),
-                      Text(
+                      const Text(
                         "per person",
                         style: TextStyle(
                           fontSize: 12,
@@ -1356,8 +1356,8 @@ class _FindBusScreenState extends State<FindBusScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
+          child: const Padding(
+            padding: EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

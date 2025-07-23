@@ -26,7 +26,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
   final Completer<GoogleMapController> _controller = Completer();
   GoogleMapController? _mapController;
 
-  static final CameraPosition _initialPosition = CameraPosition(
+  static const CameraPosition _initialPosition = CameraPosition(
     target:
         LatLng(0.34540783865964797, 32.54297125499706), // Kampala coordinates
     zoom: 14,
@@ -168,7 +168,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
 
   void _setDefaultLocation() {
     setState(() {
-      _currentLocation = LatLng(0.34540783865964797, 32.54297125499706);
+      _currentLocation = const LatLng(0.34540783865964797, 32.54297125499706);
     });
   }
 
@@ -204,10 +204,10 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     if (_currentLocation != null && _userMarkerIcon != null) {
       _allMarkers.add(
         Marker(
-          markerId: MarkerId('current_location'),
+          markerId: const MarkerId('current_location'),
           position: _currentLocation!,
           icon: _userMarkerIcon!,
-          infoWindow: InfoWindow(
+          infoWindow: const InfoWindow(
             title: 'Your Location',
             snippet: 'Current position',
           ),
@@ -218,10 +218,10 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     if (_pickupLocation != null && _userMarkerIcon != null) {
       _allMarkers.add(
         Marker(
-          markerId: MarkerId('pickup_location'),
+          markerId: const MarkerId('pickup_location'),
           position: _pickupLocation!,
           icon: _userMarkerIcon!,
-          infoWindow: InfoWindow(title: 'Pickup Location'),
+          infoWindow: const InfoWindow(title: 'Pickup Location'),
         ),
       );
     }
@@ -229,10 +229,10 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     if (_destinationLocation != null && _userMarkerIcon != null) {
       _allMarkers.add(
         Marker(
-          markerId: MarkerId('destination_location'),
+          markerId: const MarkerId('destination_location'),
           position: _destinationLocation!,
           icon: _userMarkerIcon!,
-          infoWindow: InfoWindow(title: 'Destination'),
+          infoWindow: const InfoWindow(title: 'Destination'),
         ),
       );
     }
@@ -350,39 +350,39 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Bus Details'),
+        title: const Text('Bus Details'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Plate: ${bus['numberPlate'] ?? 'Unknown'}'),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
                 'Route: ${bus['startPoint'] ?? 'Unknown'} → ${bus['destination'] ?? 'Unknown'}'),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text('Driver: ${bus['driverName'] ?? 'Unknown'}'),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text('Available Seats: ${bus['availableSeats'] ?? 'Unknown'}'),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Close'),
+            child: const Text('Close'),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               _bookBus(bus);
             },
-            child: Text('Book This Bus'),
+            child: const Text('Book This Bus'),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               _showBusRoute(bus);
             },
-            child: Text('View Route'),
+            child: const Text('View Route'),
           ),
         ],
       ),
@@ -439,7 +439,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
 
   void _bookBus(Map<String, dynamic> bus) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Booking functionality coming soon!')),
+      const SnackBar(content: Text('Booking functionality coming soon!')),
     );
   }
 
@@ -451,7 +451,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
       language: 'en',
       strictbounds: false,
       types: [""],
-      decoration: InputDecoration(
+      decoration: const InputDecoration(
         hintText: 'Type or select pickup location',
         border: InputBorder.none,
       ),
@@ -470,7 +470,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
       language: 'en',
       strictbounds: false,
       types: [""],
-      decoration: InputDecoration(
+      decoration: const InputDecoration(
         hintText: 'Type or select destination',
         border: InputBorder.none,
       ),
@@ -730,13 +730,13 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                   ),
                   child: Row(
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.all(9.0),
+                      const Padding(
+                        padding: EdgeInsets.all(9.0),
                         child: Text(
                           'Where To:',
                           style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: const Color.fromARGB(255, 7, 7, 7)),
+                              color: Color.fromARGB(255, 7, 7, 7)),
                         ),
                       ),
                       Expanded(
@@ -750,11 +750,11 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 IconButton(
-                                  icon: Icon(Icons.edit, size: 16),
+                                  icon: const Icon(Icons.edit, size: 16),
                                   onPressed: _handleDestinationSelection,
                                 ),
                                 IconButton(
-                                  icon: Icon(Icons.clear, size: 16),
+                                  icon: const Icon(Icons.clear, size: 16),
                                   onPressed: _clearDestination,
                                 ),
                               ],
@@ -777,7 +777,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
               backgroundColor: Colors.green,
               foregroundColor: Colors.white,
               child: _isLoadingLocation
-                  ? SizedBox(
+                  ? const SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
@@ -797,7 +797,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
               backgroundColor: Colors.blue,
               foregroundColor: Colors.white,
               child: _isRefreshingBuses
-                  ? SizedBox(
+                  ? const SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
@@ -839,44 +839,44 @@ void _showBusDetailsScreen(BuildContext context, Map<String, dynamic> bus) {
   showDialog(
     context: context,
     builder: (context) => Dialog(
-      insetPadding: EdgeInsets.all(16),
+      insetPadding: const EdgeInsets.all(16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.all(24),
+        padding: const EdgeInsets.all(24),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Icon(Icons.directions_bus, color: Colors.green, size: 32),
-                  SizedBox(width: 12),
+                  const Icon(Icons.directions_bus, color: Colors.green, size: 32),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       '${bus['startPoint'] ?? 'Unknown'} → ${bus['destination'] ?? 'Unknown'}',
                       style:
-                          TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                          const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               Text('Bus Plate: ${bus['numberPlate'] ?? 'N/A'}',
-                  style: TextStyle(fontSize: 16)),
+                  style: const TextStyle(fontSize: 16)),
               Text('Driver: ${bus['driverId'] ?? 'N/A'}',
-                  style: TextStyle(fontSize: 16)),
+                  style: const TextStyle(fontSize: 16)),
               Text('Vehicle Model: ${bus['vehicleModel'] ?? 'N/A'}',
-                  style: TextStyle(fontSize: 16)),
+                  style: const TextStyle(fontSize: 16)),
               Text('Available Seats: ${bus['availableSeats'] ?? 'N/A'}',
-                  style: TextStyle(fontSize: 16)),
+                  style: const TextStyle(fontSize: 16)),
               Text('Fare: UGX ${bus['fare'] ?? 'N/A'}',
-                  style: TextStyle(fontSize: 16)),
+                  style: const TextStyle(fontSize: 16)),
               Text('Route ID: ${bus['routeId'] ?? 'N/A'}',
-                  style: TextStyle(fontSize: 16)),
+                  style: const TextStyle(fontSize: 16)),
               Text('Status: ${bus['status'] ?? 'N/A'}',
-                  style: TextStyle(fontSize: 16)),
-              SizedBox(height: 24),
+                  style: const TextStyle(fontSize: 16)),
+              const SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -884,7 +884,7 @@ void _showBusDetailsScreen(BuildContext context, Map<String, dynamic> bus) {
                     onPressed: () {
                       Navigator.pop(context);
                     },
-                    child: Text('Close'),
+                    child: const Text('Close'),
                   ),
                   ElevatedButton(
                     onPressed: () {
@@ -898,7 +898,7 @@ void _showBusDetailsScreen(BuildContext context, Map<String, dynamic> bus) {
                         ),
                       );
                     },
-                    child: Text('Contiue'),
+                    child: const Text('Contiue'),
                   ),
                 ],
               ),

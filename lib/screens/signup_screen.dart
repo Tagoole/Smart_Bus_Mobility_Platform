@@ -28,8 +28,8 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
   late AnimationController _imageAnimController;
   late Animation<double> _imageMoveUp;
   late Animation<double> _imageScale;
-  FocusNode _emailFocus = FocusNode();
-  FocusNode _passwordFocus = FocusNode();
+  final FocusNode _emailFocus = FocusNode();
+  final FocusNode _passwordFocus = FocusNode();
   bool _anyFieldFocused = false;
 
   @override
@@ -137,7 +137,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
         } else {
           // Show error message
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(result), backgroundColor: Color(0xFF014421)),
+            SnackBar(content: Text(result), backgroundColor: const Color(0xFF014421)),
           );
         }
       }

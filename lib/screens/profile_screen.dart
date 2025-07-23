@@ -27,18 +27,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: Row(
+          title: const Row(
             children: [
               Icon(Icons.logout, color: Colors.red, size: 24),
               SizedBox(width: 8),
               Text('Logout'),
             ],
           ),
-          content: Text('Are you sure you want to logout?'),
+          content: const Text('Are you sure you want to logout?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: Text('Cancel'),
+              child: const Text('Cancel'),
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
@@ -46,7 +46,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 backgroundColor: Colors.red,
                 foregroundColor: Colors.white,
               ),
-              child: Text('Logout'),
+              child: const Text('Logout'),
             ),
           ],
         );
@@ -105,7 +105,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator());
     }
 
     final name = userData?['username'] ?? 'No Name';
@@ -160,7 +160,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Navigator.pushAndRemoveUntil(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => NavBarScreen(
+                                  builder: (context) => const NavBarScreen(
                                       userRole: 'driver', initialTab: 0)),
                               (route) => false,
                             );
@@ -168,7 +168,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Navigator.pushAndRemoveUntil(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => NavBarScreen(
+                                  builder: (context) => const NavBarScreen(
                                       userRole: 'admin', initialTab: 0)),
                               (route) => false,
                             );
@@ -177,7 +177,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Navigator.pushAndRemoveUntil(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => NavBarScreen(
+                                  builder: (context) => const NavBarScreen(
                                       userRole: 'user', initialTab: 0)),
                               (route) => false,
                             );
@@ -238,7 +238,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               backgroundColor: Colors.green[700],
                               child: Text(
                                 name.isNotEmpty ? name[0].toUpperCase() : 'U',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 40,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
@@ -314,7 +314,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => TicketScreen()),
+                                  builder: (context) => const TicketScreen()),
                             );
                           },
                         ),
@@ -340,7 +340,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => PaymentScreen(),
+                                builder: (context) => const PaymentScreen(),
                               ),
                             );
                           },

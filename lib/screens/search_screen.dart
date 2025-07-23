@@ -64,7 +64,7 @@ class _SearchPlacesScreenState extends State<SearchPlacesScreen> {
             hintText: 'Search',
             focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(20),
-                borderSide: BorderSide(color: Colors.white))),
+                borderSide: const BorderSide(color: Colors.white))),
         components: [Component(Component.country, "ug")]); // Changed to Uganda
 
     if (p != null) {

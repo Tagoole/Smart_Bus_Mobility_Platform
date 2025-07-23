@@ -19,7 +19,7 @@ class _PaymentSuccessState extends State<PaymentSuccess> {
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
-            builder: (context) => NavBarScreen(userRole: 'user', initialTab: 0),
+            builder: (context) => const NavBarScreen(userRole: 'user', initialTab: 0),
           ),
           (route) => false,
         );
@@ -86,7 +86,7 @@ class _PaymentSuccessState extends State<PaymentSuccess> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.account_balance_wallet,
                           color: Colors.yellowAccent,
                           size: 20,
@@ -127,7 +127,7 @@ class _PaymentSuccessState extends State<PaymentSuccess> {
                         const SizedBox(height: 30),
 
                         // QR Code Icon
-                        Icon(Icons.qr_code_2, size: 50, color: Colors.black),
+                        const Icon(Icons.qr_code_2, size: 50, color: Colors.black),
                       ],
                     ),
                   ),

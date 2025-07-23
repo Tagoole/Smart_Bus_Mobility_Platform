@@ -38,7 +38,7 @@ class _LiveBusDetailsSheetState extends State<LiveBusDetailsSheet> {
     _initializePassengerLocation();
     fetchBusLocationAndRoute();
     _timer = Timer.periodic(
-        Duration(seconds: 10), (_) => fetchBusLocationAndRoute());
+        const Duration(seconds: 10), (_) => fetchBusLocationAndRoute());
   }
 
   void _initializePassengerLocation() {
@@ -137,7 +137,9 @@ class _LiveBusDetailsSheetState extends State<LiveBusDetailsSheet> {
   void _fitMapBounds() {
     if (_mapController == null ||
         busLocation == null ||
-        passengerLocation == null) return;
+        passengerLocation == null) {
+      return;
+    }
 
     try {
       final bounds = LatLngBounds(

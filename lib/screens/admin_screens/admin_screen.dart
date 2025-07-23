@@ -708,15 +708,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               if (action['featured'] == true)
                 Container(
                   margin: const EdgeInsets.only(bottom: 16),
-                  child: Row(
+                  child: const Row(
                     children: [
                       Icon(
                         Icons.star,
-                        color: const Color(0xFFFFD95D),
+                        color: Color(0xFFFFD95D),
                         size: 16,
                       ),
-                      const SizedBox(width: 8),
-                      const Text(
+                      SizedBox(width: 8),
+                      Text(
                         'FEATURED',
                         style: TextStyle(
                           fontSize: 10,

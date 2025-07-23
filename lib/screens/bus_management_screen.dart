@@ -224,7 +224,7 @@ class _BusManagementScreenState extends State<BusManagementScreen>
       if (directions != null && directions.polylinePoints.isNotEmpty) {
         // Convert List<PointLatLng> to List<LatLng>
         List<LatLng> routeCoords = directions.polylinePoints
-            .map((point) => LatLng(point.latitude!, point.longitude!))
+            .map((point) => LatLng(point.latitude, point.longitude))
             .toList();
 
         setState(() {
@@ -999,12 +999,12 @@ class _BusManagementScreenState extends State<BusManagementScreen>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
+                              const Row(
                                 children: [
-                                  const Icon(Icons.map,
+                                  Icon(Icons.map,
                                       color: Color(0xFF576238), size: 20),
-                                  const SizedBox(width: 8),
-                                  const Text('Route Selection',
+                                  SizedBox(width: 8),
+                                  Text('Route Selection',
                                       style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
@@ -1185,10 +1185,12 @@ class _BusManagementScreenState extends State<BusManagementScreen>
                           hint: 'e.g., 15000',
                           keyboardType: TextInputType.number,
                           validator: (value) {
-                            if (value == null || value.isEmpty)
+                            if (value == null || value.isEmpty) {
                               return 'Please enter fare';
-                            if (double.tryParse(value) == null)
+                            }
+                            if (double.tryParse(value) == null) {
                               return 'Please enter a valid number';
+                            }
                             return null;
                           },
                         ),
@@ -1230,16 +1232,18 @@ class _BusManagementScreenState extends State<BusManagementScreen>
                                 hint: 'e.g., 25',
                                 keyboardType: TextInputType.number,
                                 validator: (value) {
-                                  if (value == null || value.isEmpty)
+                                  if (value == null || value.isEmpty) {
                                     return 'Required';
+                                  }
                                   final day = int.tryParse(value);
                                   if (day == null) return 'Invalid';
                                   if (_selectedMonth != null &&
                                       _selectedYear != null) {
                                     final maxDays = _daysInMonth(
                                         _selectedYear!, _selectedMonth!);
-                                    if (day < 1 || day > maxDays)
+                                    if (day < 1 || day > maxDays) {
                                       return '1-$maxDays';
+                                    }
                                   }
                                   return null;
                                 },

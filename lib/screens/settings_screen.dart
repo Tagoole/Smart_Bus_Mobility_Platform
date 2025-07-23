@@ -55,7 +55,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 context,
                 MaterialPageRoute(
                     builder: (context) =>
-                        NavBarScreen(userRole: 'driver', initialTab: 0)),
+                        const NavBarScreen(userRole: 'driver', initialTab: 0)),
                 (route) => false,
               );
             } else if (role == 'admin') {
@@ -63,7 +63,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 context,
                 MaterialPageRoute(
                     builder: (context) =>
-                        NavBarScreen(userRole: 'admin', initialTab: 0)),
+                        const NavBarScreen(userRole: 'admin', initialTab: 0)),
                 (route) => false,
               );
             } else {
@@ -72,7 +72,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 context,
                 MaterialPageRoute(
                     builder: (context) =>
-                        NavBarScreen(userRole: 'user', initialTab: 0)),
+                        const NavBarScreen(userRole: 'user', initialTab: 0)),
                 (route) => false,
               );
             }
@@ -637,7 +637,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: isDarkMode ? const Color(0xFF2D2D2D) : Colors.white,
         title: Row(
           children: [
-            Icon(Icons.warning, color: Colors.red, size: 24),
+            const Icon(Icons.warning, color: Colors.red, size: 24),
             const SizedBox(width: 8),
             Text(
               'Delete Account',

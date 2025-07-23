@@ -193,7 +193,7 @@ class BusRouteSOM {
       
       // Yield control for UI responsiveness
       if (iteration % 25 == 0) {
-        await Future.delayed(Duration(microseconds: 100));
+        await Future.delayed(const Duration(microseconds: 100));
       }
     }
   }
