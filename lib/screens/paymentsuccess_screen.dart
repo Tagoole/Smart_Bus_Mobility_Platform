@@ -126,8 +126,7 @@ class _PaymentSuccessState extends State<PaymentSuccess> {
                         _buildDetailRow("Status", "Success", isStatus: true),
                         const SizedBox(height: 30),
 
-                        // QR Code Icon
-                        const Icon(Icons.qr_code_2, size: 50, color: Colors.black),
+                        
                       ],
                     ),
                   ),
