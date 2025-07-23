@@ -112,6 +112,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final email = userData?['email'] ?? 'No Email';
     final phone = userData?['contact'] ?? 'No Phone';
     final imageUrl = userData?['profileImageUrl'] ?? '';
+    final role = (userData?['role']?.toString().toLowerCase() ?? 'user');
 
     return Scaffold(
       body: Container(
@@ -303,24 +304,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         },
                       ),
 
-                      const SizedBox(height: 15),
-
-                      _buildProfileOption(
-                        icon: Icons.confirmation_number,
-                        title: 'My Tickets',
-                        subtitle: 'View your ticket history',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => TicketScreen()),
-                          );
-                          // Or, if using named routes:
-                          // Navigator.pushNamed(context, '/ticketScreen');
-                        },
-                      ),
-
-                      const SizedBox(height: 15),
+                      if (role == 'user' || role == 'passenger') ...[
+                        const SizedBox(height: 15),
+                        _buildProfileOption(
+                          icon: Icons.confirmation_number,
+                          title: 'My Tickets',
+                          subtitle: 'View your ticket history',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => TicketScreen()),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 15),
+                      ],
 
                       _buildProfileOption(
                         icon: Icons.location_on,
@@ -331,23 +330,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         },
                       ),
 
-                      const SizedBox(height: 15),
-
-                      _buildProfileOption(
-                        icon: Icons.payment,
-                        title: 'Payment Methods',
-                        subtitle: 'Manage your payment options',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => PaymentScreen(),
-                            ),
-                          );
-                        },
-                      ),
-
-                      const SizedBox(height: 15),
+                      if (role == 'user' || role == 'passenger') ...[
+                        const SizedBox(height: 15),
+                        _buildProfileOption(
+                          icon: Icons.payment,
+                          title: 'Payment Methods',
+                          subtitle: 'Manage your payment options',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => PaymentScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 15),
+                      ],
 
                       _buildProfileOption(
                         icon: Icons.notifications,
