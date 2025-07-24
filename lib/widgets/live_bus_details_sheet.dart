@@ -12,10 +12,12 @@ class LiveBusDetailsSheet extends StatefulWidget {
   final String busId;
   final Map<String, dynamic> booking;
   final BitmapDescriptor? passengerIcon;
+  final bool mapOnly;
   const LiveBusDetailsSheet({
     required this.busId,
     required this.booking,
     this.passengerIcon,
+    this.mapOnly = false,
     super.key,
   });
 
@@ -315,7 +317,7 @@ class _LiveBusDetailsSheetState extends State<LiveBusDetailsSheet> {
       padding: const EdgeInsets.all(24.0),
       child: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _buildContent(),
+          : (widget.mapOnly ? _buildMapOnlyContent() : _buildContent()),
     );
   }
 
@@ -421,6 +423,92 @@ class _LiveBusDetailsSheetState extends State<LiveBusDetailsSheet> {
           padding: EdgeInsets.only(top: 16.0),
           child: Text(
             'Bus is moving from its current location to your pickup location.',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMapOnlyContent() {
+    // Validate locations
+    if (busLocation == null || passengerLocation == null) {
+      return _buildErrorContent(
+          'Live tracking unavailable: missing location data.');
+    }
+    if (busLocation!.latitude.isNaN ||
+        busLocation!.longitude.isNaN ||
+        passengerLocation!.latitude.isNaN ||
+        passengerLocation!.longitude.isNaN) {
+      return _buildErrorContent('Invalid location coordinates.');
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () {
+                Navigator.pop(context);
+              },
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Live Bus Tracking',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          height: 400,
+          margin: const EdgeInsets.only(top: 16),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: GoogleMap(
+              onMapCreated: (GoogleMapController controller) {
+                _mapController = controller;
+                _fitMapBounds();
+              },
+              initialCameraPosition: CameraPosition(
+                target: busLocation!,
+                zoom: 13,
+              ),
+              markers: {
+                Marker(
+                  markerId: const MarkerId('bus'),
+                  position: busLocation!,
+                  infoWindow: const InfoWindow(title: 'Bus Location'),
+                  icon: BitmapDescriptor.defaultMarkerWithHue(
+                    BitmapDescriptor.hueBlue,
+                  ),
+                ),
+                Marker(
+                  markerId: const MarkerId('passenger'),
+                  position: passengerLocation!,
+                  infoWindow: const InfoWindow(title: 'Your Pickup Location'),
+                  icon: widget.passengerIcon ??
+                      BitmapDescriptor.defaultMarkerWithHue(
+                        BitmapDescriptor.hueGreen,
+                      ),
+                ),
+              },
+              polylines: routePolyline.isNotEmpty
+                  ? {
+                      Polyline(
+                        polylineId: const PolylineId('route'),
+                        points: routePolyline,
+                        color: Colors.blue,
+                        width: 5,
+                      ),
+                    }
+                  : {},
+              zoomControlsEnabled: true,
+              myLocationButtonEnabled: false,
+              mapToolbarEnabled: true,
+              compassEnabled: true,
+            ),
           ),
         ),
       ],

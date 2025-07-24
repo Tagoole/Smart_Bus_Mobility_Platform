@@ -989,6 +989,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
             busId: busId?.toString() ?? '',
             booking: booking,
             passengerIcon: passengerIcon,
+            mapOnly: true, // Show only the map!
           ),
         );
       }
