@@ -73,6 +73,73 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   Timer? _passengerRefreshTimer;
   Timer? _etaRefreshTimer;
 
+  // Simulation state
+  bool _isSimulating = false;
+  bool _isSimulationPaused = false;
+  Timer? _simulationTimer;
+  int _simulationIndex = 0;
+  List<LatLng> _simulationRoutePoints = [];
+
+  void _startSimulation() {
+    if (_isSimulating || _polylines.isEmpty) return;
+    // Gather all polyline points into a single list
+    List<LatLng> allPoints = [];
+    for (final poly in _polylines) {
+      allPoints.addAll(poly.points);
+    }
+    if (allPoints.length < 2) return;
+    setState(() {
+      _isSimulating = true;
+      _isSimulationPaused = false;
+      _simulationIndex = 0;
+      _simulationRoutePoints = allPoints;
+    });
+    _simulationTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
+      if (_isSimulationPaused) return;
+      if (_simulationIndex < _simulationRoutePoints.length) {
+        setState(() {
+          _driverLocation = _simulationRoutePoints[_simulationIndex];
+          _simulationIndex++;
+        });
+        _updateMarkers();
+      } else {
+        timer.cancel();
+        setState(() {
+          _isSimulating = false;
+        });
+      }
+    });
+  }
+
+  void _pauseSimulation() {
+    setState(() {
+      _isSimulationPaused = true;
+    });
+  }
+
+  void _resumeSimulation() {
+    setState(() {
+      _isSimulationPaused = false;
+    });
+  }
+
+  void _resetSimulation() {
+    _simulationTimer?.cancel();
+    setState(() {
+      _isSimulating = false;
+      _isSimulationPaused = false;
+      _simulationIndex = 0;
+      _simulationRoutePoints = [];
+    });
+    // Optionally reset driver location to start
+    if (_polylines.isNotEmpty && _polylines.first.points.isNotEmpty) {
+      setState(() {
+        _driverLocation = _polylines.first.points.first;
+      });
+      _updateMarkers();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1758,11 +1825,48 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                       ),
                     ),
                   ),
+              
+                // Simulation controls
+                Positioned(
+                  bottom: 120,
+                  left: 16,
+                  right: 16,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: (!_isSimulating && _polylines.isNotEmpty)
+                            ? _startSimulation
+                            : null,
+                        icon: const Icon(Icons.play_arrow),
+                        label: const Text('Simulate Driver Movement'),
+                      ),
+                      const SizedBox(width: 8),
+                      if (_isSimulating && !_isSimulationPaused)
+                        ElevatedButton.icon(
+                          onPressed: _pauseSimulation,
+                          icon: const Icon(Icons.pause),
+                          label: const Text('Pause'),
+                        ),
+                      if (_isSimulating && _isSimulationPaused)
+                        ElevatedButton.icon(
+                          onPressed: _resumeSimulation,
+                          icon: const Icon(Icons.play_arrow),
+                          label: const Text('Resume'),
+                        ),
+                      if (_isSimulating)
+                        ElevatedButton.icon(
+                          onPressed: _resetSimulation,
+                          icon: const Icon(Icons.stop),
+                          label: const Text('Reset'),
+                        ),
+                    ],
+                  ),
+                ),
               ],
-            ),
-      // Remove bottom navigation bar
-    );
-  }
+            )
+    
+  );}
 
   // Show passenger list bottom sheet
   void _showPassengerList() {
