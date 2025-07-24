@@ -605,6 +605,73 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     }
   }
 
+  // Create batched polylines for Directions API
+  Future<void> _createBatchedWaypointPolylines(List<LatLng> waypoints, {int batchSize = 20}) async {
+    if (waypoints.length < 2) return;
+    print('Creating batched waypoint polylines with ${waypoints.length} waypoints, batch size $batchSize');
+    setState(() {
+      _polylines.removeWhere((polyline) => polyline.polylineId.value == 'full_route');
+    });
+    List<LatLng> allPoints = [];
+    int startIdx = 0;
+    int polylineIdCounter = 0;
+    while (startIdx < waypoints.length - 1) {
+      int endIdx = (startIdx + batchSize < waypoints.length - 1)
+          ? startIdx + batchSize
+          : waypoints.length - 1;
+      final origin = waypoints[startIdx];
+      final destination = waypoints[endIdx];
+      final intermediateWaypoints = endIdx - startIdx > 1
+          ? waypoints.sublist(startIdx + 1, endIdx)
+          : null;
+      final directions = await _directionsRepository.getDirections(
+        origin: origin,
+        destination: destination,
+        waypoints: intermediateWaypoints,
+      );
+      if (directions != null && directions.polylinePoints.isNotEmpty) {
+        final batchPoints = directions.polylinePoints
+            .map((point) => LatLng(point.latitude, point.longitude))
+            .toList();
+        if (allPoints.isNotEmpty && allPoints.last == batchPoints.first) {
+          allPoints.addAll(batchPoints.skip(1));
+        } else {
+          allPoints.addAll(batchPoints);
+        }
+        setState(() {
+          _polylines.add(
+            Polyline(
+              polylineId: PolylineId('full_route_$polylineIdCounter'),
+              points: batchPoints,
+              color: Colors.blue,
+              width: 5,
+              patterns: [
+                PatternItem.dash(20),
+                PatternItem.gap(10),
+              ],
+            ),
+          );
+        });
+      } else {
+        // Fallback: straight line
+        allPoints.add(origin);
+        allPoints.add(destination);
+        setState(() {
+          _polylines.add(
+            Polyline(
+              polylineId: PolylineId('full_route_$polylineIdCounter'),
+              points: [origin, destination],
+              color: Colors.red,
+              width: 5,
+            ),
+          );
+        });
+      }
+      startIdx = endIdx;
+      polylineIdCounter++;
+    }
+  }
+
   // Calculate bounds for a list of LatLng points
   LatLngBounds _calculateBounds(List<LatLng> points) {
     double minLat = 90;
