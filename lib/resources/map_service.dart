@@ -559,5 +559,49 @@ class BusRouteService {
   int get passengerCount => _routeManager.busStops.length;
 }
 
+// Simple greedy nearest-neighbor route optimizer (for testing)
+class SimpleGreedyRouteOptimizer {
+  final List<LatLng> coordinates;
+  SimpleGreedyRouteOptimizer(this.coordinates);
+
+  List<int> computeRouteOrder() {
+    if (coordinates.isEmpty) return [];
+    final n = coordinates.length;
+    final visited = List<bool>.filled(n, false);
+    final route = <int>[];
+    int current = 0;
+    route.add(current);
+    visited[current] = true;
+    for (int step = 1; step < n; step++) {
+      double minDist = double.infinity;
+      int nextIdx = -1;
+      for (int i = 0; i < n; i++) {
+        if (!visited[i]) {
+          final dLat = coordinates[i].latitude - coordinates[current].latitude;
+          final dLng = coordinates[i].longitude - coordinates[current].longitude;
+          final dist = dLat * dLat + dLng * dLng;
+          if (dist < minDist) {
+            minDist = dist;
+            nextIdx = i;
+          }
+        }
+      }
+      if (nextIdx == -1) break;
+      route.add(nextIdx);
+      visited[nextIdx] = true;
+      current = nextIdx;
+    }
+    return route;
+  }
+}
+
+extension BusRouteServiceGreedyTest on BusRouteService {
+  // For testing: get route order using the greedy optimizer
+  List<int> getGreedyRouteOrder(List<LatLng> coordinates) {
+    final optimizer = SimpleGreedyRouteOptimizer(coordinates);
+    return optimizer.computeRouteOrder();
+  }
+}
+
 
 

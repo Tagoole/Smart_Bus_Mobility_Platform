@@ -384,14 +384,10 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
   // Generate optimized route using BusRouteService
   Future<void> _generateOptimizedRoute() async {
-    if (_driverLocation == null) {
-      print('Driver location is null, attempting to get location');
-      await _getCurrentLocation();
-      if (_driverLocation == null) {
-        print('Failed to get driver location');
-        _showSnackBar('Unable to get your location. Please try again.');
-        return;
-      }
+    if (_driverBus == null) {
+      print('No bus assigned to driver.');
+      _showSnackBar('No bus assigned to you.');
+      return;
     }
     if (_passengers.isEmpty) {
       print('No passengers available for route generation');
@@ -403,7 +399,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         _isLoading = true;
         _statusMessage = 'Optimizing route...';
       });
-      print('Starting route generation with driver at: $_driverLocation');
+      print('Starting route generation with bus start at: (${_driverBus!.startLat}, ${_driverBus!.startLng})');
       print('Number of passengers: ${_passengers.length}');
       _routeService.clearAllPassengers();
       _polylines.clear();
@@ -430,22 +426,63 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         name: p['pickupAddress'] ?? 'Unknown',
       )).toList();
 
-      // Optimize only the passenger stops using SOM
-      final som = map_service.BusRouteSOM(
-        coordinates: passengerStops.map((s) => s.location).toList(),
-      );
-      await som.train();
-      final optimizedOrder = som.extractOptimalRoute();
-      final optimizedPickups = optimizedOrder.map((i) => passengerStops[i]).toList();
+      // 1. Find the nearest passenger to the bus start point
+      int? nearestIdx;
+      double minDistance = double.infinity;
+      for (int i = 0; i < passengerStops.length; i++) {
+        final stop = passengerStops[i];
+        final dLat = stop.location.latitude - startStop.location.latitude;
+        final dLng = stop.location.longitude - startStop.location.longitude;
+        final distance = (dLat * dLat) + (dLng * dLng); // squared distance
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearestIdx = i;
+        }
+      }
+      if (nearestIdx == null) {
+        print('No valid nearest passenger found.');
+        _showSnackBar('No valid nearest passenger found.');
+        setState(() {
+          _isLoading = false;
+          _statusMessage = '';
+        });
+        return;
+      }
+      final nearestPassenger = passengerStops[nearestIdx];
+      // Remove nearest passenger from the list for SOM
+      final remainingPassengers = List<map_service.BusStop>.from(passengerStops)..removeAt(nearestIdx);
 
-      // Final ordered stops: start, optimized pickups, end
-      final orderedStops = [startStop, ...optimizedPickups, endStop];
-      print('[DEBUG] Ordered stops for route:');
-      for (var stop in orderedStops) {
-        print('  ${stop.name} at ${stop.location}');
+      // 2. Optimize only the remaining passenger stops using the greedy optimizer
+      List<map_service.BusStop> optimizedPickups = [];
+      if (remainingPassengers.isNotEmpty) {
+        // Use greedy optimizer for the remaining passengers
+        final coords = remainingPassengers.map((s) => map_service.LatLng(s.location.latitude, s.location.longitude)).toList();
+        final greedyOrder = _routeService.getGreedyRouteOrder(coords);
+        optimizedPickups = greedyOrder.map((i) => remainingPassengers[i]).toList();
       }
 
-      // Create waypoints for Directions API
+      // 3. Final ordered stops: start, nearest passenger, optimized pickups, end
+      final orderedStops = [startStop, nearestPassenger, ...optimizedPickups, endStop];
+      print('[DEBUG] Ordered stops for route:');
+      final seenLocations = <String, int>{};
+      for (var stop in orderedStops) {
+        final key = '${stop.location.latitude},${stop.location.longitude}';
+        print('  ${stop.name} at ${stop.location}');
+        seenLocations[key] = (seenLocations[key] ?? 0) + 1;
+      }
+      // Check for duplicates
+      bool hasDuplicates = false;
+      seenLocations.forEach((key, count) {
+        if (count > 1) {
+          print('[WARNING] Duplicate stop detected at $key, count: $count');
+          hasDuplicates = true;
+        }
+      });
+      if (hasDuplicates) {
+        print('[ERROR] Duplicate waypoints detected in orderedStops! This may cause circular paths.');
+      }
+
+      // 4. Create waypoints for Directions API
       final waypoints = orderedStops.map((s) => LatLng(s.location.latitude, s.location.longitude)).toList();
       await _createWaypointPolyline(waypoints);
       await _findNearestPassengerAndDrawRoute();
