@@ -1826,39 +1826,99 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                     ),
                   ),
               
-                // Simulation controls
+                // Simulation controls (circular, above passenger list button)
                 Positioned(
-                  bottom: 120,
+                  bottom: 80, // above the blue passenger list button
                   left: 16,
-                  right: 16,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  child: Column(
                     children: [
-                      ElevatedButton.icon(
-                        onPressed: (!_isSimulating && _polylines.isNotEmpty)
-                            ? _startSimulation
-                            : null,
-                        icon: const Icon(Icons.play_arrow),
-                        label: const Text('Simulate Driver Movement'),
-                      ),
-                      const SizedBox(width: 8),
+                      if (!_isSimulating && _polylines.isNotEmpty)
+                        Container(
+                          height: 50,
+                          width: 50,
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.play_arrow, color: Colors.green),
+                            onPressed: _startSimulation,
+                            tooltip: 'Simulate Driver Movement',
+                          ),
+                        ),
                       if (_isSimulating && !_isSimulationPaused)
-                        ElevatedButton.icon(
-                          onPressed: _pauseSimulation,
-                          icon: const Icon(Icons.pause),
-                          label: const Text('Pause'),
+                        Container(
+                          height: 50,
+                          width: 50,
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.pause, color: Colors.orange),
+                            onPressed: _pauseSimulation,
+                            tooltip: 'Pause Simulation',
+                          ),
                         ),
                       if (_isSimulating && _isSimulationPaused)
-                        ElevatedButton.icon(
-                          onPressed: _resumeSimulation,
-                          icon: const Icon(Icons.play_arrow),
-                          label: const Text('Resume'),
+                        Container(
+                          height: 50,
+                          width: 50,
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.play_arrow, color: Colors.green),
+                            onPressed: _resumeSimulation,
+                            tooltip: 'Resume Simulation',
+                          ),
                         ),
                       if (_isSimulating)
-                        ElevatedButton.icon(
-                          onPressed: _resetSimulation,
-                          icon: const Icon(Icons.stop),
-                          label: const Text('Reset'),
+                        Container(
+                          height: 50,
+                          width: 50,
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.stop, color: Colors.red),
+                            onPressed: _resetSimulation,
+                            tooltip: 'Reset Simulation',
+                          ),
                         ),
                     ],
                   ),
