@@ -758,7 +758,7 @@ class _BusTrackingDetailScreenState extends State<BusTrackingDetailScreen> {
                           },
                           initialCameraPosition: CameraPosition(
                             target: busLocation!,
-                            zoom: 13,
+                            zoom: 15,
                           ),
                           markers: {
                             Marker(
@@ -797,7 +797,9 @@ class _BusTrackingDetailScreenState extends State<BusTrackingDetailScreen> {
                           },
                           myLocationEnabled: false,
                           zoomControlsEnabled: true,
-                          mapToolbarEnabled: false,
+                          mapToolbarEnabled: true,
+                          compassEnabled: true,
+                          myLocationButtonEnabled: true,
                         ),
             ),
 

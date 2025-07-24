@@ -212,10 +212,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(24),
-          bottomRight: Radius.circular(24),
+          bottomLeft: Radius.circular(16), // reduced from 24
+          bottomRight: Radius.circular(16),
         ),
-        //Border(bottom: BorderSide(color: Color(0xFFE5E7EB), width: 1)),
         boxShadow: [
           BoxShadow(
             color: Color(0x0A000000),
@@ -225,23 +224,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(12.0), // reduced from 24
         child: Row(
           children: [
             Stack(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(8), // reduced from 16
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [Color(0xFF576238), Color(0xFF6B7244)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(12), // reduced from 16
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF576238).withValues(alpha: 0.3),
+                        color: const Color(0xFF576238).withOpacity(0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -250,14 +249,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   child: const Icon(
                     Icons.explore,
                     color: Colors.white,
-                    size: 32,
+                    size: 24, // reduced from 32
                   ),
                 ),
                 Positioned(
                   top: -4,
                   right: -4,
                   child: Container(
-                    padding: const EdgeInsets.all(4),
+                    padding: const EdgeInsets.all(2), // reduced from 4
                     decoration: const BoxDecoration(
                       color: Color(0xFFFFD95D),
                       shape: BoxShape.circle,
@@ -265,92 +264,45 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     child: const Icon(
                       Icons.trending_up,
                       color: Color(0xFF576238),
-                      size: 12,
+                      size: 10, // reduced from 12
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(width: 24),
-            const Expanded(
+            const SizedBox(width: 12), // reduced from 24
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+                children: const [
                   Text(
                     'Admin Dashboard',
                     style: TextStyle(
-                      fontSize: 28,
+                      fontSize: 20, // reduced from 28
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF111827),
                     ),
                   ),
-                  SizedBox(height: 4),
+                  SizedBox(height: 2), // reduced from 4
                   Text(
                     'Manage your routes and operations efficiently',
-                    style: TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
+                    style: TextStyle(
+                      fontSize: 12, // reduced from 16
+                      color: Color(0xFF6B7280),
+                    ),
                   ),
                 ],
               ),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Row(
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        const Text(
-                          'Last updated',
-                          style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-                        ),
-                        const Text(
-                          '2 minutes ago',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF111827),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade400,
-                            shape: BoxShape.circle,
-                          ),
-                          child: AnimatedBuilder(
-                            animation: _animationController,
-                            builder: (context, child) {
-                              return Transform.scale(
-                                scale: 0.8 + (0.2 * _animationController.value),
-                                child: child,
-                              );
-                            },
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.green.shade400,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(width: 16),
-                    IconButton(
-                      onPressed: _handleLogout,
-                      icon: const Icon(
-                        Icons.logout,
-                        color: Color(0xFF576238),
-                        size: 24,
-                      ),
-                      tooltip: 'Logout',
-                    ),
-                  ],
-                ),
-              ],
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: _handleLogout,
+              icon: const Icon(
+                Icons.logout,
+                color: Color(0xFF576238),
+                size: 20, // reduced from 24
+              ),
+              tooltip: 'Logout',
             ),
           ],
         ),
@@ -359,67 +311,68 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   }
 
   Widget _buildWelcomeSection() {
+    final width = MediaQuery.of(context).size.width;
     return Container(
-      margin: const EdgeInsets.all(24),
-      padding: const EdgeInsets.all(32),
+      margin: const EdgeInsets.all(12), // reduced from 24
+      padding: const EdgeInsets.all(16), // reduced from 32
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.white, const Color(0xFFF0EADC).withValues(alpha: 0.2)],
+          colors: [Colors.white, const Color(0xFFF0EADC).withOpacity(0.2)],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16), // reduced from 24
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 6, // reduced from 10
+            offset: const Offset(0, 2), // reduced offset
           ),
         ],
       ),
       child: Row(
         children: [
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+              children: const [
                 Text(
                   'Good morning, Admin! 👋',
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: 16, // reduced from 24
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF111827),
                   ),
                 ),
-                SizedBox(height: 12),
+                SizedBox(height: 6), // reduced from 12
                 Text(
                   'Your system is running smoothly. Here\'s today\'s overview.',
-                  style: TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
+                  style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
                 ),
               ],
             ),
           ),
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(12), // reduced from 24
             decoration: BoxDecoration(
-              color: const Color(0xFFFFD95D).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(16),
+              color: const Color(0xFFFFD95D).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10), // reduced from 16
             ),
             child: const Column(
               children: [
                 Text(
                   '98.5%',
                   style: TextStyle(
-                    fontSize: 28,
+                    fontSize: 18, // reduced from 28
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF576238),
                   ),
                 ),
-                SizedBox(height: 4),
+                SizedBox(height: 2), // reduced from 4
                 Text(
                   'System Health',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                  style: TextStyle(fontSize: 10, color: Color(0xFF6B7280)),
                 ),
               ],
             ),
@@ -477,32 +430,33 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         'bgColor': const Color(0xFFECFDF5),
       },
     ];
-
+    final width = MediaQuery.of(context).size.width;
+    final cardWidth = width < 400 ? 110.0 : 130.0; // adaptive
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 12), // reduced from 24
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             'Key Metrics',
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 16, // reduced from 24
               fontWeight: FontWeight.bold,
               color: Color(0xFF111827),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12), // reduced from 24
           SizedBox(
-            height: 140,
+            height: 100, // reduced from 140
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: summaryItems.length,
               itemBuilder: (context, index) {
                 final item = summaryItems[index];
                 return Container(
-                  width: 160,
+                  width: cardWidth,
                   margin: EdgeInsets.only(
-                    right: index < summaryItems.length - 1 ? 16 : 0,
+                    right: index < summaryItems.length - 1 ? 8 : 0, // reduced from 16
                   ),
                   child: _buildSummaryCard(item),
                 );
@@ -525,24 +479,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 400),
             curve: Curves.easeInOut,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(8), // reduced from 16
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  item['bgColor'].withValues(alpha: 0.35),
+                  item['bgColor'].withOpacity(0.35),
                   Colors.white,
-                  item['bgColor'].withValues(alpha: 0.15),
+                  item['bgColor'].withOpacity(0.15),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(12), // reduced from 20
               boxShadow: [
                 BoxShadow(
-                  color: item['color'].withValues(alpha: 0.18),
-                  blurRadius: 18,
-                  spreadRadius: 2,
-                  offset: const Offset(0, 8),
+                  color: item['color'].withOpacity(0.18),
+                  blurRadius: 10, // reduced from 18
+                  spreadRadius: 1, // reduced from 2
+                  offset: const Offset(0, 4), // reduced offset
                 ),
               ],
             ),
@@ -550,98 +504,74 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Icon with glow
                 Center(
                   child: Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: item['color'].withValues(alpha: 0.4),
-                          blurRadius: 18,
-                          spreadRadius: 2,
+                          color: item['color'].withOpacity(0.4),
+                          blurRadius: 8, // reduced from 18
+                          spreadRadius: 1, // reduced from 2
                         ),
                       ],
                     ),
                     child: CircleAvatar(
-                      backgroundColor: item['bgColor'].withValues(alpha: 0.18),
-                      radius: 18,
-                      child: Icon(item['icon'], color: item['color'], size: 22),
+                      backgroundColor: item['bgColor'].withOpacity(0.18),
+                      radius: 14, // reduced from 22
+                      child: Icon(
+                        item['icon'],
+                        color: item['color'],
+                        size: 18, // reduced from 28
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                // Value with playful font and color
+                const SizedBox(height: 8), // reduced from 14
                 Center(
                   child: Text(
                     item['value'],
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 18, // reduced from 28
                       fontWeight: FontWeight.w900,
                       color: item['color'],
                       fontFamily: 'Poppins',
                       letterSpacing: 1.2,
                       shadows: [
                         Shadow(
-                          color: item['color'].withValues(alpha: 0.2),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
+                          color: item['color'].withOpacity(0.2),
+                          blurRadius: 3, // reduced from 6
+                          offset: const Offset(0, 1), // reduced offset
                         ),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 2),
-                // Title
+                const SizedBox(height: 2), // reduced from 4
                 Center(
                   child: Text(
                     item['title'],
                     style: const TextStyle(
-                      fontSize: 11,
+                      fontSize: 10, // reduced from 14
                       color: Color(0xFF6B7280),
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                     ),
-                    textAlign: TextAlign.center,
                   ),
                 ),
-                const SizedBox(height: 6),
-                // Animated progress bar (for demo, random progress)
-                TweenAnimationBuilder<double>(
-                  tween: Tween(
-                    begin: 0.0,
-                    end: 0.7 + (item['value'].hashCode % 30) / 100,
-                  ),
-                  duration: const Duration(milliseconds: 900),
-                  builder: (context, progress, _) {
-                    return ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        minHeight: 4,
-                        backgroundColor: item['color'].withValues(alpha: 0.10),
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          item['color'],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      item['isIncrease']
-                          ? Icons.trending_up
-                          : Icons.trending_down,
+                      item['isIncrease'] ? Icons.trending_up : Icons.trending_down,
                       color: item['isIncrease'] ? Colors.green : Colors.red,
-                      size: 12,
+                      size: 10, // reduced from 12
                     ),
                     const SizedBox(width: 2),
                     Text(
                       item['change'],
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 8, // reduced from 10
                         fontWeight: FontWeight.w500,
                         color: item['isIncrease'] ? Colors.green : Colors.red,
                       ),
@@ -649,7 +579,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     const SizedBox(width: 2),
                     const Text(
                       'vs yesterday',
-                      style: TextStyle(fontSize: 8, color: Color(0xFF9CA3AF)),
+                      style: TextStyle(fontSize: 7, color: Color(0xFF9CA3AF)), // reduced from 8
                     ),
                   ],
                 ),
@@ -705,9 +635,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         'action': 'view-reports',
       },
     ];
-
+    final width = MediaQuery.of(context).size.width;
+    final crossAxisCount = width < 400 ? 1 : 2;
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(12), // reduced from 24
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -717,27 +648,30 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               Text(
                 'Quick Actions',
                 style: TextStyle(
-                  fontSize: 24,
+                  fontSize: 16, // reduced from 24
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF111827),
                 ),
               ),
-              SizedBox(height: 4),
+              SizedBox(height: 2), // reduced from 4
               Text(
                 'Streamline your workflow with these shortcuts',
-                style: TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
+                style: TextStyle(
+                  fontSize: 12, // reduced from 16
+                  color: Color(0xFF6B7280),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12), // reduced from 24
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 0.8,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: 8, // reduced from 16
+              mainAxisSpacing: 8, // reduced from 16
+              childAspectRatio: 1.2, // slightly more square
             ),
             itemCount: quickActions.length,
             itemBuilder: (context, index) {
@@ -766,7 +700,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 : null,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.07),
+                color: Colors.black.withOpacity(0.07),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -911,7 +845,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
+                  color: Colors.black.withOpacity(0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),

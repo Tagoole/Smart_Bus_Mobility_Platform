@@ -441,6 +441,16 @@ class _LiveBusDetailsSheetState extends State<LiveBusDetailsSheet> {
         passengerLocation!.longitude.isNaN) {
       return _buildErrorContent('Invalid location coordinates.');
     }
+    // Calculate distance
+    double distanceKm = 0.0;
+    if (busLocation != null && passengerLocation != null) {
+      distanceKm = _calculateDistance(
+        busLocation!.latitude,
+        busLocation!.longitude,
+        passengerLocation!.latitude,
+        passengerLocation!.longitude,
+      );
+    }
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -461,6 +471,23 @@ class _LiveBusDetailsSheetState extends State<LiveBusDetailsSheet> {
           ],
         ),
         const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildInfoTile(
+              icon: Icons.access_time,
+              label: 'ETA',
+              value: isLoading ? '...' : '$etaMinutes min',
+              color: Colors.green,
+            ),
+            _buildInfoTile(
+              icon: Icons.route,
+              label: 'Distance',
+              value: isLoading ? '...' : '${distanceKm.toStringAsFixed(1)} km',
+              color: Colors.green,
+            ),
+          ],
+        ),
         Container(
           height: 400,
           margin: const EdgeInsets.only(top: 16),
@@ -536,6 +563,38 @@ class _LiveBusDetailsSheetState extends State<LiveBusDetailsSheet> {
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey[500],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoTile({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Expanded(
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 30),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: color,
             ),
           ),
         ],
