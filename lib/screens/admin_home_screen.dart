@@ -48,40 +48,33 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   Future<void> _loadDashboardData() async {
     try {
       // Load summary data from Firebase
-      final driversSnapshot = await _firestore.collection('drivers').get();
+      final usersSnapshot = await _firestore.collection('users').get();
       final busesSnapshot = await _firestore.collection('buses').get();
-      final routesSnapshot = await _firestore
-          .collection('routes')
-          .where('status', isEqualTo: 'pending')
-          .get();
-      final feedbackSnapshot = await _firestore.collection('feedback').get();
-
-      // Get today's tickets
-      final today = DateTime.now();
-      final startOfDay = DateTime(today.year, today.month, today.day);
-      final ticketsSnapshot = await _firestore
-          .collection('tickets')
-          .where('createdAt', isGreaterThanOrEqualTo: startOfDay)
-          .get();
-
+      final bookingsSnapshot = await _firestore.collection('bookings').get();
+      // Filter drivers from users
+      final usersList = usersSnapshot.docs.map((doc) => doc.data() ?? {}).toList();
+      final driversList = usersList.where((user) => (user['role']?.toString()?.toLowerCase() ?? '') == 'driver').toList();
       // Load recent activities
       final activitiesSnapshot = await _firestore
           .collection('activities')
           .orderBy('timestamp', descending: true)
           .limit(4)
           .get();
-
       setState(() {
         summaryData = {
-          'activeDrivers': driversSnapshot.docs
-              .where((doc) => doc.data()['status'] == 'active')
-              .length,
-          'pendingRoutes': routesSnapshot.size,
-          'feedbackCount': feedbackSnapshot.size,
-          'totalBuses': busesSnapshot.size,
-          'ticketsToday': ticketsSnapshot.size,
+          'usersCount': usersSnapshot.size ?? 0,
+          'usersList': usersList,
+          'activeDrivers': driversList.length,
+          'driversList': driversList,
+          'totalBuses': busesSnapshot.size ?? 0,
+          'busesList': busesSnapshot.docs.map((doc) => doc.data() ?? {}).toList(),
+          'totalTickets': bookingsSnapshot.size ?? 0,
+          'ticketsList': bookingsSnapshot.docs.map((doc) {
+            final data = doc.data() ?? {};
+            data['bookingId'] = doc.id;
+            return data;
+          }).toList(),
         };
-
         recentActivities = activitiesSnapshot.docs.map((doc) {
           final data = doc.data();
           return {
@@ -91,7 +84,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
             'user': data['user'] ?? '',
           };
         }).toList();
-
         isLoading = false;
       });
     } catch (e) {
@@ -197,7 +189,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 else ...[
                   _buildSummaryCards(),
                   _buildQuickActions(),
-                  _buildRecentActivity(),
                 ],
               ],
             ),
@@ -285,7 +276,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   ),
                   SizedBox(height: 2), // reduced from 4
                   Text(
-                    'Manage your routes and operations efficiently',
+                    'Manage your Buses and Drivers',
                     style: TextStyle(
                       fontSize: 12, // reduced from 16
                       color: Color(0xFF6B7280),
@@ -345,35 +336,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     color: Color(0xFF111827),
                   ),
                 ),
-                SizedBox(height: 6), // reduced from 12
-                Text(
-                  'Your system is running smoothly. Here\'s today\'s overview.',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(12), // reduced from 24
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFD95D).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10), // reduced from 16
-            ),
-            child: const Column(
-              children: [
-                Text(
-                  '98.5%',
-                  style: TextStyle(
-                    fontSize: 18, // reduced from 28
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF576238),
-                  ),
-                ),
-                SizedBox(height: 2), // reduced from 4
-                Text(
-                  'System Health',
-                  style: TextStyle(fontSize: 10, color: Color(0xFF6B7280)),
-                ),
+                SizedBox(height: 6)
+                ,
               ],
             ),
           ),
@@ -383,84 +347,108 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   }
 
   Widget _buildSummaryCards() {
-    final List<Map<String, dynamic>> summaryItems = [
-      {
-        'title': 'Active Drivers',
-        'value': '${summaryData['activeDrivers'] ?? 0}',
-        'change': '+2',
-        'isIncrease': true,
-        'icon': Icons.people,
-        'color': const Color(0xFF576238),
-        'bgColor': const Color(0xFFE8F5E8),
-      },
-      {
-        'title': 'Pending Routes',
-        'value': '${summaryData['pendingRoutes'] ?? 0}',
-        'change': '-3',
-        'isIncrease': false,
-        'icon': Icons.location_on,
-        'color': const Color(0xFFD4A015),
-        'bgColor': const Color(0xFFFFFBEB),
-      },
-      {
-        'title': 'Feedback Count',
-        'value': '${summaryData['feedbackCount'] ?? 0}',
-        'change': '+12',
-        'isIncrease': true,
-        'icon': Icons.chat_bubble,
-        'color': const Color(0xFF7C3AED),
-        'bgColor': const Color(0xFFF3E8FF),
-      },
-      {
-        'title': 'Total Buses',
-        'value': '${summaryData['totalBuses'] ?? 0}',
-        'change': '+1',
-        'isIncrease': true,
-        'icon': Icons.directions_bus,
-        'color': const Color(0xFF2563EB),
-        'bgColor': const Color(0xFFEBF8FF),
-      },
-      {
-        'title': 'Tickets Today',
-        'value': '${summaryData['ticketsToday'] ?? 0}',
-        'change': '+45',
-        'isIncrease': true,
-        'icon': Icons.confirmation_number,
-        'color': const Color(0xFF059669),
-        'bgColor': const Color(0xFFECFDF5),
-      },
-    ];
+    final int usersCount = summaryData['usersCount'] ?? 0;
+    final int driversCount = summaryData['activeDrivers'] ?? 0;
+    final int busesCount = summaryData['totalBuses'] ?? 0;
+    final int ticketsCount = summaryData['totalTickets'] ?? 0;
     final width = MediaQuery.of(context).size.width;
-    final cardWidth = width < 400 ? 110.0 : 130.0; // adaptive
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12), // reduced from 24
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
         children: [
-          const Text(
-            'Key Metrics',
-            style: TextStyle(
-              fontSize: 16, // reduced from 24
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF111827),
+          Expanded(
+            child: GestureDetector(
+              onTap: _showUsersDialog,
+              child: Card(
+                color: const Color(0xFFFFF9E3),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 2,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.person, color: const Color(0xFFD4A015), size: 28),
+                      const SizedBox(height: 6),
+                      Text('$usersCount', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFFD4A015))),
+                      const SizedBox(height: 2),
+                      const Text('Users', style: TextStyle(fontSize: 12, color: Color(0xFFD4A015))),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 12), // reduced from 24
-          SizedBox(
-            height: 100, // reduced from 140
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: summaryItems.length,
-              itemBuilder: (context, index) {
-                final item = summaryItems[index];
-                return Container(
-                  width: cardWidth,
-                  margin: EdgeInsets.only(
-                    right: index < summaryItems.length - 1 ? 8 : 0, // reduced from 16
+          const SizedBox(width: 8),
+          Expanded(
+            child: GestureDetector(
+              onTap: _showDriversDialog,
+              child: Card(
+                color: const Color(0xFFE8F5E8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 2,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.people, color: const Color(0xFF576238), size: 28),
+                      const SizedBox(height: 6),
+                      Text('$driversCount', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF576238))),
+                      const SizedBox(height: 2),
+                      const Text('Drivers', style: TextStyle(fontSize: 12, color: Color(0xFF576238))),
+                    ],
                   ),
-                  child: _buildSummaryCard(item),
-                );
-              },
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: GestureDetector(
+              onTap: _showBusesDialog,
+              child: Card(
+                color: const Color(0xFFEBF8FF),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 2,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.directions_bus, color: const Color(0xFF2563EB), size: 28),
+                      const SizedBox(height: 6),
+                      Text('$busesCount', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
+                      const SizedBox(height: 2),
+                      const Text('Buses', style: TextStyle(fontSize: 12, color: Color(0xFF2563EB))),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: GestureDetector(
+              onTap: _showTicketsDialog,
+              child: Card(
+                color: const Color(0xFFECFDF5),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 2,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.confirmation_number, color: const Color(0xFF059669), size: 28),
+                      const SizedBox(height: 6),
+                      Text('$ticketsCount', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF059669))),
+                      const SizedBox(height: 2),
+                      const Text('Tickets', style: TextStyle(fontSize: 12, color: Color(0xFF059669))),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -600,40 +588,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         'color': const Color(0xFF576238),
         'bgColor': const Color(0xFFE8F5E8),
         'action': 'manage-buses',
-      },
-      {
-        'title': 'Manage Drivers',
-        'description': 'View and manage driver assignments',
-        'icon': Icons.people,
-        'color': const Color(0xFF2563EB),
-        'bgColor': const Color(0xFFEBF8FF),
-        'action': 'manage-drivers',
-      },
-      {
-        'title': 'Create Optimized Route',
-        'description': 'Generate the most efficient routes using AI',
-        'icon': Icons.location_on,
-        'color': const Color(0xFFD4A015),
-        'bgColor': const Color(0xFFFFFBEB),
-        'action': 'create-route',
-        'featured': true,
-      },
-      {
-        'title': 'View Feedback',
-        'description': 'Review passenger feedback and ratings',
-        'icon': Icons.chat_bubble,
-        'color': const Color(0xFF7C3AED),
-        'bgColor': const Color(0xFFF3E8FF),
-        'action': 'view-feedback',
-      },
-      {
-        'title': 'Analytics & Reports',
-        'description': 'Access detailed analytics and insights',
-        'icon': Icons.bar_chart,
-        'color': const Color(0xFF059669),
-        'bgColor': const Color(0xFFECFDF5),
-        'action': 'view-reports',
-      },
+      }
     ];
     final width = MediaQuery.of(context).size.width;
     final crossAxisCount = width < 400 ? 1 : 2;
@@ -807,148 +762,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     );
   }
 
-  Widget _buildRecentActivity() {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Recent Activity',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF111827),
-                ),
-              ),
-              TextButton(
-                onPressed: () {
-                  // Navigate to full activity view
-                },
-                child: const Text(
-                  'View all',
-                  style: TextStyle(
-                    color: Color(0xFF576238),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              children: recentActivities.asMap().entries.map((entry) {
-                int index = entry.key;
-                Map<String, dynamic> activity = entry.value;
-                bool isLast = index == recentActivities.length - 1;
-
-                return Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    border: !isLast
-                        ? const Border(
-                            bottom: BorderSide(
-                              color: Color(0xFFE5E7EB),
-                              width: 1,
-                            ),
-                          )
-                        : null,
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: _getStatusColor(activity['status']),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              activity['action'],
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF111827),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Text(
-                                  activity['time'],
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF6B7280),
-                                  ),
-                                ),
-                                const Text(
-                                  ' • ',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF6B7280),
-                                  ),
-                                ),
-                                Text(
-                                  activity['user'],
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF6B7280),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _getStatusBgColor(activity['status']),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          activity['status'],
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: _getStatusColor(activity['status']),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
@@ -1006,6 +819,140 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           ),
         );
     }
+  }
+
+  void _showDriversDialog() {
+    final drivers = (summaryData['driversList'] as List<dynamic>?) ?? [];
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('All Drivers'),
+        content: SizedBox(
+          width: 300,
+          height: 400,
+          child: drivers.isEmpty
+              ? const Center(child: Text('No drivers found.'))
+              : ListView.builder(
+                  itemCount: drivers.length,
+                  itemBuilder: (context, index) {
+                    final driver = drivers[index] ?? {};
+                    return ListTile(
+                      leading: const Icon(Icons.person),
+                      title: Text(driver['username'] ?? driver['name'] ?? 'No Name'),
+                      subtitle: Text(driver['email'] ?? ''),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBusesDialog() {
+    final buses = (summaryData['busesList'] as List<dynamic>?) ?? [];
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('All Buses'),
+        content: SizedBox(
+          width: 300,
+          height: 400,
+          child: buses.isEmpty
+              ? const Center(child: Text('No buses found.'))
+              : ListView.builder(
+                  itemCount: buses.length,
+                  itemBuilder: (context, index) {
+                    final bus = buses[index] ?? {};
+                    return ListTile(
+                      leading: const Icon(Icons.directions_bus),
+                      title: Text(bus['numberPlate'] ?? 'No Plate'),
+                      subtitle: Text(bus['startPoint'] != null && bus['destination'] != null
+                          ? '${bus['startPoint']} → ${bus['destination']}'
+                          : ''),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTicketsDialog() {
+    final tickets = (summaryData['ticketsList'] as List<dynamic>?) ?? [];
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('All Tickets'),
+        content: SizedBox(
+          width: 300,
+          height: 400,
+          child: tickets.isEmpty
+              ? const Center(child: Text('No tickets found.'))
+              : ListView.builder(
+                  itemCount: tickets.length,
+                  itemBuilder: (context, index) {
+                    final ticket = tickets[index] ?? {};
+                    return ListTile(
+                      leading: const Icon(Icons.confirmation_number),
+                      title: Text(ticket['bookingId'] ?? 'No ID'),
+                      subtitle: Text(ticket['userEmail'] ?? ''),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showUsersDialog() {
+    final users = (summaryData['usersList'] as List<dynamic>?) ?? [];
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('All Users'),
+        content: SizedBox(
+          width: 300,
+          height: 400,
+          child: users.isEmpty
+              ? const Center(child: Text('No users found.'))
+              : ListView.builder(
+                  itemCount: users.length,
+                  itemBuilder: (context, index) {
+                    final user = users[index] ?? {};
+                    return ListTile(
+                      leading: const Icon(Icons.person),
+                      title: Text(user['username'] ?? 'No Name'),
+                      subtitle: Text(user['email'] ?? ''),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 }
 

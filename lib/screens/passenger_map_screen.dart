@@ -13,6 +13,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
+import 'package:smart_bus_mobility_platform1/screens/nav_bar_screen.dart';
 
 const kGoogleApiKey = 'AIzaSyC2n6urW_4DUphPLUDaNGAW_VN53j0RP4s';
 
@@ -704,118 +705,129 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          GoogleMap(
-            onMapCreated: (GoogleMapController controller) {
-              _controller.complete(controller);
-              _mapController = controller;
-            },
-            initialCameraPosition: _initialPosition,
-            markers: _allMarkers.union(_searchMarkers),
-            polylines: _polylines,
-            myLocationEnabled: true,
-            myLocationButtonEnabled: false,
-            zoomControlsEnabled: false,
-            mapToolbarEnabled: false,
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) => NavBarScreen(userRole: 'user', initialTab: 0),
           ),
-          if (_isLoadingLocation)
-            const Center(child: CircularProgressIndicator()),
-          Positioned(
-            top: 40,
-            left: 16,
-            right: 16,
-            child: Column(
-              children: [
-                const SizedBox(height: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.orange),
-                  ),
-                  child: Row(
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.all(9.0),
-                        child: Text(
-                          'Where To:',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Color.fromARGB(255, 7, 7, 7)),
+          (route) => false,
+        );
+        return false;
+      },
+      child: Scaffold(
+        body: Stack(
+          children: [
+            GoogleMap(
+              onMapCreated: (GoogleMapController controller) {
+                _controller.complete(controller);
+                _mapController = controller;
+              },
+              initialCameraPosition: _initialPosition,
+              markers: _allMarkers.union(_searchMarkers),
+              polylines: _polylines,
+              myLocationEnabled: true,
+              myLocationButtonEnabled: false,
+              zoomControlsEnabled: false,
+              mapToolbarEnabled: false,
+            ),
+            if (_isLoadingLocation)
+              const Center(child: CircularProgressIndicator()),
+            Positioned(
+              top: 40,
+              left: 16,
+              right: 16,
+              child: Column(
+                children: [
+                  const SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange),
+                    ),
+                    child: Row(
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.all(9.0),
+                          child: Text(
+                            'Where To:',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Color.fromARGB(255, 7, 7, 7)),
+                          ),
                         ),
-                      ),
-                      Expanded(
-                        child: TextField(
-                          controller: _destinationController,
-                          onTap: _handleDestinationSelection,
-                          decoration: InputDecoration(
-                            hintText: 'Type or select location',
-                            border: InputBorder.none,
-                            suffixIcon: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.edit, size: 16),
-                                  onPressed: _handleDestinationSelection,
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.clear, size: 16),
-                                  onPressed: _clearDestination,
-                                ),
-                              ],
+                        Expanded(
+                          child: TextField(
+                            controller: _destinationController,
+                            onTap: _handleDestinationSelection,
+                            decoration: InputDecoration(
+                              hintText: 'Type or select location',
+                              border: InputBorder.none,
+                              suffixIcon: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, size: 16),
+                                    onPressed: _handleDestinationSelection,
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.clear, size: 16),
+                                    onPressed: _clearDestination,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          Positioned(
-            bottom: 16,
-            right: 16,
-            child: FloatingActionButton(
-              heroTag: 'location',
-              onPressed: _isLoadingLocation ? null : _getCurrentLocation,
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-              child: _isLoadingLocation
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : const Icon(Icons.my_location),
+            Positioned(
+              bottom: 16,
+              right: 16,
+              child: FloatingActionButton(
+                heroTag: 'location',
+                onPressed: _isLoadingLocation ? null : _getCurrentLocation,
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                child: _isLoadingLocation
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Icon(Icons.my_location),
+              ),
             ),
-          ),
-          Positioned(
-            bottom: 16,
-            left: 16,
-            child: FloatingActionButton(
-              heroTag: 'refresh',
-              onPressed: _isRefreshingBuses ? null : _refreshAvailableBuses,
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              child: _isRefreshingBuses
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : const Icon(Icons.refresh),
+            Positioned(
+              bottom: 16,
+              left: 16,
+              child: FloatingActionButton(
+                heroTag: 'refresh',
+                onPressed: _isRefreshingBuses ? null : _refreshAvailableBuses,
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                child: _isRefreshingBuses
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Icon(Icons.refresh),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
