@@ -354,104 +354,107 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     final width = MediaQuery.of(context).size.width;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: _showUsersDialog,
-              child: Card(
-                color: const Color(0xFFFFF9E3),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 2,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.person, color: const Color(0xFFD4A015), size: 28),
-                      const SizedBox(height: 6),
-                      Text('$usersCount', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFFD4A015))),
-                      const SizedBox(height: 2),
-                      const Text('Users', style: TextStyle(fontSize: 12, color: Color(0xFFD4A015))),
-                    ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: _showUsersDialog,
+                child: Card(
+                  color: const Color(0xFFFFF9E3),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.person, color: const Color(0xFFD4A015), size: 22),
+                        const SizedBox(height: 4),
+                        Text('$usersCount', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFFD4A015)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 1),
+                        const Text('Users', style: TextStyle(fontSize: 10, color: Color(0xFFD4A015)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: GestureDetector(
-              onTap: _showDriversDialog,
-              child: Card(
-                color: const Color(0xFFE8F5E8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 2,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.people, color: const Color(0xFF576238), size: 28),
-                      const SizedBox(height: 6),
-                      Text('$driversCount', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF576238))),
-                      const SizedBox(height: 2),
-                      const Text('Drivers', style: TextStyle(fontSize: 12, color: Color(0xFF576238))),
-                    ],
+            const SizedBox(width: 8),
+            Expanded(
+              child: GestureDetector(
+                onTap: _showDriversDialog,
+                child: Card(
+                  color: const Color(0xFFE8F5E8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.people, color: const Color(0xFF576238), size: 22),
+                        const SizedBox(height: 4),
+                        Text('$driversCount', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF576238)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 1),
+                        const Text('Drivers', style: TextStyle(fontSize: 10, color: Color(0xFF576238)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: GestureDetector(
-              onTap: _showBusesDialog,
-              child: Card(
-                color: const Color(0xFFEBF8FF),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 2,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.directions_bus, color: const Color(0xFF2563EB), size: 28),
-                      const SizedBox(height: 6),
-                      Text('$busesCount', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
-                      const SizedBox(height: 2),
-                      const Text('Buses', style: TextStyle(fontSize: 12, color: Color(0xFF2563EB))),
-                    ],
+            const SizedBox(width: 8),
+            Expanded(
+              child: GestureDetector(
+                onTap: _showBusesDialog,
+                child: Card(
+                  color: const Color(0xFFEBF8FF),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.directions_bus, color: const Color(0xFF2563EB), size: 22),
+                        const SizedBox(height: 4),
+                        Text('$busesCount', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 1),
+                        const Text('Buses', style: TextStyle(fontSize: 10, color: Color(0xFF2563EB)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: GestureDetector(
-              onTap: _showTicketsDialog,
-              child: Card(
-                color: const Color(0xFFECFDF5),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 2,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.confirmation_number, color: const Color(0xFF059669), size: 28),
-                      const SizedBox(height: 6),
-                      Text('$ticketsCount', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF059669))),
-                      const SizedBox(height: 2),
-                      const Text('Tickets', style: TextStyle(fontSize: 12, color: Color(0xFF059669))),
-                    ],
+            const SizedBox(width: 8),
+            Expanded(
+              child: GestureDetector(
+                onTap: _showTicketsDialog,
+                child: Card(
+                  color: const Color(0xFFECFDF5),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.confirmation_number, color: const Color(0xFF059669), size: 22),
+                        const SizedBox(height: 4),
+                        Text('$ticketsCount', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF059669)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 1),
+                        const Text('Tickets', style: TextStyle(fontSize: 10, color: Color(0xFF059669)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

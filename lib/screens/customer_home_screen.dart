@@ -40,6 +40,19 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
   // Automatic refresh timer
   Timer? _refreshTimer;
 
+  // Carousel state
+  final List<String> _carouselImages = [
+    'assets/images/bus27.jpg',
+    'assets/images/bus26.jpg',
+    'assets/images/bus25.jpg',
+    'assets/images/bus24.jpg',
+    'assets/images/bus23.jpg',
+    'assets/images/bus22.jpg',
+  ];
+  int _carouselIndex = 0;
+  Timer? _carouselTimer;
+  PageController? _carouselPageController;
+
   @override
   void initState() {
     super.initState();
@@ -51,6 +64,18 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
     _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
       if (mounted) {
         _loadUserData();
+      }
+    });
+    // Start carousel auto-play
+    _carouselPageController = PageController(initialPage: 0);
+    _carouselTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
+      if (mounted && _carouselPageController != null) {
+        int nextPage = (_carouselIndex + 1) % _carouselImages.length;
+        _carouselPageController!.animateToPage(
+          nextPage,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
       }
     });
   }
@@ -81,6 +106,8 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
     _pulseController.dispose();
     _slideController.dispose();
     _refreshTimer?.cancel();
+    _carouselTimer?.cancel();
+    _carouselPageController?.dispose();
     super.dispose();
   }
 
@@ -482,7 +509,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
               ),
             ),
             SizedBox(
-              height: 180,
+              height: 210, // slightly increased for more content
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -513,169 +540,194 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                     onTap: () {
                       _showBookingDetails(context, booking);
                     },
-                    child: Container(
-                      width: 260,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
+                    child: AnimatedOpacity(
+                      opacity: 1.0,
+                      duration: Duration(milliseconds: 600 + (index * 100)),
+                      child: Container(
+                        width: 260,
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.green[50]!,
+                              Colors.white,
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                        ],
-                      ),
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(Icons.directions_bus,
-                                    color: Colors.green[700], size: 28),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    booking['destination']?.toString() ??
-                                        booking['route']?.toString() ??
-                                        'Unknown Route',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.08),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
                             ),
-                            const SizedBox(height: 12),
-
-                            // ETA Section with real-time calculation
-                            FutureBuilder<String>(
-                              future: _calculateETA(booking),
-                              builder: (context, etaSnapshot) {
-                                String etaText = 'Calculating...';
-                                Color etaColor = Colors.orange;
-                                IconData etaIcon = Icons.access_time;
-
-                                if (etaSnapshot.hasData) {
-                                  etaText = etaSnapshot.data!;
-                                  if (etaText == 'Arriving now') {
-                                    etaColor = Colors.green;
-                                    etaIcon = Icons.near_me;
-                                  } else if (etaText.contains('min')) {
-                                    etaColor = Colors.blue;
-                                    etaIcon = Icons.schedule;
-                                  } else if (etaText.contains('Unable') ||
-                                      etaText.contains('N/A')) {
-                                    etaColor = Colors.red;
-                                    etaIcon = Icons.error_outline;
-                                  }
-                                }
-
-                                return Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: etaColor.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                        color: etaColor.withOpacity(0.3)),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
+                          ],
+                          border: Border(
+                            left: BorderSide(
+                              color: Colors.green[700]!,
+                              width: 6,
+                            ),
+                          ),
+                        ),
+                        child: Stack(
+                          children: [
+                            // Ticket stub effect
+                            Positioned(
+                              right: -12,
+                              top: 40,
+                              child: Container(
+                                width: 24,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.04),
+                                      blurRadius: 2,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            // Bus icon badge
+                            Positioned(
+                              left: 8,
+                              top: 8,
+                              child: CircleAvatar(
+                                backgroundColor: Colors.green[700],
+                                radius: 14,
+                                child: Icon(Icons.directions_bus, color: Colors.white, size: 16),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
                                     children: [
-                                      Icon(etaIcon, size: 16, color: etaColor),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'ETA: $etaText',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: etaColor,
+                                      Icon(Icons.directions_bus,
+                                          color: Colors.green[700], size: 28),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          booking['destination']?.toString() ??
+                                              booking['route']?.toString() ??
+                                              'Unknown Route',
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
                                         ),
                                       ),
                                     ],
                                   ),
-                                );
-                              },
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            if (booking['pickupAddress'] != null)
-                              Row(
-                                children: [
-                                  Icon(Icons.location_on,
-                                      size: 16, color: Colors.grey[600]),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      'Pickup: ${booking['pickupAddress']}',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.grey[600],
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
+                                  const SizedBox(height: 12),
+                                  // ETA Section with real-time calculation
+                                  FutureBuilder<String>(
+                                    future: _calculateETA(booking),
+                                    builder: (context, etaSnapshot) {
+                                      String etaText = 'Calculating...';
+                                      Color etaColor = Colors.orange;
+                                      IconData etaIcon = Icons.access_time;
+                                      if (etaSnapshot.hasData) {
+                                        etaText = etaSnapshot.data!;
+                                        if (etaText == 'Arriving now') {
+                                          etaColor = Colors.green;
+                                          etaIcon = Icons.near_me;
+                                        } else if (etaText.contains('min')) {
+                                          etaColor = Colors.blue;
+                                          etaIcon = Icons.schedule;
+                                        } else if (etaText.contains('Unable') ||
+                                            etaText.contains('N/A')) {
+                                          etaColor = Colors.red;
+                                          etaIcon = Icons.error_outline;
+                                        }
+                                      }
+                                      return Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: etaColor.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                              color: etaColor.withOpacity(0.3)),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.max,
+                                          children: [
+                                            Icon(etaIcon, size: 16, color: etaColor),
+                                            const SizedBox(width: 6),
+                                            Flexible(
+                                              child: Text(
+                                                'ETA: $etaText',
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: etaColor,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                                maxLines: 1,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 12),
+                                  if (booking['pickupAddress'] != null)
+                                    Row(
+                                      children: [
+                                        Icon(Icons.location_on,
+                                            size: 16, color: Colors.grey[600]),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            'Pickup: ${booking['pickupAddress']}',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: Colors.grey[600],
+                                            ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
                                     ),
+                                  const SizedBox(height: 8),
+                                  // Status indicator
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: BoxDecoration(
+                                          color: _getStatusColor(
+                                              booking['status']?.toString()),
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Flexible(
+                                        child: Text(
+                                          booking['status']?.toString() ?? 'Unknown',
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
-
-                            const SizedBox(height: 8),
-
-                            // Status indicator
-                            Row(
-                              children: [
-                                Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: _getStatusColor(
-                                        booking['status']?.toString()),
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  (booking['status']?.toString() ?? 'Unknown')
-                                      .toUpperCase(),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.grey[700],
-                                  ),
-                                ),
-                                const Spacer(),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green[50],
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.visibility,
-                                          size: 12, color: Colors.green[700]),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'View',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: Colors.green[700],
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
                             ),
                           ],
                         ),
@@ -706,7 +758,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
 
   Widget _buildMainContent() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Action Buttons Section
         Padding(
@@ -786,8 +838,74 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
             ),
           ),
         ),
+        // Place the carousel below the main buttons
+        const SizedBox(height: 12),
+        _buildImageCarousel(),
+        const SizedBox(height: 18),
         _buildBookedBusesSection(),
       ],
+    );
+  }
+
+  Widget _buildImageCarousel() {
+    return Center(
+      child: SizedBox(
+        height: 200,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: Stack(
+            children: [
+              PageView.builder(
+                itemCount: _carouselImages.length,
+                controller: _carouselPageController,
+                onPageChanged: (index) {
+                  setState(() {
+                    _carouselIndex = index;
+                  });
+                },
+                itemBuilder: (context, index) {
+                  return Image.asset(
+                    _carouselImages[index],
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: 200,
+                  );
+                },
+              ),
+              Positioned(
+                bottom: 10,
+                left: 0,
+                right: 0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(_carouselImages.length, (index) {
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      width: _carouselIndex == index ? 18 : 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: _carouselIndex == index
+                            ? Colors.green[700]
+                            : Colors.white.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(6),
+                        boxShadow: [
+                          if (_carouselIndex == index)
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                        ],
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

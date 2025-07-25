@@ -3,78 +3,28 @@ import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
 class MtnMomoService {
-  final String subscriptionKey = '8df0f2fc72c84361978de2c50a7d0a3d'; // Replace with your actual key
-  final String apiUser = '51a06b51-7b0e-45be-b321-ac37e90ea807'; // Replace with your actual API user
-  final String apiKey = '7e4cc124b84441c4a3535a0cf756ab7d'; // Replace with your actual API key
-  final String baseUrl = 'https://sandbox.momodeveloper.mtn.com';
+  // Backend API base URL
+  final String backendBaseUrl = 'https://api-abp277afba-uc.a.run.app';
   
-  /// Step 1: Create API User (Only needed once during setup)
-  Future<void> createApiUser() async {
-    final referenceId = const Uuid().v4();
-    final url = Uri.parse('$baseUrl/v1_0/apiuser');
-    
-    final response = await http.post(
-      url,
-      headers: {
-        'X-Reference-Id': referenceId,
-        'Ocp-Apim-Subscription-Key': subscriptionKey,
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'providerCallbackHost': 'string'
-      }),
-    );
-    
-    if (response.statusCode == 201) {
-      print('API User created successfully with ID: $referenceId');
-      // Store this referenceId as your apiUser
-    } else {
-      throw Exception('Failed to create API user: ${response.body}');
-    }
-  }
-  
-  /// Step 2: Create API Key (Only needed once during setup)
-  Future<void> createApiKey() async {
-    final url = Uri.parse('$baseUrl/v1_0/apiuser/$apiUser/apikey');
-    
-    final response = await http.post(
-      url,
-      headers: {
-        'Ocp-Apim-Subscription-Key': subscriptionKey,
-      },
-    );
-    
-    if (response.statusCode == 201) {
-      final data = jsonDecode(response.body);
-      print('API Key created: ${data['apiKey']}');
-      // Store this as your apiKey
-    } else {
-      throw Exception('Failed to create API key: ${response.body}');
+  /// Health check to verify backend is running
+  Future<bool> checkBackendHealth() async {
+    try {
+      final url = Uri.parse('$backendBaseUrl/health');
+      final response = await http.get(url);
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print('✅ Backend health check: ${data['status']}');
+        return data['status'] == 'OK';
+      }
+      return false;
+    } catch (e) {
+      print('❌ Backend health check failed: $e');
+      return false;
     }
   }
 
-  /// Step 3: Get Access Token
-  Future<String> getAccessToken() async {
-    final url = Uri.parse('$baseUrl/collection/token/');
-    final credentials = base64Encode(utf8.encode('$apiUser:$apiKey'));
-    
-    final response = await http.post(
-      url,
-      headers: {
-        'Authorization': 'Basic $credentials',
-        'Ocp-Apim-Subscription-Key': subscriptionKey,
-      },
-    );
-    
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return data['access_token'];
-    } else {
-      throw Exception('Failed to get access token: ${response.statusCode} - ${response.body}');
-    }
-  }
-
-  /// Step 4: Request To Pay
+  /// Request To Pay using backend API
   Future<String> requestToPay({
     required String phoneNumber,
     required String amount,
@@ -84,21 +34,15 @@ class MtnMomoService {
     String? payeeNote,
   }) async {
     try {
-      final accessToken = await getAccessToken();
-      final referenceId = const Uuid().v4();
-      final url = Uri.parse('$baseUrl/collection/v1_0/requesttopay');
+      final url = Uri.parse('$backendBaseUrl/api/requesttopay');
       
-      // Format phone number (remove leading 0 and add country code)
+      // Format phone number (remove leading 0 and add country code for Uganda)
       String formattedPhone = phoneNumber;
       if (phoneNumber.startsWith('0')) {
         formattedPhone = '256${phoneNumber.substring(1)}';
       }
       
       final headers = {
-        'Authorization': 'Bearer $accessToken',
-        'X-Reference-Id': referenceId,
-        'X-Target-Environment': 'sandbox',
-        'Ocp-Apim-Subscription-Key': subscriptionKey,
         'Content-Type': 'application/json',
       };
       
@@ -114,41 +58,149 @@ class MtnMomoService {
         'payeeNote': payeeNote ?? 'Thank you for your payment',
       });
       
+      print('📱 Sending payment request for $amount $currency to $formattedPhone');
+      
       final response = await http.post(url, headers: headers, body: body);
       
-      if (response.statusCode == 202) {
-        print('✅ Payment request sent successfully. Reference ID: $referenceId');
-        return referenceId;
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          print('✅ Payment request sent successfully. Reference ID: ${data['referenceId']}');
+          return data['referenceId'];
+        } else {
+          throw Exception('Payment request failed: ${data['message']}');
+        }
       } else {
-        throw Exception('Payment request failed: ${response.statusCode} - ${response.body}');
+        final errorData = jsonDecode(response.body);
+        throw Exception('Payment request failed: ${response.statusCode} - ${errorData['message']}');
       }
     } catch (e) {
+      print('❌ Error processing payment: $e');
       throw Exception('Error processing payment: $e');
     }
   }
 
-  /// Step 5: Check Payment Status
+  /// Check Payment Status using backend API
   Future<Map<String, dynamic>> getPaymentStatus(String referenceId) async {
     try {
-      final accessToken = await getAccessToken();
-      final url = Uri.parse('$baseUrl/collection/v1_0/requesttopay/$referenceId');
+      final url = Uri.parse('$backendBaseUrl/api/transaction/$referenceId');
       
-      final response = await http.get(
-        url,
-        headers: {
-          'Authorization': 'Bearer $accessToken',
-          'X-Target-Environment': 'sandbox',
-          'Ocp-Apim-Subscription-Key': subscriptionKey,
-        },
-      );
+      final response = await http.get(url);
       
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final responseData = jsonDecode(response.body);
+        if (responseData['success'] == true) {
+          return responseData['data'];
+        } else {
+          throw Exception('Failed to get payment status: ${responseData['message']}');
+        }
       } else {
-        throw Exception('Failed to get payment status: ${response.statusCode} - ${response.body}');
+        final errorData = jsonDecode(response.body);
+        throw Exception('Failed to get payment status: ${response.statusCode} - ${errorData['message']}');
       }
     } catch (e) {
+      print('❌ Error checking payment status: $e');
       throw Exception('Error checking payment status: $e');
+    }
+  }
+
+  /// Get Account Balance using backend API
+  Future<Map<String, dynamic>> getAccountBalance() async {
+    try {
+      final url = Uri.parse('$backendBaseUrl/api/balance');
+      
+      final response = await http.get(url);
+      
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        if (responseData['success'] == true) {
+          print('💰 Account balance retrieved successfully');
+          return responseData['data'];
+        } else {
+          throw Exception('Failed to get balance: ${responseData['message']}');
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception('Failed to get balance: ${response.statusCode} - ${errorData['message']}');
+      }
+    } catch (e) {
+      print('❌ Error getting account balance: $e');
+      throw Exception('Error getting account balance: $e');
+    }
+  }
+
+  /// Get Account Holder Info using backend API
+  Future<Map<String, dynamic>> getAccountHolderInfo({
+    required String accountHolderId,
+    String accountHolderIdType = 'MSISDN',
+  }) async {
+    try {
+      final url = Uri.parse('$backendBaseUrl/api/accountholder');
+      
+      final headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      final body = jsonEncode({
+        'accountHolderIdType': accountHolderIdType,
+        'accountHolderId': accountHolderId,
+      });
+      
+      final response = await http.post(url, headers: headers, body: body);
+      
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        if (responseData['success'] == true) {
+          print('👤 Account holder info retrieved successfully');
+          return responseData['data'];
+        } else {
+          throw Exception('Failed to get account holder info: ${responseData['message']}');
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception('Failed to get account holder info: ${response.statusCode} - ${errorData['message']}');
+      }
+    } catch (e) {
+      print('❌ Error getting account holder info: $e');
+      throw Exception('Error getting account holder info: $e');
+    }
+  }
+
+  /// Validate Account Holder using backend API
+  Future<bool> validateAccountHolder({
+    required String accountHolderId,
+    String accountHolderIdType = 'MSISDN',
+  }) async {
+    try {
+      final url = Uri.parse('$backendBaseUrl/api/validate-account');
+      
+      final headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      final body = jsonEncode({
+        'accountHolderIdType': accountHolderIdType,
+        'accountHolderId': accountHolderId,
+      });
+      
+      final response = await http.post(url, headers: headers, body: body);
+      
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        if (responseData['success'] == true) {
+          final isActive = responseData['isActive'] ?? false;
+          print('✅ Account validation: ${isActive ? 'Active' : 'Inactive'}');
+          return isActive;
+        } else {
+          throw Exception('Failed to validate account: ${responseData['message']}');
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception('Failed to validate account: ${response.statusCode} - ${errorData['message']}');
+      }
+    } catch (e) {
+      print('❌ Error validating account: $e');
+      throw Exception('Error validating account: $e');
     }
   }
 
@@ -158,18 +210,27 @@ class MtnMomoService {
     int maxAttempts = 30,
     Duration delay = const Duration(seconds: 2),
   }) async {
+    print('⏳ Waiting for payment completion...');
+    
     for (int i = 0; i < maxAttempts; i++) {
       try {
         final status = await getPaymentStatus(referenceId);
         final paymentStatus = status['status'];
         
-        if (paymentStatus == 'SUCCESSFUL' || paymentStatus == 'FAILED') {
+        print('🔄 Payment status (attempt ${i + 1}): $paymentStatus');
+        
+        if (paymentStatus == 'SUCCESSFUL') {
+          print('✅ Payment completed successfully!');
+          return status;
+        } else if (paymentStatus == 'FAILED') {
+          print('❌ Payment failed!');
           return status;
         }
         
         // Wait before next attempt
         await Future.delayed(delay);
       } catch (e) {
+        print('⚠️ Status check attempt ${i + 1} failed: $e');
         if (i == maxAttempts - 1) {
           throw Exception('Payment status check failed after $maxAttempts attempts: $e');
         }
@@ -177,5 +238,65 @@ class MtnMomoService {
     }
     
     throw Exception('Payment status check timed out after $maxAttempts attempts');
+  }
+
+  /// Complete payment flow with validation and status checking
+  Future<Map<String, dynamic>> processPayment({
+    required String phoneNumber,
+    required String amount,
+    String currency = 'UGX',
+    String? externalId,
+    String? payerMessage,
+    String? payeeNote,
+    bool waitForCompletion = false,
+  }) async {
+    try {
+      // Step 1: Check backend health
+      final isHealthy = await checkBackendHealth();
+      if (!isHealthy) {
+        throw Exception('Backend service is not available');
+      }
+
+      // Step 2: Validate phone number format
+      String formattedPhone = phoneNumber;
+      if (phoneNumber.startsWith('0')) {
+        formattedPhone = '256${phoneNumber.substring(1)}';
+      }
+
+      // Step 3: Validate account holder (optional)
+      try {
+        final isValidAccount = await validateAccountHolder(
+          accountHolderId: formattedPhone,
+        );
+        print('Account validation: ${isValidAccount ? 'Valid' : 'Invalid'}');
+      } catch (e) {
+        print('⚠️ Account validation failed (continuing anyway): $e');
+      }
+
+      // Step 4: Request payment
+      final referenceId = await requestToPay(
+        phoneNumber: phoneNumber,
+        amount: amount,
+        currency: currency,
+        externalId: externalId,
+        payerMessage: payerMessage,
+        payeeNote: payeeNote,
+      );
+
+      // Step 5: Wait for completion if requested
+      if (waitForCompletion) {
+        return await waitForPaymentCompletion(referenceId);
+      } else {
+        // Return initial status
+        return {
+          'referenceId': referenceId,
+          'status': 'PENDING',
+          'message': 'Payment request sent successfully'
+        };
+      }
+    } catch (e) {
+      print('❌ Payment processing failed: $e');
+      rethrow;
+    }
   }
 }
