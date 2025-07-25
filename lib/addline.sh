@@ -23,11 +23,12 @@ find "$TARGET_FOLDER" -type f -print0 | while IFS= read -r -d '' file; do
     
     # Add and commit the file
     git add "$file"
-    git commit -m "Add empty line to $(basename "$file")"
+    git commit -m "Modified the file  $(basename "$file")"
     echo "Committed: $file"
 done
 
 echo "Done!"
+
 
 
 
