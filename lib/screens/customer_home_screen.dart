@@ -8,6 +8,7 @@ import 'package:smart_bus_mobility_platform1/screens/current_buses_screen.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:smart_bus_mobility_platform1/utils/marker_icon_utils.dart';
 import 'package:smart_bus_mobility_platform1/widgets/live_bus_details_sheet.dart';
+import 'package:smart_bus_mobility_platform1/utils/directions_repository.dart';
 
 class BusTrackingScreen extends StatefulWidget {
   const BusTrackingScreen({super.key});
@@ -225,49 +226,40 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
       }
 
       // Handle different location data formats
-      GeoPoint? busLocation;
-      GeoPoint? pickupGeoPoint;
-
-      // Try to get bus location from different possible formats
+      double? busLat, busLng, pickupLat, pickupLng;
       final currentLocation = busData['currentLocation'];
       if (currentLocation is GeoPoint) {
-        busLocation = currentLocation;
+        busLat = currentLocation.latitude;
+        busLng = currentLocation.longitude;
       } else if (currentLocation is Map<String, dynamic>) {
-        final lat = currentLocation['latitude'];
-        final lng = currentLocation['longitude'];
-        if (lat != null && lng != null) {
-          busLocation = GeoPoint(lat.toDouble(), lng.toDouble());
-        }
+        busLat = currentLocation['latitude']?.toDouble();
+        busLng = currentLocation['longitude']?.toDouble();
       }
-
-      // Try to get pickup location from different possible formats
       if (pickupLocation is GeoPoint) {
-        pickupGeoPoint = pickupLocation;
+        pickupLat = pickupLocation.latitude;
+        pickupLng = pickupLocation.longitude;
       } else if (pickupLocation is Map<String, dynamic>) {
-        final lat = pickupLocation['latitude'];
-        final lng = pickupLocation['longitude'];
-        if (lat != null && lng != null) {
-          pickupGeoPoint = GeoPoint(lat.toDouble(), lng.toDouble());
-        }
+        pickupLat = pickupLocation['latitude']?.toDouble();
+        pickupLng = pickupLocation['longitude']?.toDouble();
       }
-
-      if (busLocation == null || pickupGeoPoint == null) {
+      if (busLat == null || busLng == null || pickupLat == null || pickupLng == null) {
         return 'Location unavailable';
       }
 
-      // Calculate distance using Haversine formula
-      double distance = _calculateDistance(
-        busLocation.latitude,
-        busLocation.longitude,
-        pickupGeoPoint.latitude,
-        pickupGeoPoint.longitude,
+      // Use Google Directions API for ETA
+      final directions = await DirectionsRepository().getDirections(
+        origin: LatLng(busLat, busLng),
+        destination: LatLng(pickupLat, pickupLng),
       );
+      if (directions != null && directions.totalDuration != null) {
+        return directions.totalDuration!;
+      }
 
-      // Estimate time based on average speed (assuming 30 km/h in city traffic)
+      // Fallback: Estimate time based on straight-line distance
+      double distance = _calculateDistance(busLat, busLng, pickupLat, pickupLng);
       double averageSpeedKmh = 30.0;
       double timeInHours = distance / averageSpeedKmh;
       int timeInMinutes = (timeInHours * 60).round();
-
       if (timeInMinutes < 1) {
         return 'Arriving now';
       } else if (timeInMinutes < 60) {

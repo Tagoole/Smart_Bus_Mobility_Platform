@@ -351,6 +351,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
                                 setState(() {
                                   _isPasswordVisible = !_isPasswordVisible;
                                 });
+                                _validateForm();
                               },
                             ),
                             validator: (value) {
@@ -378,9 +379,9 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
                               ),
                               onPressed: () {
                                 setState(() {
-                                  _isConfirmPasswordVisible =
-                                      !_isConfirmPasswordVisible;
+                                  _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
                                 });
+                                _validateForm();
                               },
                             ),
                             validator: (value) {
@@ -422,7 +423,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
                               items: _roles.map((String role) {
                                 return DropdownMenuItem<String>(
                                   value: role,
-                                  child: Text(role),
+                                  child: Text(role, style: TextStyle(color: Colors.black)),
                                 );
                               }).toList(),
                               onChanged: (String? newValue) {
@@ -588,6 +589,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
         obscureText: obscureText,
         keyboardType: keyboardType,
         validator: validator,
+        style: const TextStyle(color: Colors.black),
         decoration: InputDecoration(
           hintText: hintText,
           prefixIcon: Icon(prefixIcon, color: const Color(0xFF9CCB3E)),
