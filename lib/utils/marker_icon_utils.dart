@@ -91,7 +91,7 @@ class MarkerIconUtils {
         ..addText(label);
       final ui.Paragraph paragraph = pb.build();
       paragraph.layout(ui.ParagraphConstraints(width: size.toDouble()));
-      canvas.drawParagraph(paragraph, ui.Offset(0, 0));
+      canvas.drawParagraph(paragraph, const ui.Offset(0, 0));
 
       // Draw the icon image below the label
       final double iconTop = labelHeight;
@@ -146,4 +146,8 @@ class MarkerIcons {
   static BitmapDescriptor get driverMarker =>
       BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
 }
+
+
+
+
 

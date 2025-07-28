@@ -180,10 +180,10 @@ class _RouteManagementScreenState extends State<RouteManagementScreen> {
                         child: Row(
                           children: [
                             if (!_sidebarCollapsed)
-                              Expanded(
+                              const Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: const [
+                                  children: [
                                     Text(
                                       "Route Management",
                                       style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
@@ -210,12 +210,12 @@ class _RouteManagementScreenState extends State<RouteManagementScreen> {
                           ),
                         ),
                         if (provider.pickupPoints.length > 1)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             child: RouteOptimizerWidget(),
                           ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           child: FileUploadWidget(),
                         ),
                       ],
@@ -226,7 +226,7 @@ class _RouteManagementScreenState extends State<RouteManagementScreen> {
                 Expanded(
                   child: Stack(
                     children: [
-                      MapViewWidget(),
+                      const MapViewWidget(),
                       if (provider.pickupPoints.isEmpty)
                         Positioned.fill(
                           child: Container(
@@ -364,7 +364,7 @@ class _PickupFormWidgetState extends State<PickupFormWidget> {
                 child: TextFormField(
                   controller: _lat,
                   decoration: const InputDecoration(labelText: "Latitude"),
-                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 ),
               ),
               const SizedBox(width: 8),
@@ -372,7 +372,7 @@ class _PickupFormWidgetState extends State<PickupFormWidget> {
                 child: TextFormField(
                   controller: _lng,
                   decoration: const InputDecoration(labelText: "Longitude"),
-                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 ),
               ),
             ],
@@ -610,19 +610,19 @@ class RouteOptimizerWidget extends StatelessWidget {
               children: [
                 Column(
                   children: [
-                    Icon(Icons.pin_drop, color: Colors.blue),
+                    const Icon(Icons.pin_drop, color: Colors.blue),
                     Text("${points.length} Points", style: const TextStyle(fontSize: 13)),
                   ],
                 ),
                 Column(
                   children: [
-                    Icon(Icons.timer, color: Colors.green),
+                    const Icon(Icons.timer, color: Colors.green),
                     Text("~${estimatedTime}min", style: const TextStyle(fontSize: 13)),
                   ],
                 ),
                 Column(
                   children: [
-                    Icon(Icons.straighten, color: Colors.orange),
+                    const Icon(Icons.straighten, color: Colors.orange),
                     Text("$estimatedDistance km", style: const TextStyle(fontSize: 13)),
                   ],
                 ),
@@ -821,3 +821,7 @@ class _GridPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
+
+
+

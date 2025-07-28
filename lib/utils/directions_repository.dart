@@ -17,21 +17,34 @@ class DirectionsRepository {
   Future<Directions?> getDirections({
     required LatLng origin,
     required LatLng destination,
+    List<LatLng>? waypoints,
   }) async {
+    // Build waypoints string if provided
+    String? waypointsStr;
+    if (waypoints != null && waypoints.isNotEmpty) {
+      // Force order with optimize:false|
+      waypointsStr = 'optimize:false|${waypoints.map((wp) => '${wp.latitude},${wp.longitude}').join('|')}';
+      print('[DEBUG] Directions API waypoints: $waypointsStr');
+    }
     final response = await _dio.get(
       _baseUrl,
       queryParameters: {
         'origin': '${origin.latitude},${origin.longitude}',
         'destination': '${destination.latitude},${destination.longitude}',
-        'key': googleAPIKey, // Import your API key from a safe location
+        'mode': 'walking',
+        if (waypointsStr != null) 'waypoints': waypointsStr,
+        'key': googleAPIKey,
       },
     );
-
-    // Check if response is successful
     if (response.statusCode == 200) {
       return Directions.fromMap(response.data);
     }
     return null;
   }
 }
+
+
+
+
+
 

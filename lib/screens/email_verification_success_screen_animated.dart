@@ -260,3 +260,7 @@ class _EmailVerificationSuccessScreenAnimatedState
   }
 }
 
+
+
+
+

@@ -25,7 +25,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   final Completer<GoogleMapController> _controller = Completer();
   GoogleMapController? _mapController;
 
-  static final CameraPosition _initialPosition = CameraPosition(
+  static const CameraPosition _initialPosition = CameraPosition(
     target:
         LatLng(0.34540783865964797, 32.54297125499706), // Kampala coordinates
     zoom: 14,
@@ -52,15 +52,15 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
   // Passengers data
   List<Map<String, dynamic>> _passengers = [];
-  List<Map<String, dynamic>> _removedPassengers =
+  final List<Map<String, dynamic>> _removedPassengers =
       []; // Track removed passengers
   final Set<Marker> _allMarkers = {};
 
   // Polylines and route data
   final Set<Polyline> _polylines = {};
   Directions? _directions;
-  double _totalRouteDistance = 0;
-  double _totalRouteTime = 0;
+  final double _totalRouteDistance = 0;
+  final double _totalRouteTime = 0;
   Map<String, dynamic>? _nearestPassenger;
   String _routeDistanceText = '';
   String _routeDurationText = '';
@@ -71,6 +71,74 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
   // Timer for passenger data refresh
   Timer? _passengerRefreshTimer;
+  Timer? _etaRefreshTimer;
+
+  // Simulation state
+  bool _isSimulating = false;
+  bool _isSimulationPaused = false;
+  Timer? _simulationTimer;
+  int _simulationIndex = 0;
+  List<LatLng> _simulationRoutePoints = [];
+
+  void _startSimulation() {
+    if (_isSimulating || _polylines.isEmpty) return;
+    // Gather all polyline points into a single list
+    List<LatLng> allPoints = [];
+    for (final poly in _polylines) {
+      allPoints.addAll(poly.points);
+    }
+    if (allPoints.length < 2) return;
+    setState(() {
+      _isSimulating = true;
+      _isSimulationPaused = false;
+      _simulationIndex = 0;
+      _simulationRoutePoints = allPoints;
+    });
+    _simulationTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
+      if (_isSimulationPaused) return;
+      if (_simulationIndex < _simulationRoutePoints.length) {
+        setState(() {
+          _driverLocation = _simulationRoutePoints[_simulationIndex];
+          _simulationIndex++;
+        });
+        _updateMarkers();
+      } else {
+        timer.cancel();
+        setState(() {
+          _isSimulating = false;
+        });
+      }
+    });
+  }
+
+  void _pauseSimulation() {
+    setState(() {
+      _isSimulationPaused = true;
+    });
+  }
+
+  void _resumeSimulation() {
+    setState(() {
+      _isSimulationPaused = false;
+    });
+  }
+
+  void _resetSimulation() {
+    _simulationTimer?.cancel();
+    setState(() {
+      _isSimulating = false;
+      _isSimulationPaused = false;
+      _simulationIndex = 0;
+      _simulationRoutePoints = [];
+    });
+    // Optionally reset driver location to start
+    if (_polylines.isNotEmpty && _polylines.first.points.isNotEmpty) {
+      setState(() {
+        _driverLocation = _polylines.first.points.first;
+      });
+      _updateMarkers();
+    }
+  }
 
   @override
   void initState() {
@@ -78,16 +146,23 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     _initializeDriverScreen();
 
     // Get driver location as soon as possible
-    Future.delayed(Duration(seconds: 1), () {
+    Future.delayed(const Duration(seconds: 1), () {
       if (mounted) {
         _getCurrentLocation();
       }
     });
 
-    // Set up periodic refresh for passengers
-    _passengerRefreshTimer = Timer.periodic(Duration(minutes: 2), (timer) {
+    // Change the refresh timer to 1 minute
+    _passengerRefreshTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
       if (mounted) {
         _loadPassengers();
+      }
+    });
+
+    // ETA refresh timer (1.5 minutes)
+    _etaRefreshTimer = Timer.periodic(const Duration(seconds: 90), (timer) {
+      if (mounted) {
+        _updateAllPassengerEtas();
       }
     });
 
@@ -99,8 +174,8 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   Future<void> _checkGoogleApiKey() async {
     if (_driverLocation == null) {
       // Use a default location for testing
-      final testOrigin = LatLng(0.34540783865964797, 32.54297125499706);
-      final testDestination = LatLng(0.34640783865964797, 32.54397125499706);
+      const testOrigin = LatLng(0.34540783865964797, 32.54297125499706);
+      const testDestination = LatLng(0.34640783865964797, 32.54397125499706);
 
       try {
         final directions = await _directionsRepository.getDirections(
@@ -255,7 +330,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
+      builder: (context) => const AlertDialog(
         content: Row(
           children: [
             CircularProgressIndicator(),
@@ -277,7 +352,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
           .get();
 
       print(
-          'Found ${bookingsSnapshot.docs.length} bookings for bus ${_driverBus!.busId}');
+          'Found  [1m${bookingsSnapshot.docs.length} [0m bookings for bus ${_driverBus!.busId}');
 
       // Use a set to track unique booking IDs to avoid duplicates
       final Set<String> processedBookingIds = {};
@@ -287,6 +362,12 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         final bookingData = doc.data();
         final bookingId = doc.id;
         final userId = bookingData['userId'];
+
+        // Only process bookings with a valid pickupLocation
+        if (bookingData['pickupLocation'] == null) {
+          print('Skipping booking $bookingId: no pickupLocation');
+          continue;
+        }
 
         // Skip if we've already processed this booking
         if (processedBookingIds.contains(bookingId)) {
@@ -328,9 +409,14 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       // Close the loading dialog
       Navigator.of(context).pop();
 
+      // Only include passengers with valid pickupLocation
+      final filteredPassengers = passengers.where((p) => p['pickupLocation'] != null).toList();
       setState(() {
-        _passengers = passengers;
+        _passengers = filteredPassengers;
         _isLoading = false;
+        if (_passengers.isEmpty) {
+          _polylines.clear();
+        }
       });
 
       _updateMarkers();
@@ -342,17 +428,22 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         _showSnackBar('${_passengers.length} passengers loaded successfully');
       }
 
-      // Generate optimized route if we have passengers and driver location
-      if (_passengers.isNotEmpty && _driverLocation != null) {
-        await _generateOptimizedRoute();
+      // Debug prints for _loadPassengers
+      for (var p in passengers) {
+        if (p['pickupLocation'] == null) {
+          print('[DEBUG] Booking ${p['bookingId']} for user ${p['userName']} has no pickupLocation and will not be shown on the map.');
+        } else {
+          final loc = p['pickupLocation'];
+          print('[DEBUG] Booking ${p['bookingId']} for user ${p['userName']} at location (${loc['latitude']}, ${loc['longitude']}) will be shown.');
+        }
       }
-    } catch (e) {
-      // Close the loading dialog
-      Navigator.of(context).pop();
 
+    } catch (e) {
+      Navigator.of(context).pop();
       print('Error loading passengers: $e');
       setState(() {
         _isLoading = false;
+        _statusMessage = 'Error loading passengers:  [31m${e.toString()} [0m';
       });
       _showSnackBar('Error loading passengers: ${e.toString()}');
     }
@@ -360,151 +451,108 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
   // Generate optimized route using BusRouteService
   Future<void> _generateOptimizedRoute() async {
-    // Check if we have the driver's location
-    if (_driverLocation == null) {
-      print('Driver location is null, attempting to get location');
-      await _getCurrentLocation();
-
-      if (_driverLocation == null) {
-        print('Failed to get driver location');
-        _showSnackBar('Unable to get your location. Please try again.');
-        return;
-      }
+    if (_driverBus == null) {
+      print('No bus assigned to driver.');
+      _showSnackBar('No bus assigned to you.');
+      return;
     }
-
-    // Check if we have passengers
     if (_passengers.isEmpty) {
       print('No passengers available for route generation');
       _showSnackBar('No passengers available for route generation');
       return;
     }
-
     try {
-      // Show loading indicator
       setState(() {
         _isLoading = true;
         _statusMessage = 'Optimizing route...';
       });
-
-      print('Starting route generation with driver at: $_driverLocation');
+      print('Starting route generation with bus start at: (${_driverBus!.startLat}, ${_driverBus!.startLng})');
       print('Number of passengers: ${_passengers.length}');
-
-      // Clear previous route data
       _routeService.clearAllPassengers();
       _polylines.clear();
 
-      // Add driver's current location as starting point
-      final driverStop = map_service.BusStop(
-        id: 'driver',
+      // Build start and end stops from admin-set points
+      final startStop = map_service.BusStop(
+        id: 'start',
+        location: map_service.LatLng(_driverBus!.startLat!, _driverBus!.startLng!),
+        name: _driverBus!.startPoint,
+      );
+      final endStop = map_service.BusStop(
+        id: 'end',
+        location: map_service.LatLng(_driverBus!.destinationLat!, _driverBus!.destinationLng!),
+        name: _driverBus!.destination,
+      );
+
+      // Build passenger stops
+      final passengerStops = _passengers.map((p) => map_service.BusStop(
+        id: p['userId'],
         location: map_service.LatLng(
-            _driverLocation!.latitude, _driverLocation!.longitude),
-        name: 'Driver Location',
-      );
+          p['pickupLocation']['latitude'],
+          p['pickupLocation']['longitude'],
+        ),
+        name: p['pickupAddress'] ?? 'Unknown',
+      )).toList();
 
-      // Add driver as first stop
-      _routeService.addPassengerPickup(
-        'driver',
-        map_service.LatLng(
-            _driverLocation!.latitude, _driverLocation!.longitude),
-        'Driver Location',
-      );
-
-      // Add all visible passengers to the route service
-      for (var passenger in _passengers) {
-        if (passenger['pickupLocation'] != null) {
-          final location = passenger['pickupLocation'];
-          final latLng = map_service.LatLng(
-            location['latitude'],
-            location['longitude'],
-          );
-
-          _routeService.addPassengerPickup(
-            passenger['userId'],
-            latLng,
-            passenger['pickupAddress'] ?? 'Unknown location',
-          );
+      // 1. Find the nearest passenger to the bus start point
+      int? nearestIdx;
+      double minDistance = double.infinity;
+      for (int i = 0; i < passengerStops.length; i++) {
+        final stop = passengerStops[i];
+        final dLat = stop.location.latitude - startStop.location.latitude;
+        final dLng = stop.location.longitude - startStop.location.longitude;
+        final distance = (dLat * dLat) + (dLng * dLng); // squared distance
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearestIdx = i;
         }
       }
+      if (nearestIdx == null) {
+        print('No valid nearest passenger found.');
+        _showSnackBar('No valid nearest passenger found.');
+        setState(() {
+          _isLoading = false;
+          _statusMessage = '';
+        });
+        return;
+      }
+      final nearestPassenger = passengerStops[nearestIdx];
+      // Remove nearest passenger from the list for SOM
+      final remainingPassengers = List<map_service.BusStop>.from(passengerStops)..removeAt(nearestIdx);
 
-      // Add bus destination if available
-      if (_driverBus != null &&
-          _driverBus!.destinationLat != null &&
-          _driverBus!.destinationLng != null) {
-        final destinationStop = map_service.BusStop(
-          id: 'destination',
-          location: map_service.LatLng(
-            _driverBus!.destinationLat!,
-            _driverBus!.destinationLng!,
-          ),
-          name: _driverBus!.destination,
-        );
-
-        // Add destination as last stop
-        _routeService.addPassengerPickup(
-          'destination',
-          map_service.LatLng(
-              _driverBus!.destinationLat!, _driverBus!.destinationLng!),
-          _driverBus!.destination,
-        );
+      // 2. Optimize only the remaining passenger stops using the greedy optimizer
+      List<map_service.BusStop> optimizedPickups = [];
+      if (remainingPassengers.isNotEmpty) {
+        // Use greedy optimizer for the remaining passengers
+        final coords = remainingPassengers.map((s) => map_service.LatLng(s.location.latitude, s.location.longitude)).toList();
+        final greedyOrder = _routeService.getGreedyRouteOrder(coords);
+        optimizedPickups = greedyOrder.map((i) => remainingPassengers[i]).toList();
       }
 
-      // Force optimization
-      print('Forcing route optimization...');
-      await _routeService.optimizeNow();
-      print('Route optimization complete');
-
-      // Get optimized route coordinates
-      final routeCoordinates = _routeService.getOptimizedRouteCoordinates();
-      print('Got ${routeCoordinates.length} optimized route coordinates');
-
-      // Convert to Google Maps LatLng
-      final googleMapCoordinates = routeCoordinates
-          .map((point) => LatLng(point.latitude, point.longitude))
-          .toList();
-
-      // Get total distance and time
-      _totalRouteDistance = _routeService.getEstimatedTotalDistance() ?? 0;
-      _totalRouteTime = _routeService.getEstimatedTotalTime() ?? 0;
-      print(
-          'Total route distance: ${_totalRouteDistance.toStringAsFixed(1)} km');
-      print('Total route time: ${_totalRouteTime.toStringAsFixed(0)} min');
-
-      // Get ordered bus stops
-      final orderedStops = _routeService.getOrderedBusStops();
-      print('Got ${orderedStops.length} ordered stops');
-
-      // Create a list of LatLng points for each stop
-      final List<LatLng> waypoints = [];
-
-      // Start with driver location
-      if (_driverLocation != null) {
-        waypoints.add(_driverLocation!);
-      }
-
-      // Add each passenger location in optimized order
+      // 3. Final ordered stops: start, nearest passenger, optimized pickups, end
+      final orderedStops = [startStop, nearestPassenger, ...optimizedPickups, endStop];
+      print('[DEBUG] Ordered stops for route:');
+      final seenLocations = <String, int>{};
       for (var stop in orderedStops) {
-        if (stop.id != 'driver' && stop.id != 'destination') {
-          waypoints
-              .add(LatLng(stop.location.latitude, stop.location.longitude));
+        final key = '${stop.location.latitude},${stop.location.longitude}';
+        print('  ${stop.name} at ${stop.location}');
+        seenLocations[key] = (seenLocations[key] ?? 0) + 1;
+      }
+      // Check for duplicates
+      bool hasDuplicates = false;
+      seenLocations.forEach((key, count) {
+        if (count > 1) {
+          print('[WARNING] Duplicate stop detected at $key, count: $count');
+          hasDuplicates = true;
         }
+      });
+      if (hasDuplicates) {
+        print('[ERROR] Duplicate waypoints detected in orderedStops! This may cause circular paths.');
       }
 
-      // Add destination if available
-      if (_driverBus != null &&
-          _driverBus!.destinationLat != null &&
-          _driverBus!.destinationLng != null) {
-        waypoints.add(
-            LatLng(_driverBus!.destinationLat!, _driverBus!.destinationLng!));
-      }
-
-      print('Created ${waypoints.length} waypoints for polyline');
-
-      // Now create a road-following polyline through all waypoints
+      // 4. Create waypoints for Directions API
+      final waypoints = orderedStops.map((s) => LatLng(s.location.latitude, s.location.longitude)).toList();
       await _createWaypointPolyline(waypoints);
-
-      // Find nearest passenger for the detail view
       await _findNearestPassengerAndDrawRoute();
-
       setState(() {
         _isLoading = false;
         _statusMessage = '';
@@ -527,90 +575,167 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     print('Waypoints: $waypoints');
 
     try {
-      // We'll build the polyline segment by segment
-      List<LatLng> fullRoutePoints = [];
-      double totalDistance = 0;
-      double totalDuration = 0;
-
-      // Process waypoints in pairs to create route segments
-      for (int i = 0; i < waypoints.length - 1; i++) {
-        final origin = waypoints[i];
-        final destination = waypoints[i + 1];
-
-        print('Getting directions for segment $i: $origin to $destination');
-
-        // Get directions between this pair of points
-        final directions = await _directionsRepository.getDirections(
-          origin: origin,
-          destination: destination,
-        );
-
-        if (directions != null) {
-          // Extract polyline points
-          final points = directions.polylinePoints
-              .map((point) => LatLng(point.latitude, point.longitude))
-              .toList();
-
-          print('Segment $i: Got ${points.length} polyline points');
-
-          // Add to our full route
-          fullRoutePoints.addAll(points);
-
-          // Extract numeric distance value (remove "km" or "mi")
-          final distanceText = directions.totalDistance;
-          final distanceValue = double.tryParse(
-                  distanceText.replaceAll(RegExp(r'[^0-9.]'), '')) ??
-              0;
-
-          // Add to total
-          totalDistance += distanceValue;
-
-          // Log segment
-          print(
-              'Route segment $i: ${directions.totalDistance}, ${directions.totalDuration}');
-        } else {
-          // If directions failed, just use a straight line
-          fullRoutePoints.add(origin);
-          fullRoutePoints.add(destination);
-          print('Failed to get directions for segment $i, using straight line');
-        }
-      }
-
-      print(
-          'Total route has ${fullRoutePoints.length} points, distance: ${totalDistance.toStringAsFixed(1)} km');
-
-      // Update the polylines
+      // Always clear previous route polylines before drawing a new one
       setState(() {
-        _polylines.add(
-          Polyline(
-            polylineId: PolylineId('full_route'),
-            points: fullRoutePoints,
-            color: Colors.blue,
-            width: 5,
-            patterns: [
-              PatternItem.dash(20),
-              PatternItem.gap(10),
-            ],
-          ),
-        );
-
-        // Update total route stats if we calculated them
-        if (totalDistance > 0) {
-          _totalRouteDistance = totalDistance;
-          _routeDistanceText = '${totalDistance.toStringAsFixed(1)} km';
-        }
+        _polylines.removeWhere((polyline) => polyline.polylineId.value == 'full_route');
       });
 
-      // Adjust camera to show the route
-      if (_mapController != null && fullRoutePoints.isNotEmpty) {
-        final bounds = _calculateBounds(fullRoutePoints);
-        print('Adjusting camera to bounds: $bounds');
-        _mapController!.animateCamera(
-          CameraUpdate.newLatLngBounds(bounds, 50),
-        );
+      // Use a single Directions API call with all waypoints (excluding first and last)
+      final origin = waypoints.first;
+      final destination = waypoints.last;
+      final intermediateWaypoints = waypoints.length > 2 ? waypoints.sublist(1, waypoints.length - 1) : null;
+
+      final directions = await _directionsRepository.getDirections(
+        origin: origin,
+        destination: destination,
+        waypoints: intermediateWaypoints,
+      );
+
+      if (directions != null && directions.polylinePoints.isNotEmpty) {
+        final fullRoutePoints = directions.polylinePoints
+            .map((point) => LatLng(point.latitude, point.longitude))
+            .toList();
+        print('Got ${fullRoutePoints.length} polyline points from Directions API');
+
+        setState(() {
+          _polylines.add(
+            Polyline(
+              polylineId: const PolylineId('full_route'),
+              points: fullRoutePoints,
+              color: Colors.blue,
+              width: 5,
+              patterns: [
+                PatternItem.dash(20),
+                PatternItem.gap(10),
+              ],
+            ),
+          );
+        });
+
+        // Optionally update total distance/time if available
+        if (directions.totalDistance.isNotEmpty) {
+          _routeDistanceText = directions.totalDistance;
+        }
+        if (directions.totalDuration.isNotEmpty) {
+          _routeDurationText = directions.totalDuration;
+        }
+
+        // Adjust camera to show the route
+        if (_mapController != null && fullRoutePoints.isNotEmpty) {
+          final bounds = _calculateBounds(fullRoutePoints);
+          print('Adjusting camera to bounds: $bounds');
+          _mapController!.animateCamera(
+            CameraUpdate.newLatLngBounds(bounds, 50),
+          );
+        }
+      } else {
+        print('Directions API did not return a valid polyline, falling back to segmented polylines.');
+        // Fallback: draw segmented polylines between each pair of waypoints
+        List<LatLng> allPoints = [];
+        for (int i = 0; i < waypoints.length - 1; i++) {
+          final segOrigin = waypoints[i];
+          final segDest = waypoints[i + 1];
+          final segDirections = await _directionsRepository.getDirections(
+            origin: segOrigin,
+            destination: segDest,
+          );
+          if (segDirections != null && segDirections.polylinePoints.isNotEmpty) {
+            final segPoints = segDirections.polylinePoints
+                .map((point) => LatLng(point.latitude, point.longitude))
+                .toList();
+            // Avoid duplicate points
+            if (allPoints.isNotEmpty && allPoints.last == segPoints.first) {
+              allPoints.addAll(segPoints.skip(1));
+            } else {
+              allPoints.addAll(segPoints);
+            }
+          } else {
+            // Fallback: straight line
+            allPoints.add(segOrigin);
+            allPoints.add(segDest);
+          }
+        }
+        // Only add one polyline for the entire route
+        setState(() {
+          _polylines.add(
+            Polyline(
+              polylineId: const PolylineId('full_route'),
+              points: allPoints,
+              color: Colors.red,
+              width: 5,
+            ),
+          );
+        });
       }
     } catch (e) {
       print('Error creating waypoint polyline: $e');
+    }
+  }
+
+  // Create batched polylines for Directions API
+  Future<void> _createBatchedWaypointPolylines(List<LatLng> waypoints, {int batchSize = 20}) async {
+    if (waypoints.length < 2) return;
+    print('Creating batched waypoint polylines with ${waypoints.length} waypoints, batch size $batchSize');
+    setState(() {
+      _polylines.removeWhere((polyline) => polyline.polylineId.value == 'full_route');
+    });
+    List<LatLng> allPoints = [];
+    int startIdx = 0;
+    int polylineIdCounter = 0;
+    while (startIdx < waypoints.length - 1) {
+      int endIdx = (startIdx + batchSize < waypoints.length - 1)
+          ? startIdx + batchSize
+          : waypoints.length - 1;
+      final origin = waypoints[startIdx];
+      final destination = waypoints[endIdx];
+      final intermediateWaypoints = endIdx - startIdx > 1
+          ? waypoints.sublist(startIdx + 1, endIdx)
+          : null;
+      final directions = await _directionsRepository.getDirections(
+        origin: origin,
+        destination: destination,
+        waypoints: intermediateWaypoints,
+      );
+      if (directions != null && directions.polylinePoints.isNotEmpty) {
+        final batchPoints = directions.polylinePoints
+            .map((point) => LatLng(point.latitude, point.longitude))
+            .toList();
+        if (allPoints.isNotEmpty && allPoints.last == batchPoints.first) {
+          allPoints.addAll(batchPoints.skip(1));
+        } else {
+          allPoints.addAll(batchPoints);
+        }
+        setState(() {
+          _polylines.add(
+            Polyline(
+              polylineId: PolylineId('full_route_$polylineIdCounter'),
+              points: batchPoints,
+              color: Colors.blue,
+              width: 5,
+              patterns: [
+                PatternItem.dash(20),
+                PatternItem.gap(10),
+              ],
+            ),
+          );
+        });
+      } else {
+        // Fallback: straight line
+        allPoints.add(origin);
+        allPoints.add(destination);
+        setState(() {
+          _polylines.add(
+            Polyline(
+              polylineId: PolylineId('full_route_$polylineIdCounter'),
+              points: [origin, destination],
+              color: Colors.red,
+              width: 5,
+            ),
+          );
+        });
+      }
+      startIdx = endIdx;
+      polylineIdCounter++;
     }
   }
 
@@ -719,7 +844,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
           setState(() {
             _polylines.add(
               Polyline(
-                polylineId: PolylineId('nearest_passenger_route'),
+                polylineId: const PolylineId('nearest_passenger_route'),
                 points: points,
                 color: Colors.green,
                 width: 5,
@@ -783,7 +908,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       // Get current position with high accuracy
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
-        timeLimit: Duration(seconds: 10),
+        timeLimit: const Duration(seconds: 10),
       );
 
       setState(() {
@@ -818,14 +943,14 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
   void _setDefaultLocation() {
     setState(() {
-      _driverLocation = LatLng(0.34540783865964797, 32.54297125499706);
+      _driverLocation = const LatLng(0.34540783865964797, 32.54297125499706);
       _isLoadingLocation = false;
     });
 
     if (_mapController != null) {
       _mapController!.animateCamera(
         CameraUpdate.newCameraPosition(
-          CameraPosition(
+          const CameraPosition(
             target: LatLng(0.34540783865964797, 32.54297125499706),
             zoom: 15,
           ),
@@ -900,14 +1025,24 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   void _updateMarkers() {
     _allMarkers.clear();
 
+    // Map to count bookings per pickup location
+    final Map<String, int> locationCounts = {};
+    for (var passenger in _passengers) {
+      if (passenger['pickupLocation'] != null) {
+        final loc = passenger['pickupLocation'];
+        final key = '${loc['latitude']},${loc['longitude']}';
+        locationCounts[key] = (locationCounts[key] ?? 0) + 1;
+      }
+    }
+
     // Add driver location marker
     if (_driverLocation != null && _driverMarkerIcon != null) {
       _allMarkers.add(
         Marker(
-          markerId: MarkerId('driver_location'),
+          markerId: const MarkerId('driver_location'),
           position: _driverLocation!,
           icon: _driverMarkerIcon!,
-          anchor: Offset(0.5, 0.5),
+          anchor: const Offset(0.5, 0.5),
           flat: true,
           infoWindow: InfoWindow(
             title: 'Your Location (START)',
@@ -920,7 +1055,6 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     // Add passenger markers - one marker per booking
     for (int i = 0; i < _passengers.length; i++) {
       final passenger = _passengers[i];
-
       if (passenger['pickupLocation'] != null) {
         final location = passenger['pickupLocation'];
         final latLng = LatLng(location['latitude'], location['longitude']);
@@ -930,21 +1064,25 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         final totalPassengers = adultCount + childrenCount;
         final selectedSeats = passenger['selectedSeats'] ?? [];
         final bookingId = passenger['bookingId'];
+        final key = '${location['latitude']},${location['longitude']}';
+        final count = locationCounts[key] ?? 1;
 
-        // Create one marker per booking
+        // Always use the custom passenger icon
         final icon = _passengerMarkerIcon ?? BitmapDescriptor.defaultMarker;
+
+        final eta = _passengerEtas[bookingId] ?? 'Calculating...';
 
         _allMarkers.add(
           Marker(
             markerId: MarkerId('booking_$bookingId'),
             position: latLng,
             icon: icon,
-            anchor: Offset(0.5, 0.5),
+            anchor: const Offset(0.5, 0.5),
             flat: true,
             infoWindow: InfoWindow(
               title: 'Passenger ${i + 1}: $userName',
               snippet:
-                  '${selectedSeats.length} seats • ${totalPassengers} people • ${passenger['pickupAddress']}',
+                  '${selectedSeats.length} seats • ${totalPassengers} people • ${passenger['pickupAddress']}${count > 1 ? ' (Overlapping)' : ''}\nETA: $eta',
             ),
             onTap: () => _showPassengerDetails(passenger),
           ),
@@ -952,6 +1090,15 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       }
     }
     setState(() {});
+
+    // Debug prints for _updateMarkers
+    for (int i = 0; i < _passengers.length; i++) {
+      final passenger = _passengers[i];
+      if (passenger['pickupLocation'] != null) {
+        final location = passenger['pickupLocation'];
+        print('[DEBUG] Adding marker for booking ${passenger['bookingId']} at (${location['latitude']}, ${location['longitude']})');
+      }
+    }
   }
 
   // Remove passenger from the map and route
@@ -963,17 +1110,17 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     bool confirmed = await showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: Text('Remove Passenger'),
+            title: const Text('Remove Passenger'),
             content: Text(
                 'Are you sure you want to remove $userName from the route?'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: Text('Cancel'),
+                child: const Text('Cancel'),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: Text('Remove', style: TextStyle(color: Colors.red)),
+                child: const Text('Remove', style: TextStyle(color: Colors.red)),
               ),
             ],
           ),
@@ -1002,6 +1149,9 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     // Remove from local list
     setState(() {
       _passengers.removeWhere((p) => p['bookingId'] == bookingId);
+      if (_passengers.isEmpty) {
+        _polylines.clear();
+      }
     });
 
     // Update markers
@@ -1065,7 +1215,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         height: MediaQuery.of(context).size.height * 0.5,
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.only(
             topLeft: Radius.circular(20),
@@ -1076,8 +1226,8 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
           children: [
             // Header
             Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
                 color: Colors.red,
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(20),
@@ -1087,7 +1237,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
+                  const Text(
                     'Removed Passengers',
                     style: TextStyle(
                       color: Colors.white,
@@ -1097,7 +1247,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                   ),
                   Text(
                     '${_removedPassengers.length} removed',
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Colors.white,
                     ),
                   ),
@@ -1114,17 +1264,17 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                   return ListTile(
                     leading: CircleAvatar(
                       backgroundColor: Colors.red.withOpacity(0.2),
-                      child: Icon(Icons.person_off, color: Colors.red),
+                      child: const Icon(Icons.person_off, color: Colors.red),
                     ),
                     title: Text(
                       passenger['userName'] ?? 'Passenger',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     subtitle:
                         Text(passenger['pickupAddress'] ?? 'Unknown location'),
                     trailing: TextButton.icon(
-                      icon: Icon(Icons.restore, size: 16),
-                      label: Text('Restore'),
+                      icon: const Icon(Icons.restore, size: 16),
+                      label: const Text('Restore'),
                       onPressed: () {
                         Navigator.pop(context);
                         _restorePassenger(passenger);
@@ -1142,9 +1292,9 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                 onPressed: () => Navigator.pop(context),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.grey,
-                  minimumSize: Size(double.infinity, 40),
+                  minimumSize: const Size(double.infinity, 40),
                 ),
-                child: Text('Close'),
+                child: const Text('Close'),
               ),
             ),
           ],
@@ -1158,23 +1308,23 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Passenger Details'),
+        title: const Text('Passenger Details'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Name: ${passenger['userName']}'),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text('Email: ${passenger['userEmail']}'),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text('Pickup: ${passenger['pickupAddress']}'),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text('Seats: ${passenger['selectedSeats'].join(', ')}'),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
               'Passengers: ${passenger['adultCount']} Adults, ${passenger['childrenCount']} Children',
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
               'Total Fare: UGX ${passenger['totalFare'].toStringAsFixed(0)}',
             ),
@@ -1183,7 +1333,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Close'),
+            child: const Text('Close'),
           ),
           TextButton(
             onPressed: () {
@@ -1193,7 +1343,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
             style: TextButton.styleFrom(
               foregroundColor: Colors.red,
             ),
-            child: Text('Remove'),
+            child: const Text('Remove'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1204,7 +1354,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
               backgroundColor: Colors.green,
               foregroundColor: Colors.white,
             ),
-            child: Text('Navigate'),
+            child: const Text('Navigate'),
           ),
         ],
       ),
@@ -1267,7 +1417,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       });
 
       // Clear status message after a short delay
-      Timer(Duration(seconds: 2), () {
+      Timer(const Duration(seconds: 2), () {
         if (mounted) {
           setState(() {
             _statusMessage = '';
@@ -1339,10 +1489,33 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   @override
   void dispose() {
     _passengerRefreshTimer?.cancel();
+    _etaRefreshTimer?.cancel();
     if (_mapController != null) {
       _mapController!.dispose();
     }
     super.dispose();
+  }
+
+  // Store ETAs for each passenger by bookingId
+  final Map<String, String> _passengerEtas = {};
+
+  Future<void> _updateAllPassengerEtas() async {
+    if (_driverLocation == null) return;
+    for (var passenger in _passengers) {
+      final bookingId = passenger['bookingId'];
+      final pickup = passenger['pickupLocation'];
+      if (pickup != null) {
+        final pickupLatLng = LatLng(pickup['latitude'], pickup['longitude']);
+        final directions = await _directionsRepository.getDirections(
+          origin: _driverLocation!,
+          destination: pickupLatLng,
+        );
+        final eta = directions?.totalDuration ?? 'N/A';
+        setState(() {
+          _passengerEtas[bookingId] = eta;
+        });
+      }
+    }
   }
 
   @override
@@ -1353,13 +1526,13 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
                   Text(_statusMessage),
                   if (_statusMessage.contains('No bus assigned'))
                     ElevatedButton(
                       onPressed: _updateBusIsAvailable,
-                      child: Text('Update Bus'),
+                      child: const Text('Update Bus'),
                     ),
                 ],
               ),
@@ -1395,7 +1568,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                   child: Center(
                     child: Container(
                       padding:
-                          EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
                         color: Colors.blue.withOpacity(0.8),
                         borderRadius: BorderRadius.circular(20),
@@ -1403,7 +1576,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                           BoxShadow(
                             color: Colors.black.withOpacity(0.2),
                             blurRadius: 6,
-                            offset: Offset(0, 2),
+                            offset: const Offset(0, 2),
                           ),
                         ],
                       ),
@@ -1432,7 +1605,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                             }
                           }
                         },
-                        child: Padding(
+                        child: const Padding(
                           padding: EdgeInsets.all(8.0),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -1471,13 +1644,13 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                             BoxShadow(
                               color: Colors.black.withOpacity(0.2),
                               blurRadius: 6,
-                              offset: Offset(0, 2),
+                              offset: const Offset(0, 2),
                             ),
                           ],
                         ),
                         child: IconButton(
                           padding: EdgeInsets.zero,
-                          icon: Icon(Icons.add, color: Colors.black87),
+                          icon: const Icon(Icons.add, color: Colors.black87),
                           onPressed: () {
                             _mapController?.animateCamera(
                               CameraUpdate.zoomIn(),
@@ -1485,7 +1658,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                           },
                         ),
                       ),
-                      SizedBox(height: 8),
+                      const SizedBox(height: 8),
                       // Zoom out button
                       Container(
                         height: 40,
@@ -1497,13 +1670,13 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                             BoxShadow(
                               color: Colors.black.withOpacity(0.2),
                               blurRadius: 6,
-                              offset: Offset(0, 2),
+                              offset: const Offset(0, 2),
                             ),
                           ],
                         ),
                         child: IconButton(
                           padding: EdgeInsets.zero,
-                          icon: Icon(Icons.remove, color: Colors.black87),
+                          icon: const Icon(Icons.remove, color: Colors.black87),
                           onPressed: () {
                             _mapController?.animateCamera(
                               CameraUpdate.zoomOut(),
@@ -1529,14 +1702,14 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                         BoxShadow(
                           color: Colors.black.withOpacity(0.2),
                           blurRadius: 6,
-                          offset: Offset(0, 2),
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
                     child: IconButton(
                       padding: EdgeInsets.zero,
                       icon: _isLoadingLocation
-                          ? SizedBox(
+                          ? const SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
@@ -1545,7 +1718,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                                     AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
                             )
-                          : Icon(Icons.my_location, color: Colors.white),
+                          : const Icon(Icons.my_location, color: Colors.white),
                       onPressed:
                           _isLoadingLocation ? null : _getCurrentLocation,
                     ),
@@ -1566,7 +1739,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                         BoxShadow(
                           color: Colors.black.withOpacity(0.2),
                           blurRadius: 6,
-                          offset: Offset(0, 2),
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
@@ -1574,7 +1747,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                       children: [
                         IconButton(
                           padding: EdgeInsets.zero,
-                          icon: Icon(Icons.people, color: Colors.white),
+                          icon: const Icon(Icons.people, color: Colors.white),
                           onPressed: _showPassengerList,
                         ),
                         if (_passengers.isNotEmpty)
@@ -1582,14 +1755,14 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                             right: 0,
                             top: 0,
                             child: Container(
-                              padding: EdgeInsets.all(4),
-                              decoration: BoxDecoration(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
                                 color: Colors.red,
                                 shape: BoxShape.circle,
                               ),
                               child: Text(
                                 '${_passengers.length}',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
@@ -1617,7 +1790,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                           BoxShadow(
                             color: Colors.black.withOpacity(0.2),
                             blurRadius: 6,
-                            offset: Offset(0, 2),
+                            offset: const Offset(0, 2),
                           ),
                         ],
                       ),
@@ -1625,7 +1798,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                         children: [
                           IconButton(
                             padding: EdgeInsets.zero,
-                            icon: Icon(Icons.person_off, color: Colors.white),
+                            icon: const Icon(Icons.person_off, color: Colors.white),
                             onPressed: _showRemovedPassengersList,
                             tooltip: 'Show removed passengers',
                           ),
@@ -1633,14 +1806,14 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                             right: 0,
                             top: 0,
                             child: Container(
-                              padding: EdgeInsets.all(4),
-                              decoration: BoxDecoration(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
                                 color: Colors.white,
                                 shape: BoxShape.circle,
                               ),
                               child: Text(
                                 '${_removedPassengers.length}',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: Colors.red,
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
@@ -1652,11 +1825,108 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                       ),
                     ),
                   ),
+              
+                // Simulation controls (circular, above passenger list button)
+                Positioned(
+                  bottom: 80, // above the blue passenger list button
+                  left: 16,
+                  child: Column(
+                    children: [
+                      if (!_isSimulating && _polylines.isNotEmpty)
+                        Container(
+                          height: 50,
+                          width: 50,
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.play_arrow, color: Colors.green),
+                            onPressed: _startSimulation,
+                            tooltip: 'Simulate Driver Movement',
+                          ),
+                        ),
+                      if (_isSimulating && !_isSimulationPaused)
+                        Container(
+                          height: 50,
+                          width: 50,
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.pause, color: Colors.orange),
+                            onPressed: _pauseSimulation,
+                            tooltip: 'Pause Simulation',
+                          ),
+                        ),
+                      if (_isSimulating && _isSimulationPaused)
+                        Container(
+                          height: 50,
+                          width: 50,
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.play_arrow, color: Colors.green),
+                            onPressed: _resumeSimulation,
+                            tooltip: 'Resume Simulation',
+                          ),
+                        ),
+                      if (_isSimulating)
+                        Container(
+                          height: 50,
+                          width: 50,
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.stop, color: Colors.red),
+                            onPressed: _resetSimulation,
+                            tooltip: 'Reset Simulation',
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ],
-            ),
-      // Remove bottom navigation bar
-    );
-  }
+            )
+    
+  );}
 
   // Show passenger list bottom sheet
   void _showPassengerList() {
@@ -1666,7 +1936,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         height: MediaQuery.of(context).size.height * 0.7,
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.only(
             topLeft: Radius.circular(20),
@@ -1677,8 +1947,8 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
           children: [
             // Header
             Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
                 color: Colors.green,
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(20),
@@ -1688,7 +1958,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
+                  const Text(
                     'Passenger List',
                     style: TextStyle(
                       color: Colors.white,
@@ -1700,13 +1970,13 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                     children: [
                       Text(
                         '${_passengers.length} passengers',
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Colors.white,
                         ),
                       ),
-                      SizedBox(width: 8),
+                      const SizedBox(width: 8),
                       IconButton(
-                        icon: Icon(Icons.refresh, color: Colors.white),
+                        icon: const Icon(Icons.refresh, color: Colors.white),
                         onPressed: () {
                           Navigator.pop(context);
                           _loadPassengers().then((_) {
@@ -1728,7 +1998,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                     // Route regeneration button
                     Container(
                       padding:
-                          EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       color: Colors.amber.withOpacity(0.2),
                       child: ElevatedButton.icon(
                         onPressed: () async {
@@ -1765,12 +2035,12 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                           await _generateOptimizedRoute();
                           _showSnackBar('Route regenerated successfully');
                         },
-                        icon: Icon(Icons.refresh, size: 16),
-                        label: Text('Regenerate Route'),
+                        icon: const Icon(Icons.refresh, size: 16),
+                        label: const Text('Regenerate Route'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.amber,
                           foregroundColor: Colors.black87,
-                          minimumSize: Size(double.infinity, 36),
+                          minimumSize: const Size(double.infinity, 36),
                         ),
                       ),
                     ),
@@ -1778,12 +2048,12 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                     // Route information
                     if (_totalRouteDistance > 0)
                       Container(
-                        padding: EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(16),
                         color: Colors.blue.withOpacity(0.1),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
+                            const Row(
                               children: [
                                 Icon(Icons.route, color: Colors.blue),
                                 SizedBox(width: 8),
@@ -1796,7 +2066,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                                 ),
                               ],
                             ),
-                            SizedBox(height: 8),
+                            const SizedBox(height: 8),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -1822,11 +2092,11 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                                   children: [
                                     Text(
                                       'Est. Time: ${_totalRouteTime.toStringAsFixed(0)} min',
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    Text(
+                                    const Text(
                                       'Blue dashed line on map',
                                       style: TextStyle(
                                         color: Colors.blue,
@@ -1846,12 +2116,12 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                     if (_nearestPassenger != null &&
                         _routeDistanceText.isNotEmpty)
                       Container(
-                        padding: EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(16),
                         color: Colors.green.withOpacity(0.1),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
+                            const Row(
                               children: [
                                 Icon(Icons.directions, color: Colors.green),
                                 SizedBox(width: 8),
@@ -1864,7 +2134,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                                 ),
                               ],
                             ),
-                            SizedBox(height: 8),
+                            const SizedBox(height: 8),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -1873,7 +2143,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                                   children: [
                                     Text(
                                       'To: ${_nearestPassenger!['userName']}',
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         fontWeight: FontWeight.w500,
                                       ),
                                     ),
@@ -1890,11 +2160,11 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                                   children: [
                                     Text(
                                       'ETA: $_routeDurationText',
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    Text(
+                                    const Text(
                                       'Green solid line on map',
                                       style: TextStyle(
                                         color: Colors.green,
@@ -1906,18 +2176,18 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                                 ),
                               ],
                             ),
-                            SizedBox(height: 8),
+                            const SizedBox(height: 8),
                             ElevatedButton.icon(
                               onPressed: () {
                                 Navigator.pop(context); // Dismiss the sheet
                                 _navigateToPassenger(_nearestPassenger!);
                               },
-                              icon: Icon(Icons.navigation, size: 16),
-                              label: Text('Navigate to Nearest Passenger'),
+                              icon: const Icon(Icons.navigation, size: 16),
+                              label: const Text('Navigate to Nearest Passenger'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.green,
                                 foregroundColor: Colors.white,
-                                minimumSize: Size(double.infinity, 36),
+                                minimumSize: const Size(double.infinity, 36),
                               ),
                             ),
                           ],
@@ -1927,19 +2197,19 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                     // Bus info
                     if (_driverBus != null)
                       Container(
-                        padding: EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(16),
                         color: Colors.green.withOpacity(0.1),
                         child: Row(
                           children: [
-                            Icon(Icons.directions_bus, color: Colors.green),
-                            SizedBox(width: 8),
+                            const Icon(Icons.directions_bus, color: Colors.green),
+                            const SizedBox(width: 8),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     _driverBus!.numberPlate,
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -1958,9 +2228,9 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
                     // Passenger list
                     _passengers.isEmpty
-                        ? Container(
+                        ? SizedBox(
                             height: 200,
-                            child: Center(
+                            child: const Center(
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -1979,19 +2249,19 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                             ),
                           )
                         : ListView.builder(
-                            physics: NeverScrollableScrollPhysics(),
+                            physics: const NeverScrollableScrollPhysics(),
                             shrinkWrap: true,
                             itemCount: _passengers.length,
                             itemBuilder: (context, index) {
                               final passenger = _passengers[index];
                               return Card(
-                                margin: EdgeInsets.symmetric(
+                                margin: const EdgeInsets.symmetric(
                                     horizontal: 16, vertical: 8),
                                 child: ListTile(
                                   leading: CircleAvatar(
                                     backgroundColor:
                                         Colors.blue.withOpacity(0.2),
-                                    child: Icon(
+                                    child: const Icon(
                                       Icons.person,
                                       color: Colors.blue,
                                     ),
@@ -1999,7 +2269,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                                   title: Text(
                                     passenger['userName'] ?? 'Passenger',
                                     style:
-                                        TextStyle(fontWeight: FontWeight.bold),
+                                        const TextStyle(fontWeight: FontWeight.bold),
                                   ),
                                   subtitle: Column(
                                     crossAxisAlignment:
@@ -2014,7 +2284,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                                       ),
                                       Text(
                                         'Seats: ${(passenger['selectedSeats'] as List).join(', ')}',
-                                        style: TextStyle(
+                                        style: const TextStyle(
                                             fontWeight: FontWeight.w500),
                                       ),
                                       Text(
@@ -2034,19 +2304,19 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                                         children: [
                                           Text(
                                             '${passenger['adultCount']} adult${passenger['adultCount'] > 1 ? 's' : ''}',
-                                            style: TextStyle(fontSize: 12),
+                                            style: const TextStyle(fontSize: 12),
                                           ),
                                           if ((passenger['childrenCount'] ??
                                                   0) >
                                               0)
                                             Text(
                                               '${passenger['childrenCount']} child${passenger['childrenCount'] > 1 ? 'ren' : ''}',
-                                              style: TextStyle(fontSize: 12),
+                                              style: const TextStyle(fontSize: 12),
                                             ),
                                         ],
                                       ),
                                       IconButton(
-                                        icon: Icon(Icons.remove_circle_outline,
+                                        icon: const Icon(Icons.remove_circle_outline,
                                             size: 20, color: Colors.red),
                                         onPressed: () {
                                           Navigator.pop(
@@ -2056,7 +2326,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                                         tooltip: 'Remove passenger from route',
                                       ),
                                       IconButton(
-                                        icon: Icon(Icons.navigation,
+                                        icon: const Icon(Icons.navigation,
                                             size: 20, color: Colors.blue),
                                         onPressed: () {
                                           Navigator.pop(
@@ -2076,7 +2346,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                             },
                           ),
                     // Add some padding at the bottom for better scrolling
-                    SizedBox(height: 20),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
@@ -2087,4 +2357,8 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     );
   }
 }
+
+
+
+
 

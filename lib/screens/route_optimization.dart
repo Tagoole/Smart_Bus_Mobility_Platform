@@ -1056,7 +1056,7 @@ class _RouteOptimizerScreenState extends State<RouteOptimizerScreen>
               ),
             ),
             if (isOptimized)
-              Icon(
+              const Icon(
                 Icons.check_circle,
                 color: Colors.green,
                 size: 20,
@@ -1427,3 +1427,7 @@ class SlideUpRoute extends PageRouteBuilder {
           transitionDuration: const Duration(milliseconds: 500),
         );
 }
+
+
+
+

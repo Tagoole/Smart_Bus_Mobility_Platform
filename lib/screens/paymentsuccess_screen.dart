@@ -1,9 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'customer_home_screen.dart';
+import 'nav_bar_screen.dart';
 
-class PaymentSuccess extends StatelessWidget {
+class PaymentSuccess extends StatefulWidget {
   const PaymentSuccess({super.key});
+
+  @override
+  State<PaymentSuccess> createState() => _PaymentSuccessState();
+}
+
+class _PaymentSuccessState extends State<PaymentSuccess> {
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(seconds: 5), () {
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) => const NavBarScreen(userRole: 'user', initialTab: 0),
+          ),
+          (route) => false,
+        );
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +86,7 @@ class PaymentSuccess extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.account_balance_wallet,
                           color: Colors.yellowAccent,
                           size: 20,
@@ -104,8 +126,7 @@ class PaymentSuccess extends StatelessWidget {
                         _buildDetailRow("Status", "Success", isStatus: true),
                         const SizedBox(height: 30),
 
-                        // QR Code Icon
-                        Icon(Icons.qr_code_2, size: 50, color: Colors.black),
+                        
                       ],
                     ),
                   ),
@@ -179,24 +200,10 @@ class PaymentSuccess extends StatelessWidget {
         return 'th';
     }
   }
-
-  Widget _buildNavIcon(IconData icon, bool isEmphasized) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: isEmphasized ? Colors.greenAccent : Colors.transparent,
-        shape: BoxShape.circle,
-      ),
-      child: IconButton(
-        onPressed: () {
-          // Add navigation logic here
-        },
-        icon: Icon(icon, color: Colors.black, size: 20),
-        padding: EdgeInsets.zero,
-      ),
-    );
-  }
 }
+
+
+
+
 
 

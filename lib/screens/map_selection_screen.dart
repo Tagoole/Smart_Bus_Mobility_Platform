@@ -82,9 +82,9 @@ class _MapSelectionScreenState extends State<MapSelectionScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.info_outline,
-                    color: const Color(0xFF576238),
+                    color: Color(0xFF576238),
                     size: 20,
                   ),
                   const SizedBox(width: 8),
@@ -122,9 +122,9 @@ class _MapSelectionScreenState extends State<MapSelectionScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Selected Location:',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF111827),
@@ -232,4 +232,8 @@ class _MapSelectionScreenState extends State<MapSelectionScreen> {
     }
   }
 }
+
+
+
+
 

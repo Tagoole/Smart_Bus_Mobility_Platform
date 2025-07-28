@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
+import 'package:intl/intl.dart';
 
 class BusDriverHomeScreen extends StatefulWidget {
   const BusDriverHomeScreen({Key? key}) : super(key: key);
@@ -21,7 +22,6 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
   int _totalPassengers = 0;
   int _completedTrips = 0;
   double _totalEarnings = 0.0;
-  bool _isOnline = false;
 
   // Loading state
   bool _isLoading = true;
@@ -60,7 +60,6 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
         setState(() {
           _driverName = userData['name'] ?? userData['username'] ?? 'Driver';
           _driverEmail = userData['email'] ?? '';
-          _isOnline = userData['isOnline'] ?? false;
         });
       }
 
@@ -150,72 +149,22 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
     }
   }
 
-  // Toggle online status
-  Future<void> _toggleOnlineStatus() async {
-    try {
-      final userId = _getCurrentUserId();
-      if (userId == null) return;
-
-      final newStatus = !_isOnline;
-
-      await FirebaseFirestore.instance.collection('users').doc(userId).update({
-        'isOnline': newStatus,
-        'lastUpdated': FieldValue.serverTimestamp(),
-      });
-
-      setState(() {
-        _isOnline = newStatus;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content:
-              Text(newStatus ? 'You are now online' : 'You are now offline'),
-          backgroundColor: newStatus ? Colors.green : Colors.grey,
-        ),
-      );
-    } catch (e) {
-      print('Error toggling online status: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error updating status: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
+  // Remove all references to _isOnline, _toggleOnlineStatus, and related UI and state
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Driver Dashboard'),
+        title: const Text('Driver Dashboard'),
         backgroundColor: Colors.green,
-        actions: [
-          Switch(
-            value: _isOnline,
-            onChanged: (value) {
-              _toggleOnlineStatus();
-            },
-            activeColor: Colors.white,
-            activeTrackColor: Colors.green[700],
-          ),
-          SizedBox(width: 8),
-          Text(
-            _isOnline ? 'Online' : 'Offline',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(width: 16),
-        ],
+        // Removed the online/offline switch and text
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _loadDriverData,
               child: SingleChildScrollView(
-                physics: AlwaysScrollableScrollPhysics(),
+                physics: const AlwaysScrollableScrollPhysics(),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -235,13 +184,13 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                                     radius: 30,
                                     backgroundColor:
                                         Colors.green.withOpacity(0.2),
-                                    child: Icon(
+                                    child: const Icon(
                                       Icons.person,
                                       size: 40,
                                       color: Colors.green,
                                     ),
                                   ),
-                                  SizedBox(width: 16),
+                                  const SizedBox(width: 16),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
@@ -249,7 +198,7 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                                       children: [
                                         Text(
                                           _driverName,
-                                          style: TextStyle(
+                                          style: const TextStyle(
                                             fontSize: 20,
                                             fontWeight: FontWeight.bold,
                                           ),
@@ -260,27 +209,12 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                                             color: Colors.grey[600],
                                           ),
                                         ),
-                                        SizedBox(height: 4),
-                                        Row(
+                                        const SizedBox(height: 4),
+                                        const Row(
                                           children: [
-                                            Icon(
-                                              _isOnline
-                                                  ? Icons.circle
-                                                  : Icons.circle_outlined,
-                                              size: 12,
-                                              color: _isOnline
-                                                  ? Colors.green
-                                                  : Colors.grey,
-                                            ),
+                                            
                                             SizedBox(width: 4),
-                                            Text(
-                                              _isOnline ? 'Online' : 'Offline',
-                                              style: TextStyle(
-                                                color: _isOnline
-                                                    ? Colors.green
-                                                    : Colors.grey,
-                                              ),
-                                            ),
+                                            
                                           ],
                                         ),
                                       ],
@@ -293,7 +227,7 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                         ),
                       ),
 
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
 
                       // Bus info card
                       if (_driverBus != null)
@@ -304,40 +238,47 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
+                                const Text(
                                   'Assigned Bus',
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                SizedBox(height: 8),
+                                const SizedBox(height: 8),
                                 Row(
                                   children: [
-                                    Icon(Icons.directions_bus,
+                                    const Icon(Icons.directions_bus,
                                         color: Colors.green),
-                                    SizedBox(width: 8),
+                                    const SizedBox(width: 8),
                                     Text(
                                       _driverBus!.numberPlate,
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16,
                                       ),
                                     ),
                                   ],
                                 ),
-                                SizedBox(height: 8),
+                                const SizedBox(height: 8),
                                 Text(
                                   'Route: ${_driverBus!.startPoint} → ${_driverBus!.destination}',
                                 ),
-                                SizedBox(height: 4),
+                                const SizedBox(height: 4),
                                 Text(
                                   'Seats: ${_driverBus!.seatCapacity}',
                                 ),
-                                SizedBox(height: 4),
+                                const SizedBox(height: 4),
+                                // Departure Time (EAT, user-friendly)
+                                Text(
+                                  'Departure Time: ${_driverBus!.departureTime != null
+                                      ? _formatUserFriendlyEAT(_driverBus!.departureTime!)
+                                      : 'Not set'}',
+                                ),
+                                const SizedBox(height: 4),
                                 Row(
                                   children: [
-                                    Text('Status: '),
+                                    const Text('Status: '),
                                     Text(
                                       _driverBus!.isAvailable
                                           ? 'Available'
@@ -356,17 +297,17 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                           ),
                         ),
 
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
 
                       // Statistics cards
-                      Text(
+                      const Text(
                         'Statistics',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      SizedBox(height: 8),
+                      const SizedBox(height: 8),
                       Row(
                         children: [
                           Expanded(
@@ -375,123 +316,6 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                               _totalPassengers.toString(),
                               Icons.people,
                               Colors.blue,
-                            ),
-                          ),
-                          SizedBox(width: 16),
-                          Expanded(
-                            child: _buildStatCard(
-                              'Trips',
-                              _completedTrips.toString(),
-                              Icons.route,
-                              Colors.orange,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 16),
-                      _buildStatCard(
-                        'Total Earnings',
-                        'UGX ${_totalEarnings.toStringAsFixed(0)}',
-                        Icons.attach_money,
-                        Colors.green,
-                      ),
-
-                      SizedBox(height: 24),
-
-                      // Quick actions
-                      Text(
-                        'Quick Actions',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildActionButton(
-                              'Start Trip',
-                              Icons.play_arrow,
-                              Colors.green,
-                              () {
-                                // Switch to map tab in the NavBarScreen
-                                final parentNavBar =
-                                    DefaultTabController.of(context);
-                                if (parentNavBar != null) {
-                                  // If we're already in a NavBarScreen, just switch tabs
-                                  parentNavBar
-                                      .animateTo(1); // Index 1 is the Map tab
-                                } else {
-                                  // Otherwise navigate to the NavBarScreen with the Map tab selected
-                                  Navigator.pushReplacementNamed(
-                                    context,
-                                    '/driver_navbar',
-                                    arguments: 1, // Index for map tab
-                                  );
-                                }
-                              },
-                            ),
-                          ),
-                          SizedBox(width: 16),
-                          Expanded(
-                            child: _buildActionButton(
-                              'View Map',
-                              Icons.map,
-                              Colors.blue,
-                              () {
-                                // Switch to map tab in the NavBarScreen
-                                final parentNavBar =
-                                    DefaultTabController.of(context);
-                                if (parentNavBar != null) {
-                                  // If we're already in a NavBarScreen, just switch tabs
-                                  parentNavBar
-                                      .animateTo(1); // Index 1 is the Map tab
-                                } else {
-                                  // Otherwise navigate to the NavBarScreen with the Map tab selected
-                                  Navigator.pushReplacementNamed(
-                                    context,
-                                    '/driver_navbar',
-                                    arguments: 1, // Index for map tab
-                                  );
-                                }
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildActionButton(
-                              'View Passengers',
-                              Icons.people,
-                              Colors.orange,
-                              () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                        'Passenger list feature coming soon'),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          SizedBox(width: 16),
-                          Expanded(
-                            child: _buildActionButton(
-                              'Report Issue',
-                              Icons.report_problem,
-                              Colors.red,
-                              () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                        'Report issue feature coming soon'),
-                                  ),
-                                );
-                              },
                             ),
                           ),
                         ],
@@ -517,7 +341,7 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
             Row(
               children: [
                 Icon(icon, color: color),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Text(
                   title,
                   style: TextStyle(
@@ -527,10 +351,10 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
                 ),
               ],
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
               value,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
@@ -549,16 +373,27 @@ class _BusDriverHomeScreenState extends State<BusDriverHomeScreen> {
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
         foregroundColor: Colors.white,
-        padding: EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 12),
       ),
       child: Column(
         children: [
           Icon(icon),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           Text(title),
         ],
       ),
     );
   }
+
+  String _formatUserFriendlyEAT(DateTime dateTime) {
+    // Convert to East Africa Time (UTC+3)
+    final eat = dateTime.toUtc().add(const Duration(hours: 3));
+    final formatter = DateFormat('MMM d, yyyy – hh:mm a');
+    return '${formatter.format(eat)} (EAT)';
+  }
 }
+
+
+
+
 

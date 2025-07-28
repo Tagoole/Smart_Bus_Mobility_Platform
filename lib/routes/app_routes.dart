@@ -5,13 +5,16 @@ import 'package:smart_bus_mobility_platform1/screens/customer_home_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/email_verification_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/forgot_password_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/login_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/payment_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/payment_screen.dart'
+    as passenger;
 import 'package:smart_bus_mobility_platform1/screens/profile_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/signup_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/passenger_map_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/splash_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/bus_management_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/nav_bar_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/track_bus_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/current_buses_screen.dart'; // Added missing import
 
 class AppRoutes {
   static const String splashScreen = '/';
@@ -37,28 +40,44 @@ class AppRoutes {
   static const String busManagementScreen = '/busManagement';
   static const String driverMapScreen = '/driverMap';
   static const String driverNavbarScreen = '/driver_navbar';
+  static const String trackBusScreen =
+      '/trackBus'; // Fixed typo: was 'truckBusScreen' and had extra space
+  static const String currentBusesScreen = '/currentBuses';
   //static const String seatSelectionScreen = '/selectSeat';
 
   static Map<String, WidgetBuilder> getRoutes() {
     return {
       // Add more routes here
       splashScreen: (context) => const SplashScreen(),
-      signUpScreen: (context) => SignUpScreen(),
-      loginScreen: (context) => SignInScreen(),
-      passengerMapScreen: (context) => PassengerMapScreen(),
-      paymentScreen: (context) => PaymentScreen(),
-      profileScreen: (context) => ProfileScreen(),
+      signUpScreen: (context) => const SignUpScreen(), // Added const
+      loginScreen: (context) => const SignInScreen(), // Added const
+      passengerMapScreen: (context) =>
+          const PassengerMapScreen(), // Added const
+      paymentScreen: (context) =>
+          const passenger.PaymentScreen(), // Added const
+      profileScreen: (context) => const ProfileScreen(), // Added const
       //mapScreen: (context) => MapScreen(),
-      emailVerificationScreen: (context) => EmailVerificationScreen(),
-      forgotPasswordScreen: (context) => ForgotPasswordScreen(),
-      adminScreen: (context) => AdminDashboardScreen(),
-      passengerHomeScreen: (context) => BusTrackingScreen(),
-
-      busDriverHomeScreen: (context) => DriverMapScreen(),
+      emailVerificationScreen: (context) =>
+          const EmailVerificationScreen(), // Added const
+      forgotPasswordScreen: (context) =>
+          const ForgotPasswordScreen(), // Added const
+      adminScreen: (context) => const AdminDashboardScreen(), // Added const
+      passengerHomeScreen: (context) =>
+          const BusTrackingScreen(), // Added const
+      currentBusesScreen: (context) =>
+          const CurrentBusesScreen(), // Added const
+      trackBusScreen: (context) {
+        // Fixed variable name
+        final booking =
+            ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+        return TrackBusScreen(booking: booking);
+      },
+      busDriverHomeScreen: (context) => const DriverMapScreen(), // Added const
       //coordinatetoAddressScreen: (context) => TransformLatLngToAddress(),
       //mountExampleScreen: (context) => const MountExampleScreen(),
-      busManagementScreen: (context) => BusManagementScreen(),
-      driverMapScreen: (context) => DriverMapScreen(),
+      busManagementScreen: (context) =>
+          const BusManagementScreen(), // Added const
+      driverMapScreen: (context) => const DriverMapScreen(), // Added const
       driverNavbarScreen: (context) {
         // Get initialTab from arguments if provided
         final args = ModalRoute.of(context)?.settings.arguments;
@@ -68,9 +87,8 @@ class AppRoutes {
     };
   }
 }
-<<<<<<< HEAD
 
 
 
-=======
->>>>>>> 4e6b5d66db6d785ba6dcb1614dd30d9c03908646
+
+

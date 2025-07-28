@@ -1,1 +1,58 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"smart-bus-mobility","appId":"1:231972373008:android:1cf37f22b20bbbc8c48095","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"smart-bus-mobility","appId":"1:231972373008:ios:9f5885b3a2fd631bc48095","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"macos":{"default":{"projectId":"smart-bus-mobility","appId":"1:231972373008:ios:9f5885b3a2fd631bc48095","uploadDebugSymbols":false,"fileOutput":"macos/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"smart-bus-mobility","configurations":{"android":"1:231972373008:android:1cf37f22b20bbbc8c48095","ios":"1:231972373008:ios:9f5885b3a2fd631bc48095","macos":"1:231972373008:ios:9f5885b3a2fd631bc48095","web":"1:231972373008:web:1a4083885857e628c48095","windows":"1:231972373008:web:2f30c4752c8b2385c48095"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "smart-bus-mobility",
+          "appId": "1:231972373008:android:1cf37f22b20bbbc8c48095",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "smart-bus-mobility",
+          "appId": "1:231972373008:ios:9f5885b3a2fd631bc48095",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "macos": {
+        "default": {
+          "projectId": "smart-bus-mobility",
+          "appId": "1:231972373008:ios:9f5885b3a2fd631bc48095",
+          "uploadDebugSymbols": false,
+          "fileOutput": "macos/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "smart-bus-mobility",
+          "configurations": {
+            "android": "1:231972373008:android:1cf37f22b20bbbc8c48095",
+            "ios": "1:231972373008:ios:9f5885b3a2fd631bc48095",
+            "macos": "1:231972373008:ios:9f5885b3a2fd631bc48095",
+            "web": "1:231972373008:web:1a4083885857e628c48095",
+            "windows": "1:231972373008:web:2f30c4752c8b2385c48095"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint"
+      ]
+    }
+  ]
+}
+

@@ -4,12 +4,11 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:smart_bus_mobility_platform1/models/bus_model.dart';
-import 'package:smart_bus_mobility_platform1/models/location_model.dart';
 import 'package:smart_bus_mobility_platform1/utils/directions_repository.dart';
 import 'package:smart_bus_mobility_platform1/screens/nav_bar_screen.dart';
+import 'package:smart_bus_mobility_platform1/utils/notification_service.dart';
 
 enum SeatStatus { available, selected, reserved }
-
 
 class SelectSeatScreen extends StatefulWidget {
   final String? origin;
@@ -240,19 +239,22 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
       final totalFare = widget.busModel!.fare * (adultCount + childrenCount);
 
       // Save booking to Firestore
-      final eta = await _calculateAndSaveETA();
-      final bookingData = {
-        'userId': user.uid,
-        'bus': widget.busModel!.toJson(),
+      final bookingRef =
+          await FirebaseFirestore.instance.collection('bookings').add({
+        'userId': FirebaseAuth.instance.currentUser!.uid,
+        'pickupLat': widget.pickupLocation!.latitude, // double
+        'pickupLng': widget.pickupLocation!.longitude, // double
+        'pickupLocation': widget.pickupAddress, // String
+        'destination': widget.destination, // String
+        'pickupTime': widget.departureDate != null
+            ? Timestamp.fromDate(widget.departureDate!)
+            : null, // String or Timestamp
         'busId': widget.busModel!.busId,
-        'origin': widget.origin,
-        'destination': widget.destination,
-        'pickupLocation': widget.pickupLocation != null
-            ? {
-                'latitude': widget.pickupLocation!.latitude,
-                'longitude': widget.pickupLocation!.longitude,
-              }
-            : null,
+        'bus': widget.busModel!.toJson(), // if you want to store bus details
+        'pickupLocation': {
+          'latitude': widget.pickupLocation!.latitude,
+          'longitude': widget.pickupLocation!.longitude,
+        },
         'pickupAddress': widget.pickupAddress,
         'departureDate': widget.departureDate != null
             ? Timestamp.fromDate(widget.departureDate!)
@@ -267,96 +269,38 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
         'status': 'confirmed',
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
-        'eta': eta,
-      };
-
-      final docRef = await FirebaseFirestore.instance
-          .collection('bookings')
-          .add(bookingData);
-      _currentBookingId = docRef.id;
-      _startLiveEtaUpdates();
-
-      // Create a ticket in the 'tickets' collection
-      try {
-        final ticketData = {
-          'userId': user.uid,
-          'busId': widget.busModel!.busId,
-          'routeId': widget.busModel!.routeId,
-          'bookingId': docRef.id,
-          'dateTime': widget.departureDate ?? DateTime.now(),
-          'price': totalFare,
-          'isPaid':
-              true, // Set to true if payment is complete, adjust as needed
-          'createdAt': FieldValue.serverTimestamp(),
-        };
-        await FirebaseFirestore.instance.collection('tickets').add(ticketData);
-        print('[Ticket] Ticket created for booking ${docRef.id}');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Your ticket has been created!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      } catch (e) {
-        print('[Ticket] Error creating ticket: $e');
-      }
-
-      // Update bus available seats and bookedSeats
-      final busRef = FirebaseFirestore.instance
-          .collection('buses')
-          .doc(widget.busModel!.busId);
-
-      // Get the latest bookedSeats map
-      final busSnapshot = await busRef.get();
-      Map<String, dynamic> bookedSeats = {};
-      if (busSnapshot.exists &&
-          busSnapshot.data() != null &&
-          busSnapshot.data()!.containsKey('bookedSeats')) {
-        bookedSeats = Map<String, dynamic>.from(
-          busSnapshot.data()!['bookedSeats'] ?? {},
-        );
-      }
-      // Add the new bookings
-      for (int seat in selectedSeats) {
-        bookedSeats[seat.toString()] = user.uid;
-      }
-
-      await busRef.update({
-        'availableSeats': (busSnapshot.data()?['availableSeats'] ??
-                widget.busModel!.seatCapacity) -
-            selectedSeats.length,
-        'bookedSeats': bookedSeats,
-        'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      // Save pickup location as active if provided
-      if (widget.pickupLocation != null) {
-        // Deactivate old locations
-        final existingLocations = await FirebaseFirestore.instance
-            .collection('pickup_locations')
-            .where('userId', isEqualTo: user.uid)
-            .where('isActive', isEqualTo: true)
-            .get();
-        for (var doc in existingLocations.docs) {
-          await doc.reference.update({'isActive': false});
+      // Update the bus's bookedSeats in Firestore
+      final busDocRef = FirebaseFirestore.instance
+          .collection('buses')
+          .doc(widget.busModel!.busId);
+      await busDocRef.set({
+        'bookedSeats': {
+          for (var seat in selectedSeats) seat.toString(): user.uid,
         }
-        // Save new active pickup location
-        final locationModel = LocationModel.createPickupLocation(
+      }, SetOptions(merge: true));
+
+      // Send notification for booking confirmation
+      try {
+        final notificationService = NotificationService();
+        await notificationService.sendBookingConfirmation(
           userId: user.uid,
-          latitude: widget.pickupLocation!.latitude,
-          longitude: widget.pickupLocation!.longitude,
-          locationName: 'Pickup Location',
-          notes: 'Added on ${DateTime.now().toString()}',
+          bookingId: bookingRef.id,
+          destination: widget.destination ?? 'Unknown Destination',
+          departureDate: widget.departureDate ?? DateTime.now(),
+          amount: totalFare,
         );
-        await FirebaseFirestore.instance
-            .collection('pickup_locations')
-            .add(locationModel.toJson());
+      } catch (e) {
+        print('Error sending notification: $e');
       }
 
-      // Show success popup and redirect to customer dashboard
-      _showBookingSuccessDialog(docRef.id, selectedSeats.toList(), totalFare);
+      // Show the ticket dialog
+      _showBookingSuccessDialog(
+        bookingRef.id,
+        selectedSeats.toList(),
+        totalFare,
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -399,7 +343,7 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
                   Container(
                     width: 80,
                     height: 80,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: Colors.green,
                       shape: BoxShape.circle,
                     ),
@@ -451,14 +395,13 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () {
-                        Navigator.of(context).pop(); // Close dialog
-                        // Navigate to NavBarScreen with navbar
-                        Navigator.of(context).pushAndRemoveUntil(
-                          MaterialPageRoute(
-                            builder: (_) => NavBarScreen(
-                                userRole: 'passenger', initialTab: 0),
-                          ),
-                          (route) => false,
+                        Navigator.pushNamed(
+                          context,
+                          '/payment',
+                          arguments: {
+                            'totalFare': totalFare,
+                            'bookingId': bookingId,
+                          },
                         );
                       },
                       style: ElevatedButton.styleFrom(
@@ -470,7 +413,7 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
                         ),
                       ),
                       child: const Text(
-                        'Go to Dashboard',
+                        'Pay Here',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -1042,7 +985,7 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
   void _startLiveEtaUpdates() {
     _etaTimer?.cancel();
     if (_currentBookingId == null) return;
-    _etaTimer = Timer.periodic(Duration(seconds: 50), (_) async {
+    _etaTimer = Timer.periodic(const Duration(seconds: 50), (_) async {
       final eta = await _calculateAndSaveETA();
       if (eta != null) {
         await FirebaseFirestore.instance
@@ -1053,4 +996,7 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
     });
   }
 }
+
+
+
 

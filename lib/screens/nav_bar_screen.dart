@@ -91,7 +91,7 @@ class _NavBarScreenState extends State<NavBarScreen> {
       NavBarItem(
         icon: Icons.home,
         label: "Home",
-        screen: BusDriverHomeScreen(),
+        screen: const BusDriverHomeScreen(),
       ),
       NavBarItem(
         icon: Icons.map,
@@ -233,11 +233,11 @@ class NavBarHelper {
             final role = userData['role']?.toString().toLowerCase() ?? 'user';
             return NavBarScreen(userRole: role);
           }
-          return NavBarScreen(userRole: 'user'); // Default fallback
+          return const NavBarScreen(userRole: 'user'); // Default fallback
         },
       );
     }
-    return NavBarScreen(userRole: 'user'); // Default fallback
+    return const NavBarScreen(userRole: 'user'); // Default fallback
   }
 }
 
@@ -288,4 +288,8 @@ class HomeScreen extends StatelessWidget {
     );
   }
 }
+
+
+
+
 

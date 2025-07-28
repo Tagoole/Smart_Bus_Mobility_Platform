@@ -180,18 +180,18 @@ class _AdminSearchScreenState extends State<AdminSearchScreen> {
                           ),
                         ],
                       ),
-                      child: Row(
+                      child: const Row(
                         children: [
                           Icon(
                             Icons.info_outline,
-                            color: const Color(0xFF576238),
+                            color: Color(0xFF576238),
                             size: 20,
                           ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'Search for a location or tap on the map to select',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 14,
                                 color: Color(0xFF111827),
                               ),
@@ -342,3 +342,7 @@ class _AdminSearchScreenState extends State<AdminSearchScreen> {
     }
   }
 } 
+
+
+
+

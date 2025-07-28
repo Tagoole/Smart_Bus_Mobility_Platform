@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:smart_bus_mobility_platform1/utils/theme_provider.dart';
+import 'package:smart_bus_mobility_platform1/utils/notification_service.dart';
+import 'nav_bar_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -10,13 +16,14 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool locationEnabled = true;
-  bool isDarkMode = false;
-
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+
     return Scaffold(
-      backgroundColor: isDarkMode ? Colors.black : Colors.grey[100],
+      backgroundColor: isDarkMode ? const Color(0xFF121212) : Colors.grey[100],
       appBar: AppBar(
         title: const Text(
           'Settings',
@@ -27,11 +34,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
         centerTitle: true,
-        backgroundColor: const Color(0xFF007AFF),
+        backgroundColor:
+            isDarkMode ? const Color(0xFF1F1F1F) : Colors.green[700],
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () async {
+            // Try to get the user role from Firestore
+            final user = FirebaseAuth.instance.currentUser;
+            String? role;
+            if (user != null) {
+              final doc = await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .get();
+              role = doc.data()?['role']?.toString().toLowerCase();
+            }
+            if (role == 'driver') {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (context) =>
+                        const NavBarScreen(userRole: 'driver', initialTab: 0)),
+                (route) => false,
+              );
+            } else if (role == 'admin') {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (context) =>
+                        const NavBarScreen(userRole: 'admin', initialTab: 0)),
+                (route) => false,
+              );
+            } else {
+              // Default: go to customer home
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (context) =>
+                        const NavBarScreen(userRole: 'user', initialTab: 0)),
+                (route) => false,
+              );
+            }
+          },
         ),
       ),
       body: SingleChildScrollView(
@@ -40,7 +85,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 20),
 
             // General Section
-            _buildSectionHeader('GENERAL'),
+            _buildSectionHeader('GENERAL', isDarkMode),
             _buildSection([
               _buildListTile(
                 title: 'Language',
@@ -49,34 +94,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     Text(
                       'English',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                      style: TextStyle(
+                          color:
+                              isDarkMode ? Colors.grey[300] : Colors.grey[600],
+                          fontSize: 16),
                     ),
                     const SizedBox(width: 8),
                     Icon(
                       Icons.arrow_forward_ios,
                       size: 16,
-                      color: Colors.grey[400],
+                      color: isDarkMode ? Colors.grey[400] : Colors.grey[400],
                     ),
                   ],
                 ),
                 onTap: () => _showLanguageDialog(),
+                isDarkMode: isDarkMode,
               ),
-              _buildDivider(),
+              _buildDivider(isDarkMode),
               _buildListTile(
                 title: 'Notification Settings',
                 trailing: Icon(
                   Icons.arrow_forward_ios,
                   size: 16,
-                  color: Colors.grey[400],
+                  color: isDarkMode ? Colors.grey[400] : Colors.grey[400],
                 ),
                 onTap: () => _navigateToNotifications(),
+                isDarkMode: isDarkMode,
               ),
-              _buildDivider(),
+              _buildDivider(isDarkMode),
               _buildListTile(
                 title: 'Location',
                 trailing: Switch(
                   value: locationEnabled,
-                  activeColor: const Color(0xFF007AFF),
+                  activeColor: Colors.green[700],
                   onChanged: (value) {
                     setState(() {
                       locationEnabled = value;
@@ -84,47 +134,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                 ),
                 onTap: null,
+                isDarkMode: isDarkMode,
               ),
               _buildListTile(
                 title: 'Dark Mode',
                 trailing: Switch(
                   value: isDarkMode,
-                  activeColor: const Color(0xFF007AFF),
-                  onChanged: (value) {
-                    setState(() {
-                      isDarkMode = value;
-                    });
+                  activeColor: Colors.green[700],
+                  onChanged: (value) async {
+                    await themeProvider.setDarkMode(value);
                   },
                 ),
                 onTap: null,
+                isDarkMode: isDarkMode,
               ),
-            ]),
+            ], isDarkMode),
 
             const SizedBox(height: 30),
 
             // Account & Security Section
-            _buildSectionHeader('ACCOUNT & SECURITY'),
+            _buildSectionHeader('ACCOUNT & SECURITY', isDarkMode),
             _buildSection([
               _buildListTile(
-                title: 'Email and Mobile Number',
+                title: 'Email and Contact',
                 trailing: Icon(
                   Icons.arrow_forward_ios,
                   size: 16,
-                  color: Colors.grey[400],
+                  color: isDarkMode ? Colors.grey[400] : Colors.grey[400],
                 ),
                 onTap: () => _navigateToAccountInfo(),
+                isDarkMode: isDarkMode,
               ),
-              _buildDivider(),
+              _buildDivider(isDarkMode),
               _buildListTile(
                 title: 'Security Settings',
                 trailing: Icon(
                   Icons.arrow_forward_ios,
                   size: 16,
-                  color: Colors.grey[400],
+                  color: isDarkMode ? Colors.grey[400] : Colors.grey[400],
                 ),
                 onTap: () => _navigateToSecurity(),
+                isDarkMode: isDarkMode,
               ),
-              _buildDivider(),
+              _buildDivider(isDarkMode),
               _buildListTile(
                 title: 'Delete Account',
                 titleColor: Colors.red,
@@ -136,62 +188,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 trailing: Icon(
                   Icons.arrow_forward_ios,
                   size: 16,
-                  color: Colors.grey[400],
+                  color: isDarkMode ? Colors.grey[400] : Colors.grey[400],
                 ),
                 onTap: () => _showDeleteAccountDialog(),
+                isDarkMode: isDarkMode,
               ),
-            ]),
+            ], isDarkMode),
 
             const SizedBox(height: 30),
 
             // Other Section
-            _buildSectionHeader('OTHER'),
+            _buildSectionHeader('OTHER', isDarkMode),
             _buildSection([
               _buildListTile(
                 title: 'Smart Bus Mobility',
                 trailing: Icon(
                   Icons.arrow_forward_ios,
                   size: 16,
-                  color: Colors.grey[400],
+                  color: isDarkMode ? Colors.grey[400] : Colors.grey[400],
                 ),
                 onTap: () => _navigateToAbout(),
+                isDarkMode: isDarkMode,
               ),
-              _buildDivider(),
+              _buildDivider(isDarkMode),
               _buildListTile(
                 title: 'Privacy Policy',
                 trailing: Icon(
                   Icons.arrow_forward_ios,
                   size: 16,
-                  color: Colors.grey[400],
+                  color: isDarkMode ? Colors.grey[400] : Colors.grey[400],
                 ),
                 onTap: () => _navigateToPrivacyPolicy(),
+                isDarkMode: isDarkMode,
               ),
-              _buildDivider(),
+              _buildDivider(isDarkMode),
               _buildListTile(
                 title: 'Terms and Conditions',
                 trailing: Icon(
                   Icons.arrow_forward_ios,
                   size: 16,
-                  color: Colors.grey[400],
+                  color: isDarkMode ? Colors.grey[400] : Colors.grey[400],
                 ),
                 onTap: () => _navigateToTerms(),
+                isDarkMode: isDarkMode,
               ),
-              _buildDivider(),
+              _buildDivider(isDarkMode),
               _buildListTile(
-                title: 'Smart Bus Mobility',
+                title: 'Rate Driver',
                 leading: const Icon(
                   Icons.star_outline,
-                  color: Color(0xFF007AFF),
+                  color: Colors.green,
                   size: 20,
                 ),
                 trailing: Icon(
                   Icons.arrow_forward_ios,
                   size: 16,
-                  color: Colors.grey[400],
+                  color: isDarkMode ? Colors.grey[400] : Colors.grey[400],
                 ),
-                onTap: () => _rateApp(),
+                onTap: () => _rateDriver(),
+                isDarkMode: isDarkMode,
               ),
-            ]),
+            ], isDarkMode),
 
             const SizedBox(height: 50),
 
@@ -202,7 +259,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Text(
                 'v4.87.2',
                 textAlign: TextAlign.right,
-                style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                style: TextStyle(
+                    color: isDarkMode ? Colors.grey[400] : Colors.grey[500],
+                    fontSize: 12),
               ),
             ),
           ],
@@ -211,7 +270,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(String title, bool isDarkMode) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -228,7 +287,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildSection(List<Widget> children) {
+  Widget _buildSection(List<Widget> children, bool isDarkMode) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
@@ -252,6 +311,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Widget? trailing,
     Color? titleColor,
     VoidCallback? onTap,
+    bool isDarkMode = false,
   }) {
     return ListTile(
       title: Text(
@@ -270,7 +330,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildDivider() {
+  Widget _buildDivider(bool isDarkMode) {
     return Divider(
       height: 1,
       thickness: 0.5,
@@ -314,30 +374,74 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _navigateToNotifications() {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final isDarkMode = themeProvider.isDarkMode;
+
     showDialog(
       context: context,
       builder: (context) {
-        bool pushNotifications = true;
-        bool emailNotifications = false;
-        bool smsNotifications = false;
+        bool pushNotifications = themeProvider.notificationsEnabled;
+        bool emailNotifications = themeProvider.emailNotificationsEnabled;
+        bool smsNotifications = themeProvider.smsNotificationsEnabled;
+
         return StatefulBuilder(
           builder: (context, setState) => AlertDialog(
-            title: const Text('Notification Preferences'),
+            backgroundColor:
+                isDarkMode ? const Color(0xFF2D2D2D) : Colors.white,
+            title: Text(
+              'Notification Preferences',
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
+            ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 SwitchListTile(
-                  title: const Text('Push Notifications'),
+                  title: Text(
+                    'Push Notifications',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Receive notifications about bookings and bus updates',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.grey[300] : Colors.grey[600],
+                    ),
+                  ),
                   value: pushNotifications,
                   onChanged: (val) => setState(() => pushNotifications = val),
                 ),
                 SwitchListTile(
-                  title: const Text('Email Notifications'),
+                  title: Text(
+                    'Email Notifications',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Receive booking confirmations via email',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.grey[300] : Colors.grey[600],
+                    ),
+                  ),
                   value: emailNotifications,
                   onChanged: (val) => setState(() => emailNotifications = val),
                 ),
                 SwitchListTile(
-                  title: const Text('SMS Notifications'),
+                  title: Text(
+                    'SMS Notifications',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Receive booking confirmations via SMS',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.grey[300] : Colors.grey[600],
+                    ),
+                  ),
                   value: smsNotifications,
                   onChanged: (val) => setState(() => smsNotifications = val),
                 ),
@@ -345,17 +449,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             actions: [
               TextButton(
-                child: const Text('Close'),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.grey[300] : Colors.grey[600],
+                  ),
+                ),
                 onPressed: () => Navigator.pop(context),
               ),
               TextButton(
-                child: const Text('Save'),
-                onPressed: () {
-                  // Save preferences logic here
+                child: Text(
+                  'Save',
+                  style: TextStyle(
+                    color: Colors.green[700],
+                  ),
+                ),
+                onPressed: () async {
+                  await themeProvider.updateNotificationSettings(
+                    notifications: pushNotifications,
+                    emailNotifications: emailNotifications,
+                    smsNotifications: smsNotifications,
+                  );
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Notification preferences saved.'),
+                    SnackBar(
+                      content: const Text('Notification preferences saved.'),
+                      backgroundColor:
+                          isDarkMode ? Colors.grey[700] : Colors.green[700],
                     ),
                   );
                 },
@@ -367,42 +487,90 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _navigateToAccountInfo() {
-    final emailController = TextEditingController(text: 'user@email.com');
-    final phoneController = TextEditingController(text: '+256 700 000000');
+  void _navigateToAccountInfo() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User not logged in')),
+      );
+      return;
+    }
+
+    // Fetch user data from Firestore
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+
+    if (!doc.exists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User data not found')),
+      );
+      return;
+    }
+
+    final userData = doc.data()!;
+    final emailController =
+        TextEditingController(text: userData['email'] ?? '');
+    final contactController =
+        TextEditingController(text: userData['contact'] ?? '');
+
+    final isDarkMode =
+        Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Edit Account Info'),
+        backgroundColor: isDarkMode ? const Color(0xFF2D2D2D) : Colors.white,
+        title: Text(
+          'Account Information',
+          style: TextStyle(
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: emailController,
-              decoration: const InputDecoration(labelText: 'Email'),
+              decoration: InputDecoration(
+                labelText: 'Email',
+                labelStyle: TextStyle(
+                  color: isDarkMode ? Colors.grey[300] : Colors.grey[600],
+                ),
+              ),
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
               keyboardType: TextInputType.emailAddress,
+              enabled: false, // Make email read-only
             ),
+            const SizedBox(height: 16),
             TextField(
-              controller: phoneController,
-              decoration: const InputDecoration(labelText: 'Mobile Number'),
+              controller: contactController,
+              decoration: InputDecoration(
+                labelText: 'Contact',
+                labelStyle: TextStyle(
+                  color: isDarkMode ? Colors.grey[300] : Colors.grey[600],
+                ),
+              ),
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
               keyboardType: TextInputType.phone,
+              enabled: false, // Make contact read-only
             ),
           ],
         ),
         actions: [
           TextButton(
-            child: const Text('Cancel'),
+            child: Text(
+              'Close',
+              style: TextStyle(
+                color: isDarkMode ? Colors.grey[300] : Colors.grey[600],
+              ),
+            ),
             onPressed: () => Navigator.pop(context),
-          ),
-          TextButton(
-            child: const Text('Save'),
-            onPressed: () {
-              // Save logic here
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Account info updated.')),
-              );
-            },
           ),
         ],
       ),
@@ -460,16 +628,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showDeleteAccountDialog() {
+    final isDarkMode =
+        Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Account'),
-        content: const Text(
-          'Are you sure you want to delete your account? This action cannot be undone.',
+        backgroundColor: isDarkMode ? const Color(0xFF2D2D2D) : Colors.white,
+        title: Row(
+          children: [
+            const Icon(Icons.warning, color: Colors.red, size: 24),
+            const SizedBox(width: 8),
+            Text(
+              'Delete Account',
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : Colors.black,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to delete your account? This action cannot be undone and will permanently remove all your data including bookings, notifications, and settings.',
+          style: TextStyle(
+            color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
+          ),
         ),
         actions: [
           TextButton(
-            child: const Text('Cancel'),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: isDarkMode ? Colors.grey[300] : Colors.grey[600],
+              ),
+            ),
             onPressed: () => Navigator.pop(context),
           ),
           TextButton(
@@ -477,19 +669,139 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: const Text('Delete'),
             onPressed: () async {
               Navigator.pop(context);
-              // TODO: Add backend account deletion logic here
-              await Future.delayed(const Duration(seconds: 1));
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Account deleted.')),
-                );
-                // Optionally, navigate to login or splash screen
-              }
+              await _deleteUserAccount();
             },
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _deleteUserAccount() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('User not logged in'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          backgroundColor:
+              Provider.of<ThemeProvider>(context, listen: false).isDarkMode
+                  ? const Color(0xFF2D2D2D)
+                  : Colors.white,
+          content: Row(
+            children: [
+              CircularProgressIndicator(
+                color: Provider.of<ThemeProvider>(context, listen: false)
+                        .isDarkMode
+                    ? Colors.white
+                    : Colors.green,
+              ),
+              const SizedBox(width: 16),
+              Text(
+                'Deleting account...',
+                style: TextStyle(
+                  color: Provider.of<ThemeProvider>(context, listen: false)
+                          .isDarkMode
+                      ? Colors.white
+                      : Colors.black,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      // Delete user data from Firestore
+      final batch = FirebaseFirestore.instance.batch();
+
+      // Delete user document
+      batch
+          .delete(FirebaseFirestore.instance.collection('users').doc(user.uid));
+
+      // Delete user's bookings
+      final bookingsSnapshot = await FirebaseFirestore.instance
+          .collection('bookings')
+          .where('userId', isEqualTo: user.uid)
+          .get();
+
+      for (var doc in bookingsSnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+
+      // Delete user's notifications
+      final notificationsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('notifications')
+          .get();
+
+      for (var doc in notificationsSnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+
+      // Delete pickup locations
+      final pickupLocationsSnapshot = await FirebaseFirestore.instance
+          .collection('pickup_locations')
+          .where('userId', isEqualTo: user.uid)
+          .get();
+
+      for (var doc in pickupLocationsSnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+
+      // Commit all deletions
+      await batch.commit();
+
+      // Delete the Firebase Auth user
+      await user.delete();
+
+      // Close loading dialog
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account deleted successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+
+      // Navigate to login screen and clear all routes
+      if (mounted) {
+        Navigator.of(context)
+            .pushNamedAndRemoveUntil('/login', (route) => false);
+      }
+    } catch (e) {
+      // Close loading dialog
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting account: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _navigateToAbout() {
@@ -550,19 +862,321 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _rateApp() async {
-    const appStoreUrl =
-        'https://play.google.com/store/apps/details?id=com.example.smart_bus_mobility_platform1';
-    if (await canLaunchUrl(Uri.parse(appStoreUrl))) {
-      await launchUrl(
-        Uri.parse(appStoreUrl),
-        mode: LaunchMode.externalApplication,
-      );
-    } else {
+  void _rateDriver() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open the app store.')),
+        const SnackBar(content: Text('Please log in to rate drivers')),
       );
+      return;
+    }
+
+    // Get user's recent bookings to find drivers they can rate
+    final bookingsSnapshot = await FirebaseFirestore.instance
+        .collection('bookings')
+        .where('userId', isEqualTo: user.uid)
+        .where('status', isEqualTo: 'completed')
+        .orderBy('createdAt', descending: true)
+        .limit(10)
+        .get();
+
+    if (bookingsSnapshot.docs.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'No completed trips found. Rate drivers after completing a trip.'),
+        ),
+      );
+      return;
+    }
+
+    // Get unique drivers from bookings
+    final drivers = <String, Map<String, dynamic>>{};
+    for (var doc in bookingsSnapshot.docs) {
+      final booking = doc.data();
+      final busId = booking['busId'];
+      if (busId != null) {
+        final busDoc = await FirebaseFirestore.instance
+            .collection('buses')
+            .doc(busId)
+            .get();
+        if (busDoc.exists) {
+          final busData = busDoc.data()!;
+          final driverId = busData['driverId'];
+          final driverName = busData['driverName'] ?? 'Unknown Driver';
+          final busPlate = busData['numberPlate'] ?? 'Unknown Bus';
+
+          if (driverId != null && !drivers.containsKey(driverId)) {
+            drivers[driverId] = {
+              'driverId': driverId,
+              'driverName': driverName,
+              'busPlate': busPlate,
+              'bookingId': doc.id,
+              'destination': booking['destination'] ?? 'Unknown',
+              'date': booking['createdAt'],
+            };
+          }
+        }
+      }
+    }
+
+    if (drivers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No drivers found to rate.'),
+        ),
+      );
+      return;
+    }
+
+    final isDarkMode =
+        Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: isDarkMode ? const Color(0xFF2D2D2D) : Colors.white,
+        title: Text(
+          'Rate Your Driver',
+          style: TextStyle(
+            color: isDarkMode ? Colors.white : Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: drivers.length,
+            itemBuilder: (context, index) {
+              final driver = drivers.values.elementAt(index);
+              return Card(
+                color: isDarkMode ? const Color(0xFF3D3D3D) : Colors.grey[50],
+                child: ListTile(
+                  title: Text(
+                    driver['driverName'],
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Bus: ${driver['busPlate']}',
+                        style: TextStyle(
+                          color:
+                              isDarkMode ? Colors.grey[300] : Colors.grey[600],
+                        ),
+                      ),
+                      Text(
+                        'To: ${driver['destination']}',
+                        style: TextStyle(
+                          color:
+                              isDarkMode ? Colors.grey[300] : Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.star, color: Colors.amber),
+                    onPressed: () => _showRatingDialog(driver),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            child: Text(
+              'Close',
+              style: TextStyle(
+                color: isDarkMode ? Colors.grey[300] : Colors.grey[600],
+              ),
+            ),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRatingDialog(Map<String, dynamic> driver) {
+    final isDarkMode =
+        Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+    double rating = 5.0;
+    final commentController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          backgroundColor: isDarkMode ? const Color(0xFF2D2D2D) : Colors.white,
+          title: Text(
+            'Rate ${driver['driverName']}',
+            style: TextStyle(
+              color: isDarkMode ? Colors.white : Colors.black,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Star Rating
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        rating = index + 1.0;
+                      });
+                    },
+                    child: Icon(
+                      index < rating ? Icons.star : Icons.star_border,
+                      color: Colors.amber,
+                      size: 32,
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                '${rating.toInt()}/5 Stars',
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white : Colors.black,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: commentController,
+                decoration: InputDecoration(
+                  labelText: 'Comment (optional)',
+                  labelStyle: TextStyle(
+                    color: isDarkMode ? Colors.grey[300] : Colors.grey[600],
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white : Colors.black,
+                ),
+                maxLines: 3,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: isDarkMode ? Colors.grey[300] : Colors.grey[600],
+                ),
+              ),
+              onPressed: () => Navigator.pop(context),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Submit Rating'),
+              onPressed: () async {
+                await _submitDriverRating(
+                  driver['driverId'],
+                  driver['driverName'],
+                  rating,
+                  commentController.text,
+                  driver['bookingId'],
+                );
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submitDriverRating(
+    String driverId,
+    String driverName,
+    double rating,
+    String comment,
+    String bookingId,
+  ) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      // Save rating to Firestore
+      await FirebaseFirestore.instance.collection('driver_ratings').add({
+        'driverId': driverId,
+        'driverName': driverName,
+        'userId': user.uid,
+        'userEmail': user.email,
+        'rating': rating,
+        'comment': comment,
+        'bookingId': bookingId,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // Update driver's average rating
+      final ratingsSnapshot = await FirebaseFirestore.instance
+          .collection('driver_ratings')
+          .where('driverId', isEqualTo: driverId)
+          .get();
+
+      double totalRating = 0;
+      int ratingCount = 0;
+
+      for (var doc in ratingsSnapshot.docs) {
+        totalRating += doc.data()['rating'] ?? 0;
+        ratingCount++;
+      }
+
+      final averageRating = ratingCount > 0 ? totalRating / ratingCount : 0;
+
+      // Update driver document with new average rating
+      await FirebaseFirestore.instance
+          .collection('drivers')
+          .doc(driverId)
+          .update({
+        'averageRating': averageRating,
+        'ratingCount': ratingCount,
+        'lastRatingUpdate': FieldValue.serverTimestamp(),
+      });
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Thank you for rating $driverName!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+
+      // Close the driver list dialog
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error submitting rating: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 }
+
 
