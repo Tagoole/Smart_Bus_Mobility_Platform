@@ -175,7 +175,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      if (user == null) throw Exception('No user logged in');
       // Get role to determine collection
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
@@ -183,16 +183,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
           .get();
       String role = userDoc.data()?['role']?.toString().toLowerCase() ?? 'user';
       final collection = (role == 'driver') ? 'drivers' : 'users';
+
       // Create a unique filename
       final fileName = 'profile_${user.uid}_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final storageRef = FirebaseStorage.instance
           .ref()
           .child('profile_images')
           .child(fileName);
+
       // Upload the image
-      final uploadTask = storageRef.putFile(_selectedImageFile!);
-      final snapshot = await uploadTask;
+      UploadTask uploadTask = storageRef.putFile(_selectedImageFile!);
+      TaskSnapshot snapshot = await uploadTask.whenComplete(() {});
       final downloadUrl = await snapshot.ref.getDownloadURL();
+
       // Update Firestore with the new image URL
       await FirebaseFirestore.instance
           .collection(collection)
@@ -200,11 +203,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           .update({
         'profileImageUrl': downloadUrl,
       });
+
       setState(() {
         _profileImageUrl = downloadUrl;
         _selectedImageFile = null;
         isUploadingImage = false;
       });
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Profile image updated successfully!'),
@@ -856,7 +861,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
+              color: Colors.black.withOpacity(0.1),
               blurRadius: 10,
               offset: const Offset(0, 5),
             ),
