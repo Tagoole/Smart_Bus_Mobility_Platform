@@ -100,15 +100,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (user != null) {
         // Add timeout to prevent hanging
         final timeout = Future.delayed(const Duration(milliseconds: 2000));
-        
-        final docFuture = FirebaseFirestore.instance
+        // First, get the role from the users collection
+        final userDoc = await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
             .get();
-            
+        String role = userDoc.data()?['role']?.toString().toLowerCase() ?? 'user';
+        final collection = (role == 'driver') ? 'drivers' : 'users';
+        final docFuture = FirebaseFirestore.instance
+            .collection(collection)
+            .doc(user.uid)
+            .get();
         // Race between timeout and Firestore call
         final doc = await Future.any([docFuture, timeout.then((_) => null)]);
-
         if (mounted) {
           setState(() {
             userData = doc?.data();
@@ -166,42 +170,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _uploadProfileImage() async {
     if (_selectedImageFile == null) return;
-
     setState(() {
       isUploadingImage = true;
     });
-
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
-
+      // Get role to determine collection
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      String role = userDoc.data()?['role']?.toString().toLowerCase() ?? 'user';
+      final collection = (role == 'driver') ? 'drivers' : 'users';
       // Create a unique filename
       final fileName = 'profile_${user.uid}_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final storageRef = FirebaseStorage.instance
           .ref()
           .child('profile_images')
           .child(fileName);
-
       // Upload the image
       final uploadTask = storageRef.putFile(_selectedImageFile!);
       final snapshot = await uploadTask;
       final downloadUrl = await snapshot.ref.getDownloadURL();
-
       // Update Firestore with the new image URL
       await FirebaseFirestore.instance
-          .collection('users')
+          .collection(collection)
           .doc(user.uid)
           .update({
         'profileImageUrl': downloadUrl,
       });
-
-      // Update local state
       setState(() {
         _profileImageUrl = downloadUrl;
         _selectedImageFile = null;
         isUploadingImage = false;
       });
-
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Profile image updated successfully!'),
@@ -212,7 +215,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         isUploadingImage = false;
       });
-      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error uploading image: $e'),
@@ -269,7 +271,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => isLoading = true);
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+      // Get role to determine collection
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      String role = userDoc.data()?['role']?.toString().toLowerCase() ?? 'user';
+      final collection = (role == 'driver') ? 'drivers' : 'users';
+      await FirebaseFirestore.instance.collection(collection).doc(user.uid).update({
         'username': _editName,
         'email': _editEmail,
         'contact': _editPhone,
@@ -465,9 +474,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       child: IconButton(
                         icon: const Icon(Icons.arrow_back, color: Colors.white),
-                        onPressed: () {
-                          // Simply go back to the previous screen
-                          Navigator.of(context).pop();
+                        onPressed: () async {
+                          final user = FirebaseAuth.instance.currentUser;
+                          if (user != null) {
+                            final userDoc = await FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(user.uid)
+                                .get();
+                            final role = userDoc.data()?['role']?.toString().toLowerCase() ?? 'user';
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => NavBarScreen(userRole: role, initialTab: 0),
+                              ),
+                              (route) => false,
+                            );
+                          } else {
+                            Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                          }
                         },
                       ),
                     ),
@@ -515,7 +539,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           child: IconButton(
                             icon: const Icon(Icons.settings, color: Colors.white),
-                            onPressed: () => _onItemTapped(3), // Go to Settings
+                            onPressed: () => Navigator.pushNamed(context, '/settings'),
                           ),
                         ),
                       ],
@@ -743,16 +767,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           },
                         ),
                         const SizedBox(height: 15),
+                        _buildProfileOption(
+                          icon: Icons.location_on,
+                          title: 'My Routes',
+                          subtitle: 'View your favorite routes',
+                          onTap: () {
+                            _onItemTapped(2); // Go to Live Location
+                          },
+                        ),
+                        const SizedBox(height: 15),
                       ],
-
-                      _buildProfileOption(
-                        icon: Icons.location_on,
-                        title: 'My Routes',
-                        subtitle: 'View your favorite routes',
-                        onTap: () {
-                          _onItemTapped(2); // Go to Live Location
-                        },
-                      ),
 
                       if (role == 'user' || role == 'passenger') ...[
                         const SizedBox(height: 15),
@@ -949,15 +973,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _onItemTapped(int index) {
+  void _onItemTapped(int index) async {
     if (index != 4) {
-      // If not profile tab, navigate to NavBarScreen
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => NavBarHelper.getNavBarForCurrentUser(),
-        ),
-      );
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        final role = userDoc.data()?['role']?.toString().toLowerCase() ?? 'user';
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => NavBarScreen(userRole: role, initialTab: index),
+          ),
+        );
+      } else {
+        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+      }
     }
     // If profile tab (index 4), stay on current screen
   }
