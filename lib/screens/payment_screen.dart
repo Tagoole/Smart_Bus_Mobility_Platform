@@ -18,8 +18,11 @@ class _PaymentScreen extends State<PaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
     return Scaffold(
       body: Container(
+        width: double.infinity,
+        height: screenHeight,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [Colors.green.shade900, Colors.teal.shade700],
@@ -28,14 +31,18 @@ class _PaymentScreen extends State<PaymentScreen> {
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                _buildTopSection(),
-                const SizedBox(height: 20),
-                _buildMTNPaymentSection(),
-                const SizedBox(height: 20),
-              ],
+          child: SizedBox(
+            width: double.infinity,
+            height: screenHeight,
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  _buildTopSection(),
+                  const SizedBox(height: 20),
+                  _buildMTNPaymentSection(),
+                  const SizedBox(height: 20),
+                ],
+              ),
             ),
           ),
         ),
