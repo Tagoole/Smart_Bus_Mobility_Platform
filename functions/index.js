@@ -370,6 +370,7 @@ app.use((req, res) => {
   });
 });
 
+<<<<<<< HEAD
 // Export as Firebase Function with proper CORS and authentication handling
 exports.api = functions.https.onRequest((req, res) => {
   // Set CORS headers
@@ -395,4 +396,8 @@ exports.test = functions.https.onRequest((req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+=======
+// Export as Firebase Function
+exports.api = functions.https.onRequest(app);
+>>>>>>> origin/dev
 
