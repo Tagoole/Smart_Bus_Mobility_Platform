@@ -199,7 +199,7 @@ class _PaymentScreen extends State<PaymentScreen> {
                   headers: {'Content-Type': 'application/json'},
                   body: jsonEncode({
                     'amount': amount,
-                    'currency': 'UGX',
+                    'currency': 'EUR',
                     'externalId': 'ticket_${DateTime.now().millisecondsSinceEpoch}',
                     'payer': {'partyIdType': 'MSISDN', 'partyId': phone},
                     'payerMessage': 'Ticket payment',
@@ -241,7 +241,7 @@ class _PaymentScreen extends State<PaymentScreen> {
                     }
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const PaymentSuccess()),
+                      MaterialPageRoute(builder: (context) => PaymentSuccess(amount: amount)),
                     );
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
