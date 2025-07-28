@@ -81,32 +81,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchUserData();
+    // Show immediate loading state and fetch data
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchUserData();
+    });
   }
 
   Future<void> _fetchUserData() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
 
-      print('[DEBUG] User data from Firestore: ${doc.data()}');
-
-      setState(() {
-        userData = doc.data();
-        isLoading = false;
-        _editName = userData?['username'] ?? '';
-        _editEmail = userData?['email'] ?? '';
-        _editPhone = userData?['contact'] ?? '';
-      });
-
-      // Debug: Print individual fields
-      print('[DEBUG] Name: ${userData?['username']}');
-      print('[DEBUG] Email: ${userData?['email']}');
-      print('[DEBUG] Phone: ${userData?['contact']}');
-      print('[DEBUG] Profile Image: ${userData?['profileImageUrl']}');
+        if (mounted) {
+          setState(() {
+            userData = doc.data();
+            isLoading = false;
+            _editName = userData?['username'] ?? '';
+            _editEmail = userData?['email'] ?? '';
+            _editPhone = userData?['contact'] ?? '';
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching user data: $e');
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -135,7 +147,141 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return Scaffold(
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                const Color(0xFF004d00),
+                const Color(0xFF006400),
+                const Color(0xFF808080).withOpacity(0.3),
+              ],
+              stops: const [0.0, 0.6, 1.0],
+            ),
+          ),
+          child: SafeArea(
+            child: Column(
+              children: [
+                // Header skeleton
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 120,
+                              height: 20,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              width: 80,
+                              height: 16,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Content skeleton
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      children: [
+                        // Profile header skeleton
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 15,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              // Avatar skeleton
+                              Container(
+                                width: 96,
+                                height: 96,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[300],
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              // Name skeleton
+                              Container(
+                                width: 150,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              // Email skeleton
+                              Container(
+                                width: 200,
+                                height: 16,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        // Options skeleton
+                        for (int i = 0; i < 5; i++) ...[
+                          Container(
+                            width: double.infinity,
+                            height: 70,
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
     }
     final name = userData?['username'] ?? 'No Name';
     final email = userData?['email'] ?? 'No Email';

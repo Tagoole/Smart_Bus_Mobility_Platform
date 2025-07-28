@@ -23,7 +23,6 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
   final bool _showActiveJourney = false;
   String? _username;
   bool _isLoadingUser = true;
-  bool _showDropdown = false;
 
   // Enhanced data for dynamic content
   List<Map<String, dynamic>> _recentBookings = [];
@@ -318,24 +317,30 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
     }
   }
 
-  void _toggleDropdown() {
-    setState(() {
-      _showDropdown = !_showDropdown;
-    });
-  }
-
   void _navigateToProfile() {
-    setState(() {
-      _showDropdown = false;
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Text('Loading profile...'),
+          ],
+        ),
+      ),
+    );
+    
+    // Navigate to profile
+    Navigator.pushNamed(context, '/profile').then((_) {
+      // Close loading dialog when returning from profile
+      Navigator.of(context).pop();
     });
-    Navigator.pushNamed(context, '/profile'); // Use named route for ProfileScreen
   }
 
   Future<void> _logout() async {
-    setState(() {
-      _showDropdown = false;
-    });
-
     bool? shouldLogout = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
@@ -784,11 +789,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
       body: SafeArea(
         child: GestureDetector(
           onTap: () {
-            if (_showDropdown) {
-              setState(() {
-                _showDropdown = false;
-              });
-            }
+            // Removed _showDropdown logic
           },
           child: Column(
             children: [
@@ -847,7 +848,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
           Stack(
             children: [
               GestureDetector(
-                onTap: _toggleDropdown,
+                onTap: _navigateToProfile,
                 child: CircleAvatar(
                   backgroundColor: Colors.green[700],
                   child: Text(
@@ -872,56 +873,6 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                       color: Colors.green,
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 2),
-                    ),
-                  ),
-                ),
-              if (_showDropdown)
-                Positioned(
-                  top: 50,
-                  right: 0,
-                  child: Container(
-                    width: 180,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ListTile(
-                          leading: const Icon(Icons.person, color: Colors.blue),
-                          title: const Text(
-                            'Profile',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          onTap: _navigateToProfile,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                        ),
-                        Divider(height: 1, color: Colors.grey[200]),
-                        ListTile(
-                          leading: const Icon(Icons.logout, color: Colors.red),
-                          title: const Text(
-                            'Logout',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.red,
-                            ),
-                          ),
-                          onTap: _logout,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                        ),
-                      ],
                     ),
                   ),
                 ),
@@ -996,21 +947,53 @@ class _IndependentImageCarouselState extends State<IndependentImageCarousel> {
   int _carouselIndex = 0;
   PageController? _carouselPageController;
   Timer? _carouselTimer;
+  final Map<int, Image> _preloadedImages = {};
 
   @override
   void initState() {
     super.initState();
     _carouselPageController = PageController(initialPage: 0);
+    _preloadImages();
     _carouselTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
       if (mounted && _carouselPageController != null) {
         int nextPage = (_carouselIndex + 1) % widget.images.length;
         _carouselPageController!.animateToPage(
           nextPage,
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.easeInOut,
+          duration: const Duration(milliseconds: 800),
+          curve: Curves.easeInOutCubic,
         );
       }
     });
+  }
+
+  void _preloadImages() {
+    for (int i = 0; i < widget.images.length; i++) {
+      _preloadedImages[i] = Image.asset(
+        widget.images[i],
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: 200,
+        cacheWidth: 800,
+        cacheHeight: 400,
+        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          if (wasSynchronouslyLoaded) return child;
+          return AnimatedOpacity(
+            opacity: frame == null ? 0 : 1,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            child: child,
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.grey[300],
+            child: const Center(
+              child: Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
+            ),
+          );
+        },
+      );
+    }
   }
 
   @override
@@ -1038,13 +1021,42 @@ class _IndependentImageCarouselState extends State<IndependentImageCarousel> {
                   });
                 },
                 itemBuilder: (context, index) {
-                  return Image.asset(
-                    widget.images[index],
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: 200,
+                  return AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder: (Widget child, Animation<double> animation) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: child,
+                      );
+                    },
+                    child: Container(
+                      key: ValueKey(index),
+                      width: double.infinity,
+                      height: 200,
+                      child: _preloadedImages[index] ?? Container(
+                        color: Colors.grey[300],
+                        child: const Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                      ),
+                    ),
                   );
                 },
+              ),
+              // Gradient overlay for better text visibility
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.1),
+                      ],
+                    ),
+                  ),
+                ),
               ),
               Positioned(
                 bottom: 10,
