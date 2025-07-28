@@ -3,6 +3,10 @@ const express = require("express");
 const axios = require("axios");
 const {v4: uuidv4} = require("uuid");
 const cors = require("cors");
+const admin = require("firebase-admin");
+
+// Initialize Firebase Admin
+admin.initializeApp();
 
 const app = express();
 
@@ -10,12 +14,33 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+// Authentication middleware
+const authenticateRequest = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      // Allow requests without authentication for now
+      return next();
+    }
+
+    const token = authHeader.split("Bearer ")[1];
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    req.user = decodedToken;
+    next();
+  } catch (error) {
+    // Allow requests without authentication for now
+    next();
+  }
+};
+
+app.use(authenticateRequest);
+
 // MTN MoMo API Configuration
 const MOMO_CONFIG = {
   baseURL: process.env.MOMO_BASE_URL || "https://sandbox.momodeveloper.mtn.com",
-  subscriptionKey: process.env.MOMO_SUBSCRIPTION_KEY,
-  userId: process.env.MOMO_USER_ID,
-  apiKey: process.env.MOMO_API_KEY,
+  subscriptionKey: "8df0f2fc72c84361978de2c50a7d0a3d",
+  userId: "51a06b51-7b0e-45be-b321-ac37e90ea807",
+  apiKey: "7e4cc124b84441c4a3535a0cf756ab7d",
   targetEnvironment: process.env.MOMO_TARGET_ENVIRONMENT || "sandbox",
 };
 
@@ -81,7 +106,27 @@ const getValidAccessToken = async (type = "collection") => {
 
 // Health check
 app.get("/health", (req, res) => {
-  res.json({status: "OK", timestamp: new Date().toISOString()});
+  console.log("Health check endpoint called");
+  res.json({
+    status: "OK",
+    timestamp: new Date().toISOString(),
+    message: "Backend is running",
+  });
+});
+
+// Test endpoint
+app.get("/test", (req, res) => {
+  console.log("Test endpoint called");
+  res.json({
+    message: "Test endpoint working",
+    config: {
+      baseURL: MOMO_CONFIG.baseURL,
+      targetEnvironment: MOMO_CONFIG.targetEnvironment,
+      hasSubscriptionKey: !!MOMO_CONFIG.subscriptionKey,
+      hasUserId: !!MOMO_CONFIG.userId,
+      hasApiKey: !!MOMO_CONFIG.apiKey,
+    },
+  });
 });
 
 // Request to Pay
@@ -325,6 +370,34 @@ app.use((req, res) => {
   });
 });
 
+<<<<<<< HEAD
+// Export as Firebase Function with proper CORS and authentication handling
+exports.api = functions.https.onRequest((req, res) => {
+  // Set CORS headers
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+  // Handle preflight requests
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return;
+  }
+
+  // Continue with the app
+  app(req, res);
+});
+
+// Export a simpler function for testing
+exports.test = functions.https.onRequest((req, res) => {
+  res.set("Access-Control-Allow-Origin", "*");
+  res.json({
+    message: "Firebase Function is working!",
+    timestamp: new Date().toISOString(),
+  });
+});
+=======
 // Export as Firebase Function
 exports.api = functions.https.onRequest(app);
+>>>>>>> origin/dev
 
