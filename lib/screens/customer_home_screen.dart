@@ -40,7 +40,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
   // Automatic refresh timer
   Timer? _refreshTimer;
 
-  // Carousel state
+  // Carousel images (no state/timer/controller here)
   final List<String> _carouselImages = [
     'assets/images/bus27.jpg',
     'assets/images/bus26.jpg',
@@ -49,9 +49,6 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
     'assets/images/bus23.jpg',
     'assets/images/bus22.jpg',
   ];
-  int _carouselIndex = 0;
-  Timer? _carouselTimer;
-  PageController? _carouselPageController;
 
   @override
   void initState() {
@@ -59,23 +56,10 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
     _initializeAnimations();
     _fetchUsername();
     _loadUserData();
-
     // Set up automatic refresh every 30 seconds for real-time updates
     _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
       if (mounted) {
         _loadUserData();
-      }
-    });
-    // Start carousel auto-play
-    _carouselPageController = PageController(initialPage: 0);
-    _carouselTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
-      if (mounted && _carouselPageController != null) {
-        int nextPage = (_carouselIndex + 1) % _carouselImages.length;
-        _carouselPageController!.animateToPage(
-          nextPage,
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.easeInOut,
-        );
       }
     });
   }
@@ -106,8 +90,6 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
     _pulseController.dispose();
     _slideController.dispose();
     _refreshTimer?.cancel();
-    _carouselTimer?.cancel();
-    _carouselPageController?.dispose();
     super.dispose();
   }
 
@@ -346,7 +328,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
     setState(() {
       _showDropdown = false;
     });
-    Navigator.pushNamed(context, '/profile');
+    Navigator.pushNamed(context, '/profile'); // Use named route for ProfileScreen
   }
 
   Future<void> _logout() async {
@@ -543,10 +525,10 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                     child: AnimatedOpacity(
                       opacity: 1.0,
                       duration: Duration(milliseconds: 600 + (index * 100)),
-                      child: Container(
-                        width: 260,
+                    child: Container(
+                      width: 260,
                         margin: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
+                      decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
                               Colors.green[50]!,
@@ -555,14 +537,14 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.08),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                           border: Border(
                             left: BorderSide(
                               color: Colors.green[700]!,
@@ -602,116 +584,116 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                               ),
                             ),
                             Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(Icons.directions_bus,
-                                          color: Colors.green[700], size: 28),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          booking['destination']?.toString() ??
-                                              booking['route']?.toString() ??
-                                              'Unknown Route',
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.directions_bus,
+                                    color: Colors.green[700], size: 28),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    booking['destination']?.toString() ??
+                                        booking['route']?.toString() ??
+                                        'Unknown Route',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                           maxLines: 1,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            // ETA Section with real-time calculation
+                            FutureBuilder<String>(
+                              future: _calculateETA(booking),
+                              builder: (context, etaSnapshot) {
+                                String etaText = 'Calculating...';
+                                Color etaColor = Colors.orange;
+                                IconData etaIcon = Icons.access_time;
+                                if (etaSnapshot.hasData) {
+                                  etaText = etaSnapshot.data!;
+                                  if (etaText == 'Arriving now') {
+                                    etaColor = Colors.green;
+                                    etaIcon = Icons.near_me;
+                                  } else if (etaText.contains('min')) {
+                                    etaColor = Colors.blue;
+                                    etaIcon = Icons.schedule;
+                                  } else if (etaText.contains('Unable') ||
+                                      etaText.contains('N/A')) {
+                                    etaColor = Colors.red;
+                                    etaIcon = Icons.error_outline;
+                                  }
+                                }
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: etaColor.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                        color: etaColor.withOpacity(0.3)),
+                                  ),
+                                  child: Row(
+                                          mainAxisSize: MainAxisSize.max,
+                                    children: [
+                                      Icon(etaIcon, size: 16, color: etaColor),
+                                      const SizedBox(width: 6),
+                                            Flexible(
+                                              child: Text(
+                                        'ETA: $etaText',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: etaColor,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                                maxLines: 1,
                                         ),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 12),
-                                  // ETA Section with real-time calculation
-                                  FutureBuilder<String>(
-                                    future: _calculateETA(booking),
-                                    builder: (context, etaSnapshot) {
-                                      String etaText = 'Calculating...';
-                                      Color etaColor = Colors.orange;
-                                      IconData etaIcon = Icons.access_time;
-                                      if (etaSnapshot.hasData) {
-                                        etaText = etaSnapshot.data!;
-                                        if (etaText == 'Arriving now') {
-                                          etaColor = Colors.green;
-                                          etaIcon = Icons.near_me;
-                                        } else if (etaText.contains('min')) {
-                                          etaColor = Colors.blue;
-                                          etaIcon = Icons.schedule;
-                                        } else if (etaText.contains('Unable') ||
-                                            etaText.contains('N/A')) {
-                                          etaColor = Colors.red;
-                                          etaIcon = Icons.error_outline;
-                                        }
-                                      }
-                                      return Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 6),
-                                        decoration: BoxDecoration(
-                                          color: etaColor.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(
-                                              color: etaColor.withOpacity(0.3)),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.max,
-                                          children: [
-                                            Icon(etaIcon, size: 16, color: etaColor),
-                                            const SizedBox(width: 6),
-                                            Flexible(
-                                              child: Text(
-                                                'ETA: $etaText',
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: etaColor,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                                maxLines: 1,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                  const SizedBox(height: 12),
-                                  if (booking['pickupAddress'] != null)
-                                    Row(
-                                      children: [
-                                        Icon(Icons.location_on,
-                                            size: 16, color: Colors.grey[600]),
-                                        const SizedBox(width: 4),
-                                        Expanded(
-                                          child: Text(
-                                            'Pickup: ${booking['pickupAddress']}',
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              color: Colors.grey[600],
-                                            ),
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  const SizedBox(height: 8),
-                                  // Status indicator
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 8,
-                                        height: 8,
-                                        decoration: BoxDecoration(
-                                          color: _getStatusColor(
-                                              booking['status']?.toString()),
-                                          shape: BoxShape.circle,
-                                        ),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            if (booking['pickupAddress'] != null)
+                              Row(
+                                children: [
+                                  Icon(Icons.location_on,
+                                      size: 16, color: Colors.grey[600]),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      'Pickup: ${booking['pickupAddress']}',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey[600],
                                       ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            const SizedBox(height: 8),
+                            // Status indicator
+                            Row(
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: _getStatusColor(
+                                        booking['status']?.toString()),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
                                       const SizedBox(width: 8),
                                       Flexible(
                                         child: Text(
@@ -725,9 +707,9 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                                         ),
                                       ),
                                     ],
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
                             ),
                           ],
                         ),
@@ -840,72 +822,10 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
         ),
         // Place the carousel below the main buttons
         const SizedBox(height: 12),
-        _buildImageCarousel(),
+        IndependentImageCarousel(images: _carouselImages),
         const SizedBox(height: 18),
         _buildBookedBusesSection(),
       ],
-    );
-  }
-
-  Widget _buildImageCarousel() {
-    return Center(
-      child: SizedBox(
-        height: 200,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(18),
-          child: Stack(
-            children: [
-              PageView.builder(
-                itemCount: _carouselImages.length,
-                controller: _carouselPageController,
-                onPageChanged: (index) {
-                  setState(() {
-                    _carouselIndex = index;
-                  });
-                },
-                itemBuilder: (context, index) {
-                  return Image.asset(
-                    _carouselImages[index],
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: 200,
-                  );
-                },
-              ),
-              Positioned(
-                bottom: 10,
-                left: 0,
-                right: 0,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(_carouselImages.length, (index) {
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      width: _carouselIndex == index ? 18 : 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: _carouselIndex == index
-                            ? Colors.green[700]
-                            : Colors.white.withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(6),
-                        boxShadow: [
-                          if (_carouselIndex == index)
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.15),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                        ],
-                      ),
-                    );
-                  }),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -1037,8 +957,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                             ),
                           ),
                           onTap: _navigateToProfile,
-                          contentPadding:
-                              const EdgeInsets.symmetric(horizontal: 16),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                         ),
                         Divider(height: 1, color: Colors.grey[200]),
                         ListTile(
@@ -1052,8 +971,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                             ),
                           ),
                           onTap: _logout,
-                          contentPadding:
-                              const EdgeInsets.symmetric(horizontal: 16),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                         ),
                       ],
                     ),
@@ -1099,7 +1017,6 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
             busId: busId?.toString() ?? '',
             booking: booking,
             passengerIcon: passengerIcon,
-            mapOnly: true, // Show only the map!
           ),
         );
       }
@@ -1108,13 +1025,114 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading booking details: ${e.toString()}'),
+            content: Text('Error loading booking details:  {e.toString()}'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
         );
       }
     }
+  }
+}
+
+// 1. Move the carousel widget to a new StatefulWidget class
+class IndependentImageCarousel extends StatefulWidget {
+  final List<String> images;
+  const IndependentImageCarousel({Key? key, required this.images}) : super(key: key);
+
+  @override
+  State<IndependentImageCarousel> createState() => _IndependentImageCarouselState();
+}
+
+class _IndependentImageCarouselState extends State<IndependentImageCarousel> {
+  int _carouselIndex = 0;
+  PageController? _carouselPageController;
+  Timer? _carouselTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _carouselPageController = PageController(initialPage: 0);
+    _carouselTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
+      if (mounted && _carouselPageController != null) {
+        int nextPage = (_carouselIndex + 1) % widget.images.length;
+        _carouselPageController!.animateToPage(
+          nextPage,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _carouselTimer?.cancel();
+    _carouselPageController?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SizedBox(
+        height: 200,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: Stack(
+            children: [
+              PageView.builder(
+                itemCount: widget.images.length,
+                controller: _carouselPageController,
+                onPageChanged: (index) {
+                  setState(() {
+                    _carouselIndex = index;
+                  });
+                },
+                itemBuilder: (context, index) {
+                  return Image.asset(
+                    widget.images[index],
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: 200,
+                  );
+                },
+              ),
+              Positioned(
+                bottom: 10,
+                left: 0,
+                right: 0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(widget.images.length, (index) {
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      width: _carouselIndex == index ? 18 : 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: _carouselIndex == index
+                            ? Colors.green[700]
+                            : Colors.white.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(6),
+                        boxShadow: [
+                          if (_carouselIndex == index)
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                        ],
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

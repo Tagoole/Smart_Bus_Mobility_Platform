@@ -17,6 +17,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final int _selectedIndex = 4; // Profile tab index
   Map<String, dynamic>? userData;
   bool isLoading = true;
+  bool isEditMode = false;
+  final _formKey = GlobalKey<FormState>();
+  String? _editName;
+  String? _editEmail;
+  String? _editPhone;
 
   Future<void> _logout() async {
     // Show confirmation dialog
@@ -27,18 +32,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Row(
+          title: Row(
             children: [
               Icon(Icons.logout, color: Colors.red, size: 24),
               SizedBox(width: 8),
               Text('Logout'),
             ],
           ),
-          content: const Text('Are you sure you want to logout?'),
+          content: Text('Are you sure you want to logout?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text('Cancel'),
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
@@ -46,7 +51,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 backgroundColor: Colors.red,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Logout'),
+              child: Text('Logout'),
             ),
           ],
         );
@@ -92,6 +97,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         userData = doc.data();
         isLoading = false;
+        _editName = userData?['username'] ?? '';
+        _editEmail = userData?['email'] ?? '';
+        _editPhone = userData?['contact'] ?? '';
       });
 
       // Debug: Print individual fields
@@ -102,17 +110,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _saveProfile() async {
+    if (!_formKey.currentState!.validate()) return;
+    _formKey.currentState!.save();
+    setState(() => isLoading = true);
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+        'username': _editName,
+        'email': _editEmail,
+        'contact': _editPhone,
+      });
+      await _fetchUserData();
+      setState(() {
+        isEditMode = false;
+        isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Profile updated!'), backgroundColor: Colors.green),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-
     final name = userData?['username'] ?? 'No Name';
     final email = userData?['email'] ?? 'No Email';
     final phone = userData?['contact'] ?? 'No Phone';
     final imageUrl = userData?['profileImageUrl'] ?? '';
     final role = (userData?['role']?.toString().toLowerCase() ?? 'user');
+    final width = MediaQuery.of(context).size.width;
+    final isMobile = width < 600;
+    final headerFont = isMobile ? 20.0 : 28.0;
+    final nameFont = isMobile ? 24.0 : 32.0;
+    final contentPad = isMobile ? 20.0 : 40.0;
 
     return Scaffold(
       body: Container(
@@ -123,7 +157,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             colors: [
               const Color(0xFF004d00),
               const Color(0xFF006400),
-              const Color(0xFF808080).withValues(alpha: 0.3),
+              const Color(0xFF808080).withOpacity(0.3),
             ],
             stops: const [0.0, 0.6, 1.0],
           ),
@@ -133,13 +167,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               // Header
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(isMobile ? 12 : 24),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
+                        color: Colors.white.withOpacity(0.2),
                         shape: BoxShape.circle,
                       ),
                       child: IconButton(
@@ -160,7 +194,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Navigator.pushAndRemoveUntil(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => const NavBarScreen(
+                                  builder: (context) => NavBarScreen(
                                       userRole: 'driver', initialTab: 0)),
                               (route) => false,
                             );
@@ -168,7 +202,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Navigator.pushAndRemoveUntil(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => const NavBarScreen(
+                                  builder: (context) => NavBarScreen(
                                       userRole: 'admin', initialTab: 0)),
                               (route) => false,
                             );
@@ -177,7 +211,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Navigator.pushAndRemoveUntil(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => const NavBarScreen(
+                                  builder: (context) => NavBarScreen(
                                       userRole: 'user', initialTab: 0)),
                               (route) => false,
                             );
@@ -185,23 +219,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         },
                       ),
                     ),
-                    const Text(
+                    Text(
                       'Profile',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 20,
+                        fontSize: headerFont,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.settings, color: Colors.white),
-                        onPressed: () => _onItemTapped(3), // Go to Settings
-                      ),
+                    Row(
+                      children: [
+                        if (!isEditMode)
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: IconButton(
+                              icon: const Icon(Icons.edit, color: Colors.white),
+                              onPressed: () {
+                                setState(() => isEditMode = true);
+                              },
+                            ),
+                          ),
+                        if (isEditMode)
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: IconButton(
+                              icon: const Icon(Icons.close, color: Colors.white),
+                              onPressed: () {
+                                setState(() => isEditMode = false);
+                              },
+                            ),
+                          ),
+                        const SizedBox(width: 8),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.settings, color: Colors.white),
+                            onPressed: () => _onItemTapped(3), // Go to Settings
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -210,7 +275,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // Profile Content
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: EdgeInsets.symmetric(horizontal: contentPad),
                   child: Column(
                     children: [
                       const SizedBox(height: 20),
@@ -218,13 +283,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       // Profile Header
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.all(30),
+                        padding: EdgeInsets.all(isMobile ? 20 : 36),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(25),
+                          borderRadius: BorderRadius.circular(isMobile ? 18 : 25),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.1),
+                              color: Colors.black.withOpacity(0.1),
                               blurRadius: 15,
                               offset: const Offset(0, 8),
                             ),
@@ -233,52 +298,116 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Column(
                           children: [
                             // Profile Picture
-                            CircleAvatar(
-                              radius: 60,
-                              backgroundColor: Colors.green[700],
-                              child: Text(
-                                name.isNotEmpty ? name[0].toUpperCase() : 'U',
-                                style: const TextStyle(
-                                  fontSize: 40,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                            GestureDetector(
+                              onTap: () {
+                                // TODO: Implement image picker/upload
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Profile image editing coming soon!')),
+                                );
+                              },
+                              child: CircleAvatar(
+                                radius: isMobile ? 48 : 60,
+                                backgroundColor: Colors.green[700],
+                                child: Text(
+                                  name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                                  style: TextStyle(
+                                    fontSize: isMobile ? 32 : 40,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
                             ),
 
                             const SizedBox(height: 20),
 
-                            // User Name
-                            Text(
-                              name,
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green[700],
+                            // Editable fields
+                            if (isEditMode)
+                              Form(
+                                key: _formKey,
+                                child: Column(
+                                  children: [
+                                    TextFormField(
+                                      initialValue: _editName,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Name',
+                                        border: OutlineInputBorder(),
+                                      ),
+                                      validator: (v) => v == null || v.isEmpty ? 'Enter your name' : null,
+                                      onSaved: (v) => _editName = v,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    TextFormField(
+                                      initialValue: _editEmail,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Email',
+                                        border: OutlineInputBorder(),
+                                      ),
+                                      validator: (v) => v == null || v.isEmpty ? 'Enter your email' : null,
+                                      onSaved: (v) => _editEmail = v,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    TextFormField(
+                                      initialValue: _editPhone,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Phone',
+                                        border: OutlineInputBorder(),
+                                      ),
+                                      validator: (v) => v == null || v.isEmpty ? 'Enter your phone' : null,
+                                      onSaved: (v) => _editPhone = v,
+                                    ),
+                                    const SizedBox(height: 18),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        onPressed: _saveProfile,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.green[700],
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(vertical: 16),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                        ),
+                                        child: const Text('Save Changes', style: TextStyle(fontSize: 16)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else ...[
+                              // User Name
+                              Text(
+                                name,
+                                style: TextStyle(
+                                  fontSize: nameFont,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green[700],
+                                ),
                               ),
-                            ),
 
-                            const SizedBox(height: 8),
+                              const SizedBox(height: 8),
 
-                            // User Email
-                            Text(
-                              email,
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey[600],
+                              // User Email
+                              Text(
+                                email,
+                                style: TextStyle(
+                                  fontSize: isMobile ? 16 : 18,
+                                  color: Colors.grey[600],
+                                ),
                               ),
-                            ),
 
-                            const SizedBox(height: 8),
+                              const SizedBox(height: 8),
 
-                            // User Phone
-                            Text(
-                              phone,
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey[600],
+                              // User Phone
+                              Text(
+                                phone,
+                                style: TextStyle(
+                                  fontSize: isMobile ? 16 : 18,
+                                  color: Colors.grey[600],
+                                ),
                               ),
-                            ),
+                            ],
                           ],
                         ),
                       ),
@@ -314,7 +443,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => const TicketScreen()),
+                                  builder: (context) => TicketScreen()),
                             );
                           },
                         ),
@@ -340,7 +469,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const PaymentScreen(),
+                                builder: (context) => PaymentScreen(),
                               ),
                             );
                           },
