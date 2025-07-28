@@ -232,15 +232,15 @@ class _PaymentScreen extends State<PaymentScreen> {
 
                   Navigator.of(context).pop(); // Dismiss loading dialog
 
-                  if (paymentSuccess) {
+                if (paymentSuccess) {
                     // Mark ticket as paid in Firestore
                     final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
                     final bookingId = args != null ? args['bookingId'] : null;
                     if (bookingId != null) {
                       await FirebaseFirestore.instance.collection('bookings').doc(bookingId).update({'isPaid': true});
                     }
-                    Navigator.push(
-                      context,
+                  Navigator.push(
+                    context,
                       MaterialPageRoute(builder: (context) => PaymentSuccess(amount: amount)),
                     );
                   } else {

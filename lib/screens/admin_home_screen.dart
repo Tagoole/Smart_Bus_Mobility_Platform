@@ -144,22 +144,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     );
 
     if (shouldLogout == true) {
-      try {
-        await _auth.signOut();
-        if (mounted) {
+    try {
+      await _auth.signOut();
+      if (mounted) {
           Navigator.of(context).pushNamedAndRemoveUntil(
             '/login',
             (Route<dynamic> route) => false,
           );
-        }
-      } catch (e) {
+      }
+    } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error signing out: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error signing out: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
         }
       }
     }
@@ -277,23 +277,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   SizedBox(height: 2), // reduced from 4
                   Text(
                     'Manage your Buses and Drivers',
-                    style: TextStyle(
+                          style: TextStyle(
                       fontSize: 12, // reduced from 16
                       color: Color(0xFF6B7280),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
             ),
             const SizedBox(width: 8),
-            IconButton(
-              onPressed: _handleLogout,
-              icon: const Icon(
-                Icons.logout,
-                color: Color(0xFF576238),
+                    IconButton(
+                      onPressed: _handleLogout,
+                      icon: const Icon(
+                        Icons.logout,
+                        color: Color(0xFF576238),
                 size: 20, // reduced from 24
-              ),
-              tooltip: 'Logout',
+                      ),
+                      tooltip: 'Logout',
             ),
           ],
         ),
@@ -357,7 +357,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
-          children: [
+              children: [
             Expanded(
               child: GestureDetector(
                 onTap: _showUsersDialog,
@@ -399,9 +399,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                         Text('$driversCount', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF576238)), maxLines: 1, overflow: TextOverflow.ellipsis),
                         const SizedBox(height: 1),
                         const Text('Drivers', style: TextStyle(fontSize: 10, color: Color(0xFF576238)), maxLines: 1, overflow: TextOverflow.ellipsis),
-                      ],
-                    ),
-                  ),
+              ],
+            ),
+          ),
                 ),
               ),
             ),
@@ -439,9 +439,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   elevation: 2,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-                    child: Column(
+      child: Column(
                       mainAxisSize: MainAxisSize.min,
-                      children: [
+        children: [
                         Icon(Icons.confirmation_number, color: const Color(0xFF059669), size: 22),
                         const SizedBox(height: 4),
                         Text('$ticketsCount', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF059669)), maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -451,9 +451,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     ),
                   ),
                 ),
-              ),
             ),
-          ],
+          ),
+        ],
         ),
       ),
     );
@@ -514,9 +514,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                         item['icon'],
                         color: item['color'],
                         size: 18, // reduced from 28
-                      ),
                     ),
                   ),
+                ),
                 ),
                 const SizedBox(height: 8), // reduced from 14
                 Center(
