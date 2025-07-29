@@ -693,6 +693,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
             ),
           ],
         ),
+        constraints: const BoxConstraints(
+          minHeight: 180,
+          maxHeight: 220,
+          minWidth: 160,
+          maxWidth: 240,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -746,6 +752,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF111827),
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 8),
                       Text(
@@ -754,6 +762,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                           fontSize: 12,
                           color: Color(0xFF6B7280),
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
