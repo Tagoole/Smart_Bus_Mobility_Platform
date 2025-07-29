@@ -479,24 +479,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       child: IconButton(
                         icon: const Icon(Icons.arrow_back, color: Colors.white),
-                        onPressed: () async {
-                          final user = FirebaseAuth.instance.currentUser;
-                          if (user != null) {
-                            final userDoc = await FirebaseFirestore.instance
-                                .collection('users')
-                                .doc(user.uid)
-                                .get();
-                            final role = userDoc.data()?['role']?.toString().toLowerCase() ?? 'user';
-                            Navigator.pushAndRemoveUntil(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => NavBarScreen(userRole: role, initialTab: 0),
-                              ),
-                              (route) => false,
-                            );
-                          } else {
-                            Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
-                          }
+                        onPressed: () {
+                          Navigator.of(context).pop();
                         },
                       ),
                     ),
