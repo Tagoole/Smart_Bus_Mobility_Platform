@@ -1082,7 +1082,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
             infoWindow: InfoWindow(
               title: 'Passenger ${i + 1}: $userName',
               snippet:
-                  '${selectedSeats.length} seats • ${totalPassengers} people • ${passenger['pickupAddress']}${count > 1 ? ' (Overlapping)' : ''}\nETA: $eta',
+                  '${selectedSeats.length} seats • $totalPassengers people • ${passenger['pickupAddress']}${count > 1 ? ' (Overlapping)' : ''}\nETA: $eta',
             ),
             onTap: () => _showPassengerDetails(passenger),
           ),
@@ -2228,9 +2228,9 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
                     // Passenger list
                     _passengers.isEmpty
-                        ? SizedBox(
+                        ? const SizedBox(
                             height: 200,
-                            child: const Center(
+                            child: Center(
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [

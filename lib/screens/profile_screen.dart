@@ -39,18 +39,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: Row(
+          title: const Row(
             children: [
               Icon(Icons.logout, color: Colors.red, size: 24),
               SizedBox(width: 8),
               Text('Logout'),
             ],
           ),
-          content: Text('Are you sure you want to logout?'),
+          content: const Text('Are you sure you want to logout?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: Text('Cancel'),
+              child: const Text('Cancel'),
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
@@ -58,7 +58,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 backgroundColor: Colors.red,
                 foregroundColor: Colors.white,
               ),
-              child: Text('Logout'),
+              child: const Text('Logout'),
             ),
           ],
         );
@@ -294,7 +294,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Profile updated!'), backgroundColor: Colors.green),
+        const SnackBar(content: Text('Profile updated!'), backgroundColor: Colors.green),
       );
     }
   }
@@ -767,7 +767,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => TicketScreen()),
+                                  builder: (context) => const TicketScreen()),
                             );
                           },
                         ),
@@ -793,7 +793,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => PaymentScreen(),
+                                builder: (context) => const PaymentScreen(),
                               ),
                             );
                           },

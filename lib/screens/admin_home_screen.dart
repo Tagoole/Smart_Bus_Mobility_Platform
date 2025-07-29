@@ -57,7 +57,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       print('Bookings fetched: ${bookingsSnapshot.size}');
       // Filter drivers from users
       final usersList = usersSnapshot.docs.map((doc) => doc.data() ?? {}).toList();
-      final driversList = usersList.where((user) => (user['role']?.toString()?.toLowerCase() ?? '') == 'driver').toList();
+      final driversList = usersList.where((user) => (user['role']?.toString().toLowerCase() ?? '') == 'driver').toList();
       // Load recent activities
       final activitiesSnapshot = await _firestore
           .collection('activities')
@@ -93,7 +93,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       });
       print('Dashboard data loaded, isLoading set to false');
     } catch (e, stack) {
-      print('Error loading dashboard data: ${e}');
+      print('Error loading dashboard data: $e');
       print(stack);
       setState(() {
         isLoading = false;
@@ -199,9 +199,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                       try {
                         return _buildSummaryCards();
                       } catch (e, stack) {
-                        print('Error building summary cards: ${e}');
+                        print('Error building summary cards: $e');
                         print(stack);
-                        return Text('Error building summary cards: ${e}');
+                        return Text('Error building summary cards: $e');
                       }
                     },
                   ),
@@ -210,9 +210,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                       try {
                         return _buildQuickActions();
                       } catch (e, stack) {
-                        print('Error building quick actions: ${e}');
+                        print('Error building quick actions: $e');
                         print(stack);
-                        return Text('Error building quick actions: ${e}');
+                        return Text('Error building quick actions: $e');
                       }
                     },
                   ),
@@ -289,10 +289,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               ],
             ),
             const SizedBox(width: 12), // reduced from 24
-            Expanded(
+            const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   Text(
                     'Admin Dashboard',
                     style: TextStyle(
@@ -349,12 +349,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           ),
         ],
       ),
-      child: Row(
+      child: const Row(
         children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Text(
                   'Good morning, Admin! 👋',
                   style: TextStyle(
@@ -398,7 +398,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.person, color: const Color(0xFFD4A015), size: 22),
+                        const Icon(Icons.person, color: Color(0xFFD4A015), size: 22),
                         const SizedBox(height: 4),
                         Text('$usersCount', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFFD4A015)), maxLines: 1, overflow: TextOverflow.ellipsis),
                         const SizedBox(height: 1),
@@ -423,7 +423,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.people, color: const Color(0xFF576238), size: 22),
+                        const Icon(Icons.people, color: Color(0xFF576238), size: 22),
                         const SizedBox(height: 4),
                         Text('$driversCount', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF576238)), maxLines: 1, overflow: TextOverflow.ellipsis),
                         const SizedBox(height: 1),
@@ -448,7 +448,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.directions_bus, color: const Color(0xFF2563EB), size: 22),
+                        const Icon(Icons.directions_bus, color: Color(0xFF2563EB), size: 22),
                         const SizedBox(height: 4),
                         Text('$busesCount', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)), maxLines: 1, overflow: TextOverflow.ellipsis),
                         const SizedBox(height: 1),
@@ -473,7 +473,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.confirmation_number, color: const Color(0xFF059669), size: 22),
+                        const Icon(Icons.confirmation_number, color: Color(0xFF059669), size: 22),
                         const SizedBox(height: 4),
                         Text('$ticketsCount', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF059669)), maxLines: 1, overflow: TextOverflow.ellipsis),
                         const SizedBox(height: 1),

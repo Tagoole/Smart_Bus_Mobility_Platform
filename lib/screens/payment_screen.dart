@@ -65,10 +65,10 @@ class _PaymentScreen extends State<PaymentScreen> {
           ),
         ],
       ),
-      child: Row(
+      child: const Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text(
+          Text(
             'MTN Mobile Money Payment',
             style: TextStyle(
               color: Colors.white,
