@@ -46,11 +46,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   }
 
   Future<void> _loadDashboardData() async {
+    print('Loading dashboard data...');
     try {
       // Load summary data from Firebase
       final usersSnapshot = await _firestore.collection('users').get();
+      print('Users fetched: ${usersSnapshot.size}');
       final busesSnapshot = await _firestore.collection('buses').get();
+      print('Buses fetched: ${busesSnapshot.size}');
       final bookingsSnapshot = await _firestore.collection('bookings').get();
+      print('Bookings fetched: ${bookingsSnapshot.size}');
       // Filter drivers from users
       final usersList = usersSnapshot.docs.map((doc) => doc.data() ?? {}).toList();
       final driversList = usersList.where((user) => (user['role']?.toString()?.toLowerCase() ?? '') == 'driver').toList();
@@ -60,6 +64,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           .orderBy('timestamp', descending: true)
           .limit(4)
           .get();
+      print('Activities fetched: ${activitiesSnapshot.size}');
       setState(() {
         summaryData = {
           'usersCount': usersSnapshot.size ?? 0,
@@ -86,8 +91,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         }).toList();
         isLoading = false;
       });
-    } catch (e) {
-      print('Error loading dashboard data: $e');
+      print('Dashboard data loaded, isLoading set to false');
+    } catch (e, stack) {
+      print('Error loading dashboard data: ${e}');
+      print(stack);
       setState(() {
         isLoading = false;
       });
@@ -187,8 +194,28 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     ),
                   )
                 else ...[
-                  _buildSummaryCards(),
-                  _buildQuickActions(),
+                  Builder(
+                    builder: (context) {
+                      try {
+                        return _buildSummaryCards();
+                      } catch (e, stack) {
+                        print('Error building summary cards: ${e}');
+                        print(stack);
+                        return Text('Error building summary cards: ${e}');
+                      }
+                    },
+                  ),
+                  Builder(
+                    builder: (context) {
+                      try {
+                        return _buildQuickActions();
+                      } catch (e, stack) {
+                        print('Error building quick actions: ${e}');
+                        print(stack);
+                        return Text('Error building quick actions: ${e}');
+                      }
+                    },
+                  ),
                 ],
               ],
             ),
@@ -357,8 +384,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
-              children: [
-            Expanded(
+          children: [
+            SizedBox(
+              width: 160,
               child: GestureDetector(
                 onTap: _showUsersDialog,
                 child: Card(
@@ -382,7 +410,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               ),
             ),
             const SizedBox(width: 8),
-            Expanded(
+            SizedBox(
+              width: 160,
               child: GestureDetector(
                 onTap: _showDriversDialog,
                 child: Card(
@@ -399,14 +428,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                         Text('$driversCount', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF576238)), maxLines: 1, overflow: TextOverflow.ellipsis),
                         const SizedBox(height: 1),
                         const Text('Drivers', style: TextStyle(fontSize: 10, color: Color(0xFF576238)), maxLines: 1, overflow: TextOverflow.ellipsis),
-              ],
-            ),
-          ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
             const SizedBox(width: 8),
-            Expanded(
+            SizedBox(
+              width: 160,
               child: GestureDetector(
                 onTap: _showBusesDialog,
                 child: Card(
@@ -430,7 +460,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               ),
             ),
             const SizedBox(width: 8),
-            Expanded(
+            SizedBox(
+              width: 160,
               child: GestureDetector(
                 onTap: _showTicketsDialog,
                 child: Card(
@@ -439,9 +470,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   elevation: 2,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-      child: Column(
+                    child: Column(
                       mainAxisSize: MainAxisSize.min,
-        children: [
+                      children: [
                         Icon(Icons.confirmation_number, color: const Color(0xFF059669), size: 22),
                         const SizedBox(height: 4),
                         Text('$ticketsCount', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF059669)), maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -451,9 +482,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     ),
                   ),
                 ),
+              ),
             ),
-          ),
-        ],
+          ],
         ),
       ),
     );
@@ -644,122 +675,119 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   Widget _buildQuickActionCard(Map<String, dynamic> action) {
     return GestureDetector(
       onTap: () => _handleActionClick(action['action']),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeInOut,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: action['featured'] == true
-                ? Border.all(color: const Color(0xFFFFD95D), width: 2)
-                : null,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.07),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: action['featured'] == true
+              ? Border.all(color: const Color(0xFFFFD95D), width: 2)
+              : null,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.07),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (action['featured'] == true)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.star,
+                      color: Color(0xFFFFD95D),
+                      size: 16,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'FEATURED',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFD4A015),
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (action['featured'] == true)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  child: const Row(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: action['bgColor'],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    action['icon'],
+                    color: action['color'],
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        Icons.star,
-                        color: Color(0xFFFFD95D),
-                        size: 16,
-                      ),
-                      SizedBox(width: 8),
                       Text(
-                        'FEATURED',
-                        style: TextStyle(
-                          fontSize: 10,
+                        action['title'],
+                        style: const TextStyle(
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFFD4A015),
-                          letterSpacing: 1,
+                          color: Color(0xFF111827),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: action['bgColor'],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      action['icon'],
-                      color: action['color'],
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          action['title'],
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF111827),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          action['description'],
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF6B7280),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => _handleActionClick(action['action']),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: action['color'],
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
+                      const SizedBox(height: 8),
                       Text(
-                        'Get Started',
-                        style: TextStyle(fontWeight: FontWeight.w600),
+                        action['description'],
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF6B7280),
+                        ),
                       ),
-                      SizedBox(width: 8),
-                      Icon(Icons.arrow_forward, size: 16),
                     ],
                   ),
                 ),
+              ],
+            ),
+            const Spacer(),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => _handleActionClick(action['action']),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: action['color'],
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Get Started',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    SizedBox(width: 8),
+                    Icon(Icons.arrow_forward, size: 16),
+                  ],
+                ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
