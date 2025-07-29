@@ -21,25 +21,67 @@ class BusRoutePreviewScreen extends StatefulWidget {
 class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
   GoogleMapController? _mapController;
   String pickupLocation = '';
-  String dropoffLocation = '';
   LatLng? _pickupCoords;
-  LatLng? _dropoffCoords;
   LatLng? _busStartLatLng;
   bool _showBusMarker = false;
   Set<Polyline> polylines = {};
 
   final TextEditingController _pickupController = TextEditingController();
-  final TextEditingController _dropoffController = TextEditingController();
+
+  // --- Begin: Copied logic from PassengerMapScreen ---
+  Future<void> _handlePickupSelection() async {
+    Prediction? p = await PlacesAutocomplete.show(
+      context: context,
+      apiKey: kGoogleApiKey,
+      mode: Mode.overlay,
+      language: 'en',
+      strictbounds: false,
+      types: [""],
+      decoration: const InputDecoration(
+        hintText: 'Type or select pickup location',
+        border: InputBorder.none,
+      ),
+      components: [Component(Component.country, "ug")],
+    );
+    if (p != null) {
+      await _setPickupLocation(p);
+    }
+  }
+
+  Future<void> _setPickupLocation(Prediction p) async {
+    GoogleMapsPlaces places = GoogleMapsPlaces(apiKey: kGoogleApiKey);
+    PlacesDetailsResponse detail = await places.getDetailsByPlaceId(p.placeId!);
+    final lat = detail.result.geometry!.location.lat;
+    final lng = detail.result.geometry!.location.lng;
+    setState(() {
+      _pickupCoords = LatLng(lat, lng);
+      pickupLocation = detail.result.name;
+      _pickupController.text = detail.result.name;
+      _updatePolyline();
+    });
+    if (_mapController != null && _pickupCoords != null) {
+      _mapController!.animateCamera(
+        CameraUpdate.newLatLngZoom(_pickupCoords!, 15.0),
+      );
+    }
+  }
+
+  void _clearPickup() {
+    setState(() {
+      _pickupCoords = null;
+      _pickupController.clear();
+      pickupLocation = '';
+      _updatePolyline();
+    });
+  }
+  // --- End: Copied logic from PassengerMapScreen ---
 
   @override
   void initState() {
     super.initState();
     // Initialize with bus data
     pickupLocation = widget.bus.startPoint;
-    dropoffLocation = widget.bus.destination;
     _pickupController.text = pickupLocation;
-    _dropoffController.text = dropoffLocation;
-
     final startLat = widget.bus.startLat;
     final startLng = widget.bus.startLng;
     if (startLat != null && startLng != null) {
@@ -53,18 +95,9 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
     setState(() {
       polylines.clear();
       List<LatLng> points = widget.bus.getRoutePolylinePoints();
-      if (points.isEmpty && _pickupCoords != null && _dropoffCoords != null) {
+      if (points.isEmpty && _pickupCoords != null) {
         points = [
           _pickupCoords!,
-          LatLng(
-            (_pickupCoords!.latitude +
-                    (_dropoffCoords?.latitude ?? _pickupCoords!.latitude)) /
-                2,
-            (_pickupCoords!.longitude +
-                    (_dropoffCoords?.longitude ?? _pickupCoords!.longitude)) /
-                2,
-          ),
-          _dropoffCoords!,
         ];
       }
 
@@ -119,7 +152,6 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
       return;
     }
     final bus = widget.bus;
-    // Removed Firestore booking creation here. Only navigate to seat selection.
     setState(() {
       _showBusMarker = true;
     });
@@ -136,8 +168,8 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
                 style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
-        content: Text(
-            'Your pickup${_dropoffCoords != null ? ' and dropoff' : ''} location${_dropoffCoords != null ? 's have' : ' has'} been saved. Proceed to select the number of people and seats.'),
+        content: const Text(
+            'Your pickup location has been saved. Proceed to select the number of people and seats.'),
         actions: [
           TextButton(
             onPressed: () {
@@ -233,37 +265,22 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    suffixIcon: const Icon(Icons.search),
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.search),
+                          onPressed: _handlePickupSelection,
+                        ),
+                        if (_pickupController.text.isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: _clearPickup,
+                          ),
+                      ],
+                    ),
                   ),
-                  onTap: () async {
-                    Prediction? p = await PlacesAutocomplete.show(
-                      context: context,
-                      apiKey: kGoogleApiKey,
-                      mode: Mode.overlay,
-                      language: "en",
-                      components: [Component(Component.country, "ug")],
-                    );
-                    if (p != null) {
-                      _setPickupFromPrediction(p);
-                    }
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _dropoffController,
-                  decoration: InputDecoration(
-                    labelText: 'Where To',
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    suffixIcon: const Icon(Icons.close),
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      dropoffLocation = value;
-                      // In a full implementation, use geocoding API to update _dropoffCoords
-                      _updatePolyline();
-                    });
-                  },
+                  onTap: _handlePickupSelection,
                 ),
               ],
             ),
@@ -282,12 +299,6 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
                     markerId: const MarkerId('pickup'),
                     position: _pickupCoords!,
                     infoWindow: InfoWindow(title: pickupLocation),
-                  ),
-                if (_dropoffCoords != null)
-                  Marker(
-                    markerId: const MarkerId('dropoff'),
-                    position: _dropoffCoords!,
-                    infoWindow: InfoWindow(title: dropoffLocation),
                   ),
                 if (_showBusMarker && _busStartLatLng != null)
                   Marker(
@@ -316,5 +327,13 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
     );
   }
 }
+
+
+
+
+
+
+
+
 
 

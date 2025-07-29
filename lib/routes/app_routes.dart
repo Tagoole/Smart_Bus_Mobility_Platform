@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:smart_bus_mobility_platform1/screens/driver_map_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/admin_home_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/customer_home_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/email_verification_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/forgot_password_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/login_screen.dart';
@@ -14,7 +13,8 @@ import 'package:smart_bus_mobility_platform1/screens/splash_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/bus_management_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/nav_bar_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/track_bus_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/current_buses_screen.dart'; // Added missing import
+import 'package:smart_bus_mobility_platform1/screens/current_buses_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/customer_home_screen.dart' as customer;
 
 class AppRoutes {
   static const String splashScreen = '/';
@@ -63,7 +63,7 @@ class AppRoutes {
           const ForgotPasswordScreen(), // Added const
       adminScreen: (context) => const AdminDashboardScreen(), // Added const
       passengerHomeScreen: (context) =>
-          const BusTrackingScreen(), // Added const
+          const customer.BusTrackingScreen(), // Fixed to use correct screen
       currentBusesScreen: (context) =>
           const CurrentBusesScreen(), // Added const
       trackBusScreen: (context) {
@@ -84,9 +84,21 @@ class AppRoutes {
         final initialTab = args is int ? args : 0;
         return NavBarScreen(userRole: 'driver', initialTab: initialTab);
       },
+      // Add the missing routes for proper navigation
+      '/admin': (context) => const NavBarScreen(userRole: 'admin'),
+      '/busdriver': (context) => const NavBarScreen(userRole: 'driver'),
+      '/passenger': (context) => const NavBarScreen(userRole: 'user'),
     };
   }
 }
+
+
+
+
+
+
+
+
 
 
 

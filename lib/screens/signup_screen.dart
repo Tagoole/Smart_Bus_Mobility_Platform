@@ -105,7 +105,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         } else {
           // Show error message
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(result), backgroundColor: Color(0xFF014421)),
+            SnackBar(content: Text(result), backgroundColor: const Color(0xFF014421)),
           );
         }
       }
@@ -325,7 +325,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(30),
                             border: Border.all(
-                              color: Color(0xFF9CCB3E),
+                              color: const Color(0xFF9CCB3E),
                               width: 1,
                             ),
                           ),
@@ -462,12 +462,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: Color(0xFF9CCB3E), width: 1),
+        border: Border.all(color: const Color(0xFF9CCB3E), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Color(0xFF9CCB3E).withOpacity(0.2),
+            color: const Color(0xFF9CCB3E).withOpacity(0.2),
             blurRadius: 8,
-            offset: Offset(0, 2),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -480,7 +480,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: const TextStyle(color: Colors.black54),
-          prefixIcon: Icon(prefixIcon, color: Color(0xFF9CCB3E)),
+          prefixIcon: Icon(prefixIcon, color: const Color(0xFF9CCB3E)),
           suffixIcon: suffixIcon,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
@@ -507,6 +507,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 }
+
+
+
+
+
+
+
+
 
 
 

@@ -370,34 +370,7 @@ app.use((req, res) => {
   });
 });
 
-<<<<<<< HEAD
-// Export as Firebase Function with proper CORS and authentication handling
-exports.api = functions.https.onRequest((req, res) => {
-  // Set CORS headers
-  res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-
-  // Handle preflight requests
-  if (req.method === "OPTIONS") {
-    res.status(204).send("");
-    return;
-  }
-
-  // Continue with the app
-  app(req, res);
-});
-
-// Export a simpler function for testing
-exports.test = functions.https.onRequest((req, res) => {
-  res.set("Access-Control-Allow-Origin", "*");
-  res.json({
-    message: "Firebase Function is working!",
-    timestamp: new Date().toISOString(),
-  });
-});
-=======
-// Export as Firebase Function
+// Export as 1st Gen Firebase Function (public by default)
 exports.api = functions.https.onRequest(app);
->>>>>>> origin/dev
+
 

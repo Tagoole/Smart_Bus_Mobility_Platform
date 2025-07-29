@@ -5,7 +5,8 @@ import 'customer_home_screen.dart';
 import 'nav_bar_screen.dart';
 
 class PaymentSuccess extends StatefulWidget {
-  const PaymentSuccess({super.key});
+  final String amount;
+  const PaymentSuccess({super.key, required this.amount});
 
   @override
   State<PaymentSuccess> createState() => _PaymentSuccessState();
@@ -119,9 +120,9 @@ class _PaymentSuccessState extends State<PaymentSuccess> {
                         const SizedBox(height: 15),
                         _buildDetailRow("Date", formatDate(DateTime.now())),
                         const SizedBox(height: 15),
-                        _buildDetailRow("Type of transaction", "Credit card"),
+                        _buildDetailRow("Type of transaction", "MTN Mobile Money"),
                         const SizedBox(height: 15),
-                        _buildDetailRow("Amount", "Sh.25,000"),
+                        _buildDetailRow("Amount", "Sh.${widget.amount}"),
                         const SizedBox(height: 15),
                         _buildDetailRow("Status", "Success", isStatus: true),
                         const SizedBox(height: 30),
@@ -201,6 +202,14 @@ class _PaymentSuccessState extends State<PaymentSuccess> {
     }
   }
 }
+
+
+
+
+
+
+
+
 
 
 

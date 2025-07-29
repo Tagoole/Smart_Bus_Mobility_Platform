@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 import 'package:smart_bus_mobility_platform1/utils/google_api_key.dart';
+import 'dart:ui';
 
 class LiveBusDetailsSheet extends StatefulWidget {
   final String busId;
@@ -336,96 +337,109 @@ class _LiveBusDetailsSheetState extends State<LiveBusDetailsSheet> {
       return _buildErrorContent('Invalid location coordinates.');
     }
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () {
-                Navigator.pop(context);
-              },
-            ),
-            const SizedBox(width: 12),
-            const Text(
-              'Live Bus Tracking',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Text('Bus Plate: ${widget.booking['numberPlate'] ?? 'N/A'}'),
-        Text('Departure: ${_formatDateTime(widget.booking['departureDate'])}'),
-        Padding(
-          padding: const EdgeInsets.only(top: 4.0, bottom: 8.0),
-          child: Text(
-            'ETA: $etaMinutes min',
-            style: const TextStyle(
-              fontSize: 16,
-              color: Colors.blueGrey,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        Container(
-          height: 220,
-          margin: const EdgeInsets.only(top: 16),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: GoogleMap(
-              onMapCreated: (GoogleMapController controller) {
-                _mapController = controller;
-                _fitMapBounds();
-              },
-              initialCameraPosition: CameraPosition(
-                target: busLocation!,
-                zoom: 13,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.65),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
               ),
-              markers: {
-                Marker(
-                  markerId: const MarkerId('bus'),
-                  position: busLocation!,
-                  infoWindow: const InfoWindow(title: 'Bus Location'),
-                  icon: BitmapDescriptor.defaultMarkerWithHue(
-                    BitmapDescriptor.hueBlue,
+            ],
+          ),
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Live Bus Tracking',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Only show ETA
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0, bottom: 8.0),
+                child: Text(
+                  'ETA: $etaMinutes min',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    color: Colors.blueGrey,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                Marker(
-                  markerId: const MarkerId('passenger'),
-                  position: passengerLocation!,
-                  infoWindow: const InfoWindow(title: 'Your Pickup Location'),
-                  icon: widget.passengerIcon ??
-                      BitmapDescriptor.defaultMarkerWithHue(
-                        BitmapDescriptor.hueGreen,
+              ),
+              Container(
+                height: 220,
+                margin: const EdgeInsets.only(top: 16),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: GoogleMap(
+                    onMapCreated: (GoogleMapController controller) {
+                      _mapController = controller;
+                      _fitMapBounds();
+                    },
+                    initialCameraPosition: CameraPosition(
+                      target: busLocation!,
+                      zoom: 13,
+                    ),
+                    markers: {
+                      Marker(
+                        markerId: const MarkerId('bus'),
+                        position: busLocation!,
+                        infoWindow: const InfoWindow(title: 'Bus Location'),
+                        icon: BitmapDescriptor.defaultMarkerWithHue(
+                          BitmapDescriptor.hueBlue,
+                        ),
                       ),
+                      Marker(
+                        markerId: const MarkerId('passenger'),
+                        position: passengerLocation!,
+                        infoWindow: const InfoWindow(title: 'Your Pickup Location'),
+                        icon: widget.passengerIcon ??
+                            BitmapDescriptor.defaultMarkerWithHue(
+                              BitmapDescriptor.hueGreen,
+                            ),
+                      ),
+                    },
+                    polylines: routePolyline.isNotEmpty
+                        ? {
+                            Polyline(
+                              polylineId: const PolylineId('route'),
+                              points: routePolyline,
+                              color: Colors.blue,
+                              width: 5,
+                            ),
+                          }
+                        : {},
+                    zoomControlsEnabled: true,
+                    myLocationButtonEnabled: false,
+                    mapToolbarEnabled: true,
+                    compassEnabled: true,
+                  ),
                 ),
-              },
-              polylines: routePolyline.isNotEmpty
-                  ? {
-                      Polyline(
-                        polylineId: const PolylineId('route'),
-                        points: routePolyline,
-                        color: Colors.blue,
-                        width: 5,
-                      ),
-                    }
-                  : {},
-              zoomControlsEnabled: true,
-              myLocationButtonEnabled: false,
-              mapToolbarEnabled: true,
-              compassEnabled: true,
-            ),
+              ),
+            ],
           ),
         ),
-        const Padding(
-          padding: EdgeInsets.only(top: 16.0),
-          child: Text(
-            'Bus is moving from its current location to your pickup location.',
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -638,6 +652,14 @@ class _LiveBusDetailsSheetState extends State<LiveBusDetailsSheet> {
     }
   }
 }
+
+
+
+
+
+
+
+
 
 
 

@@ -28,7 +28,7 @@ class MtnMomoService {
   Future<String> requestToPay({
     required String phoneNumber,
     required String amount,
-    String currency = 'UGX',
+    String currency = 'EUR',
     String? externalId,
     String? payerMessage,
     String? payeeNote,
@@ -300,3 +300,5 @@ class MtnMomoService {
     }
   }
 }
+
+

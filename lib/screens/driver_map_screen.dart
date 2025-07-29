@@ -461,22 +461,22 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       _showSnackBar('No passengers available for route generation');
       return;
     }
+    if (_driverLocation == null) {
+      print('Driver location not available');
+      _showSnackBar('Your location is not available');
+      return;
+    }
     try {
       setState(() {
         _isLoading = true;
         _statusMessage = 'Optimizing route...';
       });
-      print('Starting route generation with bus start at: (${_driverBus!.startLat}, ${_driverBus!.startLng})');
+      print('Starting route generation with driver at: (${_driverLocation!.latitude}, ${_driverLocation!.longitude})');
       print('Number of passengers: ${_passengers.length}');
       _routeService.clearAllPassengers();
       _polylines.clear();
 
-      // Build start and end stops from admin-set points
-      final startStop = map_service.BusStop(
-        id: 'start',
-        location: map_service.LatLng(_driverBus!.startLat!, _driverBus!.startLng!),
-        name: _driverBus!.startPoint,
-      );
+      // Build end stop from admin-set destination
       final endStop = map_service.BusStop(
         id: 'end',
         location: map_service.LatLng(_driverBus!.destinationLat!, _driverBus!.destinationLng!),
@@ -493,13 +493,13 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         name: p['pickupAddress'] ?? 'Unknown',
       )).toList();
 
-      // 1. Find the nearest passenger to the bus start point
+      // 1. Find the nearest passenger to the DRIVER'S CURRENT LOCATION
       int? nearestIdx;
       double minDistance = double.infinity;
       for (int i = 0; i < passengerStops.length; i++) {
         final stop = passengerStops[i];
-        final dLat = stop.location.latitude - startStop.location.latitude;
-        final dLng = stop.location.longitude - startStop.location.longitude;
+        final dLat = stop.location.latitude - _driverLocation!.latitude;
+        final dLng = stop.location.longitude - _driverLocation!.longitude;
         final distance = (dLat * dLat) + (dLng * dLng); // squared distance
         if (distance < minDistance) {
           minDistance = distance;
@@ -528,8 +528,17 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         optimizedPickups = greedyOrder.map((i) => remainingPassengers[i]).toList();
       }
 
-      // 3. Final ordered stops: start, nearest passenger, optimized pickups, end
-      final orderedStops = [startStop, nearestPassenger, ...optimizedPickups, endStop];
+      // 3. Final ordered stops: DRIVER LOCATION, nearest passenger, optimized pickups, end
+      final orderedStops = [
+        map_service.BusStop(
+          id: 'driver',
+          location: map_service.LatLng(_driverLocation!.latitude, _driverLocation!.longitude),
+          name: 'Driver Location',
+        ),
+        nearestPassenger,
+        ...optimizedPickups,
+        endStop
+      ];
       print('[DEBUG] Ordered stops for route:');
       final seenLocations = <String, int>{};
       for (var stop in orderedStops) {
@@ -585,31 +594,31 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       final destination = waypoints.last;
       final intermediateWaypoints = waypoints.length > 2 ? waypoints.sublist(1, waypoints.length - 1) : null;
 
-      final directions = await _directionsRepository.getDirections(
-        origin: origin,
-        destination: destination,
+        final directions = await _directionsRepository.getDirections(
+          origin: origin,
+          destination: destination,
         waypoints: intermediateWaypoints,
-      );
+        );
 
       if (directions != null && directions.polylinePoints.isNotEmpty) {
         final fullRoutePoints = directions.polylinePoints
-            .map((point) => LatLng(point.latitude, point.longitude))
-            .toList();
+              .map((point) => LatLng(point.latitude, point.longitude))
+              .toList();
         print('Got ${fullRoutePoints.length} polyline points from Directions API');
 
-        setState(() {
-          _polylines.add(
-            Polyline(
+      setState(() {
+        _polylines.add(
+          Polyline(
               polylineId: const PolylineId('full_route'),
-              points: fullRoutePoints,
-              color: Colors.blue,
-              width: 5,
-              patterns: [
-                PatternItem.dash(20),
-                PatternItem.gap(10),
-              ],
-            ),
-          );
+            points: fullRoutePoints,
+            color: Colors.blue,
+            width: 5,
+            patterns: [
+              PatternItem.dash(20),
+              PatternItem.gap(10),
+            ],
+          ),
+        );
         });
 
         // Optionally update total distance/time if available
@@ -620,13 +629,13 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
           _routeDurationText = directions.totalDuration;
         }
 
-        // Adjust camera to show the route
-        if (_mapController != null && fullRoutePoints.isNotEmpty) {
-          final bounds = _calculateBounds(fullRoutePoints);
-          print('Adjusting camera to bounds: $bounds');
-          _mapController!.animateCamera(
-            CameraUpdate.newLatLngBounds(bounds, 50),
-          );
+      // Adjust camera to show the route
+      if (_mapController != null && fullRoutePoints.isNotEmpty) {
+        final bounds = _calculateBounds(fullRoutePoints);
+        print('Adjusting camera to bounds: $bounds');
+        _mapController!.animateCamera(
+          CameraUpdate.newLatLngBounds(bounds, 50),
+        );
         }
       } else {
         print('Directions API did not return a valid polyline, falling back to segmented polylines.');
@@ -1082,7 +1091,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
             infoWindow: InfoWindow(
               title: 'Passenger ${i + 1}: $userName',
               snippet:
-                  '${selectedSeats.length} seats • ${totalPassengers} people • ${passenger['pickupAddress']}${count > 1 ? ' (Overlapping)' : ''}\nETA: $eta',
+                  '${selectedSeats.length} seats • $totalPassengers people • ${passenger['pickupAddress']}${count > 1 ? ' (Overlapping)' : ''}\nETA: $eta',
             ),
             onTap: () => _showPassengerDetails(passenger),
           ),
@@ -1845,9 +1854,9 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                                 color: Colors.black.withOpacity(0.2),
                                 blurRadius: 6,
                                 offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
+                  ),
+              ],
+            ),
                           child: IconButton(
                             icon: const Icon(Icons.play_arrow, color: Colors.green),
                             onPressed: _startSimulation,
@@ -2228,9 +2237,9 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
                     // Passenger list
                     _passengers.isEmpty
-                        ? SizedBox(
+                        ? const SizedBox(
                             height: 200,
-                            child: const Center(
+                            child: Center(
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -2357,6 +2366,14 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     );
   }
 }
+
+
+
+
+
+
+
+
 
 
 

@@ -709,7 +709,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
       onWillPop: () async {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
-            builder: (context) => NavBarScreen(userRole: 'user', initialTab: 0),
+            builder: (context) => const NavBarScreen(userRole: 'user', initialTab: 0),
           ),
           (route) => false,
         );
@@ -928,5 +928,13 @@ void _showBusDetailsScreen(BuildContext context, BusModel bus) {
     ),
   );
 }
+
+
+
+
+
+
+
+
 
 
