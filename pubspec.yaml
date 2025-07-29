@@ -28,11 +28,11 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
-flutter_launch_icons:
   flutter:
     sdk: flutter
   google_fonts: 
   #flutter_google_places: 
+
 
   awesome_snackbar_content: 
   uuid:
@@ -91,6 +91,13 @@ flutter_launch_icons:
   flutter_facebook_auth: ^6.0.4
   
 dev_dependencies:
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/logo.png"
+
   flutter_test:
     sdk: flutter
   flutter_lints: ^2.0.0
