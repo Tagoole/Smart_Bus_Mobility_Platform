@@ -591,7 +591,31 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         'color': const Color(0xFF576238),
         'bgColor': const Color(0xFFE8F5E8),
         'action': 'manage-buses',
-      }
+      },
+      {
+        'title': 'Manage Drivers',
+        'description': 'View and manage drivers',
+        'icon': Icons.person,
+        'color': Colors.blue,
+        'bgColor': Colors.blue.shade50,
+        'action': 'manage-drivers',
+      },
+      {
+        'title': 'View Reports',
+        'description': 'See analytics and reports',
+        'icon': Icons.analytics,
+        'color': Colors.orange,
+        'bgColor': Colors.orange.shade50,
+        'action': 'view-reports',
+      },
+      {
+        'title': 'View Feedback',
+        'description': 'Read user feedback',
+        'icon': Icons.feedback,
+        'color': Colors.purple,
+        'bgColor': Colors.purple.shade50,
+        'action': 'view-feedback',
+      },
     ];
     final width = MediaQuery.of(context).size.width;
     final crossAxisCount = width < 400 ? 1 : 2;

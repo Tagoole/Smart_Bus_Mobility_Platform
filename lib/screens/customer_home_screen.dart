@@ -672,7 +672,6 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                           elevation: 0,
                                         ),
-                                        ),
                                       ),
                                     ),
                                     // Add delete icon button here
