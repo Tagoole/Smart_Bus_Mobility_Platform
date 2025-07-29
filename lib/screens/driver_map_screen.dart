@@ -454,11 +454,16 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     if (_driverBus == null) {
       print('No bus assigned to driver.');
       _showSnackBar('No bus assigned to you.');
-        return;
-      }
+      return;
+    }
     if (_passengers.isEmpty) {
       print('No passengers available for route generation');
       _showSnackBar('No passengers available for route generation');
+      return;
+    }
+    if (_driverLocation == null) {
+      print('Driver location not available');
+      _showSnackBar('Your location is not available');
       return;
     }
     try {
@@ -466,17 +471,12 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         _isLoading = true;
         _statusMessage = 'Optimizing route...';
       });
-      print('Starting route generation with bus start at: (${_driverBus!.startLat}, ${_driverBus!.startLng})');
+      print('Starting route generation with driver at: (${_driverLocation!.latitude}, ${_driverLocation!.longitude})');
       print('Number of passengers: ${_passengers.length}');
       _routeService.clearAllPassengers();
       _polylines.clear();
 
-      // Build start and end stops from admin-set points
-      final startStop = map_service.BusStop(
-        id: 'start',
-        location: map_service.LatLng(_driverBus!.startLat!, _driverBus!.startLng!),
-        name: _driverBus!.startPoint,
-      );
+      // Build end stop from admin-set destination
       final endStop = map_service.BusStop(
         id: 'end',
         location: map_service.LatLng(_driverBus!.destinationLat!, _driverBus!.destinationLng!),
@@ -486,20 +486,20 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       // Build passenger stops
       final passengerStops = _passengers.map((p) => map_service.BusStop(
         id: p['userId'],
-          location: map_service.LatLng(
+        location: map_service.LatLng(
           p['pickupLocation']['latitude'],
           p['pickupLocation']['longitude'],
         ),
         name: p['pickupAddress'] ?? 'Unknown',
       )).toList();
 
-      // 1. Find the nearest passenger to the bus start point
+      // 1. Find the nearest passenger to the DRIVER'S CURRENT LOCATION
       int? nearestIdx;
       double minDistance = double.infinity;
       for (int i = 0; i < passengerStops.length; i++) {
         final stop = passengerStops[i];
-        final dLat = stop.location.latitude - startStop.location.latitude;
-        final dLng = stop.location.longitude - startStop.location.longitude;
+        final dLat = stop.location.latitude - _driverLocation!.latitude;
+        final dLng = stop.location.longitude - _driverLocation!.longitude;
         final distance = (dLat * dLat) + (dLng * dLng); // squared distance
         if (distance < minDistance) {
           minDistance = distance;
@@ -528,8 +528,17 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         optimizedPickups = greedyOrder.map((i) => remainingPassengers[i]).toList();
       }
 
-      // 3. Final ordered stops: start, nearest passenger, optimized pickups, end
-      final orderedStops = [startStop, nearestPassenger, ...optimizedPickups, endStop];
+      // 3. Final ordered stops: DRIVER LOCATION, nearest passenger, optimized pickups, end
+      final orderedStops = [
+        map_service.BusStop(
+          id: 'driver',
+          location: map_service.LatLng(_driverLocation!.latitude, _driverLocation!.longitude),
+          name: 'Driver Location',
+        ),
+        nearestPassenger,
+        ...optimizedPickups,
+        endStop
+      ];
       print('[DEBUG] Ordered stops for route:');
       final seenLocations = <String, int>{};
       for (var stop in orderedStops) {
