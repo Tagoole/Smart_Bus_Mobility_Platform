@@ -48,14 +48,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
         _passwordController.text == _confirmPasswordController.text;
     final isRoleSelected = _selectedRole != null;
 
+    final valid =
+        isUsernameValid &&
+        isEmailValid &&
+        isContactValid &&
+        isPasswordValid &&
+        isConfirmPasswordValid &&
+        isRoleSelected;
+    print('[DEBUG] valid: $valid, username: $isUsernameValid, email: $isEmailValid, contact: $isContactValid, password: $isPasswordValid, confirm: $isConfirmPasswordValid, role: $isRoleSelected');
     setState(() {
-      _isFormValid =
-          isUsernameValid &&
-          isEmailValid &&
-          isContactValid &&
-          isPasswordValid &&
-          isConfirmPasswordValid &&
-          isRoleSelected;
+      _isFormValid = valid;
     });
   }
 
@@ -144,6 +146,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               // Top section with background image
               Container(
                 height: 200,
+                width: double.infinity,
                 decoration: const BoxDecoration(
                   image: DecorationImage(
                     image: AssetImage('assets/images/bus_sign_in.png'),
@@ -162,7 +165,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.9),
+                            color: Colors.white.withOpacity(0.9),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -172,15 +175,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
                       ),
                     ),
-                    // Profile placeholder
-                    Positioned(
-                      top: 16,
-                      right: 16,
+                    // Profile placeholder (centered, not raised)
+                    Align(
+                      alignment: Alignment.bottomCenter,
                       child: Container(
-                        width: 50,
-                        height: 50,
+                        margin: const EdgeInsets.only(bottom: 0),
+                        width: 70,
+                        height: 70,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.9),
+                          color: Colors.white.withOpacity(0.9),
                           shape: BoxShape.circle,
                           image: const DecorationImage(
                             image: AssetImage('assets/images/bus2_sign_in.png'),
@@ -199,6 +202,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   child: Form(
                     key: _formKey,
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const SizedBox(height: 20),
                         // Username Field
@@ -270,6 +274,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               setState(() {
                                 _isPasswordVisible = !_isPasswordVisible;
                               });
+                              _validateForm();
                             },
                           ),
                           validator: (value) {
@@ -298,9 +303,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             ),
                             onPressed: () {
                               setState(() {
-                                _isConfirmPasswordVisible =
-                                    !_isConfirmPasswordVisible;
+                                _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
                               });
+                              _validateForm();
                             },
                           ),
                           validator: (value) {
@@ -320,12 +325,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(30),
                             border: Border.all(
-                              color: const Color(0xFF9CCB3E),
+                              color: Color(0xFF9CCB3E),
                               width: 1,
                             ),
                           ),
                           child: DropdownButtonFormField<String>(
                             value: _selectedRole,
+                            dropdownColor: Colors.white, // Dropdown background
                             decoration: const InputDecoration(
                               hintText: 'Role',
                               prefixIcon: Icon(
@@ -342,14 +348,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             items: _roles.map((String role) {
                               return DropdownMenuItem<String>(
                                 value: role,
-                                child: Text(role),
+                                child: Text(role, style: const TextStyle(color: Colors.black)),
                               );
                             }).toList(),
                             onChanged: (String? newValue) {
                               setState(() {
                                 _selectedRole = newValue;
-                                print(_selectedRole);
                               });
+                              print('[DEBUG] Role selected: $newValue');
                               _validateForm();
                             },
                             validator: (value) {
@@ -456,12 +462,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: const Color(0xFF9CCB3E), width: 1),
+        border: Border.all(color: Color(0xFF9CCB3E), width: 1),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF9CCB3E).withValues(alpha: 0.2),
+            color: Color(0xFF9CCB3E).withOpacity(0.2),
             blurRadius: 8,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -470,9 +476,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
         obscureText: obscureText,
         keyboardType: keyboardType,
         validator: validator,
+        style: const TextStyle(color: Colors.black),
         decoration: InputDecoration(
           hintText: hintText,
-          prefixIcon: Icon(prefixIcon, color: const Color(0xFF9CCB3E)),
+          hintStyle: const TextStyle(color: Colors.black54),
+          prefixIcon: Icon(prefixIcon, color: Color(0xFF9CCB3E)),
           suffixIcon: suffixIcon,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
@@ -480,7 +488,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
             vertical: 12,
           ),
         ),
-        onChanged: (value) => _validateForm(),
+        onChanged: (value) {
+          print('[DEBUG] ${controller == _usernameController ? 'username' : controller == _emailController ? 'email' : controller == _contactController ? 'contact' : controller == _passwordController ? 'password' : controller == _confirmPasswordController ? 'confirm' : 'unknown'}: $value');
+          _validateForm();
+        },
       ),
     );
   }
@@ -492,6 +503,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _contactController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    
     super.dispose();
   }
 }

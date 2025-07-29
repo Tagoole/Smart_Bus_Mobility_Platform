@@ -11,7 +11,7 @@ import 'package:google_maps_webservice/places.dart';
 const kGoogleApiKey = 'AIzaSyC2n6urW_4DUphPLUDaNGAW_VN53j0RP4s';
 
 class BusRoutePreviewScreen extends StatefulWidget {
-  final Map<String, dynamic> bus;
+  final BusModel bus;
   const BusRoutePreviewScreen({super.key, required this.bus});
 
   @override
@@ -35,13 +35,13 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
   void initState() {
     super.initState();
     // Initialize with bus data
-    pickupLocation = widget.bus['startPoint'] ?? 'Select Pickup';
-    dropoffLocation = widget.bus['destination'] ?? 'Select Destination';
+    pickupLocation = widget.bus.startPoint;
+    dropoffLocation = widget.bus.destination;
     _pickupController.text = pickupLocation;
     _dropoffController.text = dropoffLocation;
 
-    final startLat = widget.bus['startLat'];
-    final startLng = widget.bus['startLng'];
+    final startLat = widget.bus.startLat;
+    final startLng = widget.bus.startLng;
     if (startLat != null && startLng != null) {
       _pickupCoords = LatLng(startLat, startLng);
       _busStartLatLng = _pickupCoords;
@@ -52,12 +52,8 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
   void _updatePolyline() {
     setState(() {
       polylines.clear();
-      final routePoints = widget.bus['routePolyline'] as List?;
-      List<LatLng> points = [];
-
-      if (routePoints != null) {
-        points = routePoints.map((p) => LatLng(p['lat'], p['lng'])).toList();
-      } else if (_pickupCoords != null && _dropoffCoords != null) {
+      List<LatLng> points = widget.bus.getRoutePolylinePoints();
+      if (points.isEmpty && _pickupCoords != null && _dropoffCoords != null) {
         points = [
           _pickupCoords!,
           LatLng(
@@ -75,7 +71,7 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
       // Draw the main bus route polyline (green)
       if (points.isNotEmpty) {
         polylines.add(Polyline(
-          polylineId: PolylineId('route'),
+          polylineId: const PolylineId('route'),
           points: points,
           color: Colors.green,
           width: 5,
@@ -87,7 +83,7 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
         final nearest = _findNearestPointOnRoute(_pickupCoords!, points);
         if (nearest != null) {
           polylines.add(Polyline(
-            polylineId: PolylineId('pickup_to_route'),
+            polylineId: const PolylineId('pickup_to_route'),
             points: [_pickupCoords!, nearest],
             color: Colors.blue,
             width: 4,
@@ -111,14 +107,14 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
   void _savePickupAndShowBus() async {
     if (_pickupCoords == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please select a pickup location')),
+        const SnackBar(content: Text('Please select a pickup location')),
       );
       return;
     }
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please login to book a bus')),
+        const SnackBar(content: Text('Please login to book a bus')),
       );
       return;
     }
@@ -132,7 +128,7 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Column(
+        title: const Column(
           children: [
             Icon(Icons.check_circle, color: Colors.green, size: 48),
             SizedBox(height: 12),
@@ -150,12 +146,11 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => SelectSeatScreen(
-                    origin: bus['startPoint'],
-                    destination: bus['destination'],
-                    busProvider: bus['vehicleModel'] ?? '',
-                    plateNumber: bus['numberPlate'] ?? '',
-                    busModel:
-                        BusModel.fromJson(bus, bus['busId'] ?? bus['id'] ?? ''),
+                    origin: bus.startPoint,
+                    destination: bus.destination,
+                    busProvider: bus.vehicleModel,
+                    plateNumber: bus.numberPlate,
+                    busModel: bus,
                     pickupLocation: _pickupCoords,
                     pickupAddress: pickupLocation,
                     departureDate: null,
@@ -166,7 +161,7 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
                 ),
               );
             },
-            child: Text('Continue'),
+            child: const Text('Continue'),
           ),
         ],
       ),
@@ -193,7 +188,7 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
   Future<void> _geocodePickupAndUpdate(String address) async {
     // TODO: Replace with your geocoding logic
     // For now, just simulate a LatLng (e.g., Kampala)
-    LatLng simulated = LatLng(0.3476, 32.5825);
+    LatLng simulated = const LatLng(0.3476, 32.5825);
     setState(() {
       _pickupCoords = simulated;
       pickupLocation = address;
@@ -222,7 +217,7 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Preview Route & Select Pickup'),
+        title: const Text('Preview Route & Select Pickup'),
       ),
       body: Column(
         children: [
@@ -238,7 +233,7 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    suffixIcon: Icon(Icons.search),
+                    suffixIcon: const Icon(Icons.search),
                   ),
                   onTap: () async {
                     Prediction? p = await PlacesAutocomplete.show(
@@ -253,14 +248,14 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
                     }
                   },
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 TextField(
                   controller: _dropoffController,
                   decoration: InputDecoration(
                     labelText: 'Where To',
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12)),
-                    suffixIcon: Icon(Icons.close),
+                    suffixIcon: const Icon(Icons.close),
                   ),
                   onChanged: (value) {
                     setState(() {
@@ -277,28 +272,28 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
             child: GoogleMap(
               onMapCreated: (controller) => _mapController = controller,
               initialCameraPosition: CameraPosition(
-                target: _pickupCoords ?? LatLng(0, 0),
+                target: _pickupCoords ?? const LatLng(0, 0),
                 zoom: 13,
               ),
               polylines: polylines,
               markers: {
                 if (_pickupCoords != null)
                   Marker(
-                    markerId: MarkerId('pickup'),
+                    markerId: const MarkerId('pickup'),
                     position: _pickupCoords!,
                     infoWindow: InfoWindow(title: pickupLocation),
                   ),
                 if (_dropoffCoords != null)
                   Marker(
-                    markerId: MarkerId('dropoff'),
+                    markerId: const MarkerId('dropoff'),
                     position: _dropoffCoords!,
                     infoWindow: InfoWindow(title: dropoffLocation),
                   ),
                 if (_showBusMarker && _busStartLatLng != null)
                   Marker(
-                    markerId: MarkerId('bus_start'),
+                    markerId: const MarkerId('bus_start'),
                     position: _busStartLatLng!,
-                    infoWindow: InfoWindow(title: 'Bus Start Point'),
+                    infoWindow: const InfoWindow(title: 'Bus Start Point'),
                     icon: BitmapDescriptor.defaultMarkerWithHue(
                         BitmapDescriptor.hueBlue),
                   ),
@@ -313,7 +308,7 @@ class _BusRoutePreviewScreenState extends State<BusRoutePreviewScreen> {
               padding: const EdgeInsets.all(16.0),
               child: ElevatedButton(
                 onPressed: _savePickupAndShowBus,
-                child: Text('Confirm Pickup Location'),
+                child: const Text('Confirm Pickup Location'),
               ),
             ),
         ],

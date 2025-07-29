@@ -324,7 +324,7 @@ class _AvailableBus extends State<AvailableBus> {
                     foregroundColor: _isOneWay
                         ? Colors.white
                         : const Color(0xFF004225),
-                    side: BorderSide(color: const Color(0xFF004225), width: 1),
+                    side: const BorderSide(color: Color(0xFF004225), width: 1),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(19),
                     ),
@@ -347,7 +347,7 @@ class _AvailableBus extends State<AvailableBus> {
                     foregroundColor: !_isOneWay
                         ? Colors.white
                         : const Color(0xFF004225),
-                    side: BorderSide(color: const Color(0xFF004225), width: 1),
+                    side: const BorderSide(color: Color(0xFF004225), width: 1),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(19),
                     ),
@@ -670,14 +670,6 @@ class BusInfo {
     required this.seatNumber,
   });
 }
-
-
-
-
-
-
-
-
 
 
 

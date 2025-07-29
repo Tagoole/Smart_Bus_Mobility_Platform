@@ -162,8 +162,8 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
           _calculateDistance(currentLat, currentLng, pickupLat, pickupLng);
 
       // Estimate time based on average city speed (30 km/h) with traffic factor (1.5x)
-      final double avgSpeedKmh = 30.0;
-      final double trafficFactor = 1.5;
+      const double avgSpeedKmh = 30.0;
+      const double trafficFactor = 1.5;
       final double estimatedTimeHours =
           (distance * trafficFactor) / avgSpeedKmh;
       final int estimatedMinutes = (estimatedTimeHours * 60).round();
@@ -747,11 +747,6 @@ class _CurrentBusesScreenState extends State<CurrentBusesScreen> {
     );
   }
 }
-
-
-
-
-
 
 
 

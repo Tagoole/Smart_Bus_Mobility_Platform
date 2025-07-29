@@ -67,6 +67,8 @@ class OptimizedRoute {
   }
 }
 
+/*
+// --- ORIGINAL SOM LOGIC (commented out) ---
 class BusRouteSOM {
   List<LatLng> coordinates;
   double learningRate;
@@ -193,7 +195,7 @@ class BusRouteSOM {
       
       // Yield control for UI responsiveness
       if (iteration % 25 == 0) {
-        await Future.delayed(Duration(microseconds: 100));
+        await Future.delayed(const Duration(microseconds: 100));
       }
     }
   }
@@ -316,6 +318,51 @@ class BusRouteSOM {
     );
   }
 }
+*/
+
+
+class BusRouteSOM {
+  final List<LatLng> coordinates;
+  BusRouteSOM({required this.coordinates});
+
+  List<int> extractOptimalRoute() {
+    if (coordinates.isEmpty) return [];
+    final n = coordinates.length;
+    final visited = List<bool>.filled(n, false);
+    final route = <int>[];
+    int current = 0;
+    route.add(current);
+    visited[current] = true;
+    for (int step = 1; step < n; step++) {
+      double minDist = double.infinity;
+      int nextIdx = -1;
+      for (int i = 0; i < n; i++) {
+        if (!visited[i]) {
+          final dLat = coordinates[i].latitude - coordinates[current].latitude;
+          final dLng = coordinates[i].longitude - coordinates[current].longitude;
+          final dist = dLat * dLat + dLng * dLng;
+          if (dist < minDist) {
+            minDist = dist;
+            nextIdx = i;
+          }
+        }
+      }
+      if (nextIdx == -1) break;
+      route.add(nextIdx);
+      visited[nextIdx] = true;
+      current = nextIdx;
+    }
+    return route;
+  }
+}
+
+extension BusRouteServiceSOMTest on BusRouteService {
+  // For testing: get route order using the greedy (now SOM) optimizer
+  List<int> getSOMRouteOrder(List<LatLng> coordinates) {
+    final som = BusRouteSOM(coordinates: coordinates);
+    return som.extractOptimalRoute();
+  }
+}
 
 class DynamicBusRouteManager extends ChangeNotifier {
   final List<BusStop> _busStops = [];
@@ -410,23 +457,41 @@ class DynamicBusRouteManager extends ChangeNotifier {
   Future<OptimizedRoute> _fullOptimization() async {
     final som = BusRouteSOM(
       coordinates: _busStops.map((stop) => stop.location).toList(),
-      iterations: 500,
-      learningRate: 0.8,
-      neuronsFactor: 2.5,
     );
-    
-    return await som.optimizeRoute(_busStops);
+    final routeOrder = som.extractOptimalRoute();
+    double distance = 0;
+    for (int i = 0; i < routeOrder.length - 1; i++) {
+      final a = _busStops[routeOrder[i]].location;
+      final b = _busStops[routeOrder[i + 1]].location;
+      distance += _haversineDistance(a.latitude, a.longitude, b.latitude, b.longitude);
+    }
+    double estimatedTime = _estimateTime(distance);
+    return OptimizedRoute(
+      stops: _busStops,
+      routeOrder: routeOrder,
+      totalDistance: distance,
+      estimatedTime: estimatedTime,
+    );
   }
-  
+
   Future<OptimizedRoute> _lightOptimization() async {
     final som = BusRouteSOM(
       coordinates: _busStops.map((stop) => stop.location).toList(),
-      iterations: 250,
-      learningRate: 0.6,
-      neuronsFactor: 2.0,
     );
-    
-    return await som.optimizeRoute(_busStops);
+    final routeOrder = som.extractOptimalRoute();
+    double distance = 0;
+    for (int i = 0; i < routeOrder.length - 1; i++) {
+      final a = _busStops[routeOrder[i]].location;
+      final b = _busStops[routeOrder[i + 1]].location;
+      distance += _haversineDistance(a.latitude, a.longitude, b.latitude, b.longitude);
+    }
+    double estimatedTime = _estimateTime(distance);
+    return OptimizedRoute(
+      stops: _busStops,
+      routeOrder: routeOrder,
+      totalDistance: distance,
+      estimatedTime: estimatedTime,
+    );
   }
   
   Future<void> forceOptimization() async {
@@ -558,6 +623,73 @@ class BusRouteService {
   // Get number of current passengers
   int get passengerCount => _routeManager.busStops.length;
 }
+
+// Simple greedy nearest-neighbor route optimizer (for testing)
+class SimpleGreedyRouteOptimizer {
+  final List<LatLng> coordinates;
+  SimpleGreedyRouteOptimizer(this.coordinates);
+
+  List<int> computeRouteOrder() {
+    if (coordinates.isEmpty) return [];
+    final n = coordinates.length;
+    final visited = List<bool>.filled(n, false);
+    final route = <int>[];
+    int current = 0;
+    route.add(current);
+    visited[current] = true;
+    for (int step = 1; step < n; step++) {
+      double minDist = double.infinity;
+      int nextIdx = -1;
+      for (int i = 0; i < n; i++) {
+        if (!visited[i]) {
+          final dLat = coordinates[i].latitude - coordinates[current].latitude;
+          final dLng = coordinates[i].longitude - coordinates[current].longitude;
+          final dist = dLat * dLat + dLng * dLng;
+          if (dist < minDist) {
+            minDist = dist;
+            nextIdx = i;
+          }
+        }
+      }
+      if (nextIdx == -1) break;
+      route.add(nextIdx);
+      visited[nextIdx] = true;
+      current = nextIdx;
+    }
+    return route;
+  }
+}
+
+extension BusRouteServiceGreedyTest on BusRouteService {
+  // For testing: get route order using the greedy optimizer
+  List<int> getGreedyRouteOrder(List<LatLng> coordinates) {
+    final optimizer = SimpleGreedyRouteOptimizer(coordinates);
+    return optimizer.computeRouteOrder();
+  }
+}
+
+// --- Utility functions for distance and time calculations ---
+double _haversineDistance(double lat1, double lon1, double lat2, double lon2) {
+  const double earthRadius = 6371; // km
+  final double dLat = _toRadians(lat2 - lat1);
+  final double dLon = _toRadians(lon2 - lon1);
+  final double a = 
+      (math.sin(dLat / 2) * math.sin(dLat / 2)) +
+      (math.cos(_toRadians(lat1)) * math.cos(_toRadians(lat2)) *
+      math.sin(dLon / 2) * math.sin(dLon / 2));
+  final double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+  return earthRadius * c;
+}
+
+double _toRadians(double degrees) => degrees * math.pi / 180;
+
+double _estimateTime(double distance) {
+  const double averageSpeed = 25.0; // km/h
+  return (distance / averageSpeed) * 60; // minutes
+}
+
+
+
 
 
 

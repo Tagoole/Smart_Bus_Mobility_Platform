@@ -88,7 +88,7 @@ dependencies:
   # Social sign-in dependencies
   google_sign_in: ^6.2.1
   flutter_facebook_auth: ^6.0.4
-
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -143,3 +143,4 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+

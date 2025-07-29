@@ -26,7 +26,7 @@ class TrackBusScreen extends StatefulWidget {
 
 class _TrackBusScreenState extends State<TrackBusScreen> {
   late Future<List<Map<String, dynamic>>> _busesFuture;
-  bool _isLoading = true;
+  final bool _isLoading = true;
 
   @override
   void initState() {
@@ -146,22 +146,22 @@ class _TrackBusScreenState extends State<TrackBusScreen> {
     if (widget.booking != null) {
       return Scaffold(
         appBar: AppBar(
-          title: Text('Track Bus'),
+          title: const Text('Track Bus'),
           backgroundColor: Colors.blue[700],
           foregroundColor: Colors.white,
         ),
-        body: Center(child: CircularProgressIndicator()),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Track Your Buses'),
+        title: const Text('Track Your Buses'),
         backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh),
             onPressed: () {
               setState(() {
                 _busesFuture = _fetchCurrentBuses();
@@ -174,7 +174,7 @@ class _TrackBusScreenState extends State<TrackBusScreen> {
         future: _busesFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           }
 
           if (snapshot.hasError) {
@@ -182,17 +182,17 @@ class _TrackBusScreenState extends State<TrackBusScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error_outline, size: 64, color: Colors.grey),
-                  SizedBox(height: 16),
+                  const Icon(Icons.error_outline, size: 64, color: Colors.grey),
+                  const SizedBox(height: 16),
                   Text('Error loading buses: ${snapshot.error}'),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () {
                       setState(() {
                         _busesFuture = _fetchCurrentBuses();
                       });
                     },
-                    child: Text('Retry'),
+                    child: const Text('Retry'),
                   ),
                 ],
               ),
@@ -206,9 +206,9 @@ class _TrackBusScreenState extends State<TrackBusScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.directions_bus_outlined,
+                  const Icon(Icons.directions_bus_outlined,
                       size: 64, color: Colors.grey),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   Text(
                     'No active buses to track',
                     style: TextStyle(
@@ -217,7 +217,7 @@ class _TrackBusScreenState extends State<TrackBusScreen> {
                       color: Colors.grey[600],
                     ),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
                     'You don\'t have any confirmed bookings at the moment',
                     style: TextStyle(
@@ -232,9 +232,9 @@ class _TrackBusScreenState extends State<TrackBusScreen> {
           }
 
           return ListView.separated(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             itemCount: buses.length,
-            separatorBuilder: (context, index) => SizedBox(height: 12),
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final busInfo = buses[index];
               final booking = busInfo['bookingData'];
@@ -248,11 +248,11 @@ class _TrackBusScreenState extends State<TrackBusScreen> {
                 child: Column(
                   children: [
                     ListTile(
-                      leading: Icon(Icons.directions_bus,
+                      leading: const Icon(Icons.directions_bus,
                           color: Colors.blue, size: 32),
                       title: Text(
                         '${booking['destination'] ?? booking['route'] ?? ''}',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -271,7 +271,7 @@ class _TrackBusScreenState extends State<TrackBusScreen> {
                             Text('Fare: UGX ${booking['totalFare']}'),
                         ],
                       ),
-                      trailing: Icon(Icons.arrow_forward_ios, size: 18),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 18),
                       onTap: () {
                         _showBusDetails(context, busInfo);
                       },
@@ -282,12 +282,12 @@ class _TrackBusScreenState extends State<TrackBusScreen> {
                       child: SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          icon: Icon(Icons.location_searching),
-                          label: Text('Track Bus'),
+                          icon: const Icon(Icons.location_searching),
+                          label: const Text('Track Bus'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green[700],
                             foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(vertical: 12),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -366,7 +366,7 @@ class _BusTrackingDetailScreenState extends State<BusTrackingDetailScreen> {
 
     // Fallback timer for additional updates
     _timer = Timer.periodic(
-        Duration(seconds: 15), (_) => _fetchBusLocationAndRoute());
+        const Duration(seconds: 15), (_) => _fetchBusLocationAndRoute());
   }
 
   void _startRealTimeTracking() {
@@ -663,7 +663,7 @@ class _BusTrackingDetailScreenState extends State<BusTrackingDetailScreen> {
                     children: [
                       Icon(Icons.directions_bus,
                           color: Colors.blue[700], size: 28),
-                      SizedBox(width: 12),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -691,7 +691,7 @@ class _BusTrackingDetailScreenState extends State<BusTrackingDetailScreen> {
                       ),
                     ],
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
@@ -724,7 +724,7 @@ class _BusTrackingDetailScreenState extends State<BusTrackingDetailScreen> {
             // Map
             Expanded(
               child: isLoading && busLocation == null
-                  ? Center(
+                  ? const Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -739,14 +739,14 @@ class _BusTrackingDetailScreenState extends State<BusTrackingDetailScreen> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.location_off,
+                              const Icon(Icons.location_off,
                                   size: 48, color: Colors.grey),
-                              SizedBox(height: 16),
-                              Text('Bus or pickup location not available'),
-                              SizedBox(height: 8),
+                              const SizedBox(height: 16),
+                              const Text('Bus or pickup location not available'),
+                              const SizedBox(height: 8),
                               ElevatedButton(
                                 onPressed: () => _fetchBusLocationAndRoute(),
-                                child: Text('Retry'),
+                                child: const Text('Retry'),
                               ),
                             ],
                           ),
@@ -758,13 +758,13 @@ class _BusTrackingDetailScreenState extends State<BusTrackingDetailScreen> {
                           },
                           initialCameraPosition: CameraPosition(
                             target: busLocation!,
-                            zoom: 13,
+                            zoom: 15,
                           ),
                           markers: {
                             Marker(
-                              markerId: MarkerId('bus'),
+                              markerId: const MarkerId('bus'),
                               position: busLocation!,
-                              infoWindow: InfoWindow(
+                              infoWindow: const InfoWindow(
                                 title: 'Your Bus',
                                 snippet: 'Live location',
                               ),
@@ -772,9 +772,9 @@ class _BusTrackingDetailScreenState extends State<BusTrackingDetailScreen> {
                                   BitmapDescriptor.hueBlue),
                             ),
                             Marker(
-                              markerId: MarkerId('pickup'),
+                              markerId: const MarkerId('pickup'),
                               position: passengerLocation!,
-                              infoWindow: InfoWindow(
+                              infoWindow: const InfoWindow(
                                 title: 'Pickup Location',
                                 snippet: 'Your waiting point',
                               ),
@@ -797,7 +797,9 @@ class _BusTrackingDetailScreenState extends State<BusTrackingDetailScreen> {
                           },
                           myLocationEnabled: false,
                           zoomControlsEnabled: true,
-                          mapToolbarEnabled: false,
+                          mapToolbarEnabled: true,
+                          compassEnabled: true,
+                          myLocationButtonEnabled: true,
                         ),
             ),
 
@@ -805,7 +807,7 @@ class _BusTrackingDetailScreenState extends State<BusTrackingDetailScreen> {
             if (routeInfo.isNotEmpty)
               Container(
                 width: double.infinity,
-                padding: EdgeInsets.all(16),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.grey[50],
                   border: Border(top: BorderSide(color: Colors.grey[300]!)),
@@ -814,14 +816,14 @@ class _BusTrackingDetailScreenState extends State<BusTrackingDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
+                    const Text(
                       'Route Information',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
                       routeInfo,
                       style: TextStyle(color: Colors.grey[600]),
@@ -844,7 +846,7 @@ class _BusTrackingDetailScreenState extends State<BusTrackingDetailScreen> {
     return Column(
       children: [
         Icon(icon, color: color, size: 24),
-        SizedBox(height: 4),
+        const SizedBox(height: 4),
         Text(
           label,
           style: TextStyle(
@@ -854,7 +856,7 @@ class _BusTrackingDetailScreenState extends State<BusTrackingDetailScreen> {
         ),
         Text(
           value,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.bold,
           ),

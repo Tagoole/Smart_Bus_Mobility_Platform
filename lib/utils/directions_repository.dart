@@ -23,7 +23,7 @@ class DirectionsRepository {
     String? waypointsStr;
     if (waypoints != null && waypoints.isNotEmpty) {
       // Force order with optimize:false|
-      waypointsStr = 'optimize:false|' + waypoints.map((wp) => '${wp.latitude},${wp.longitude}').join('|');
+      waypointsStr = 'optimize:false|${waypoints.map((wp) => '${wp.latitude},${wp.longitude}').join('|')}';
       print('[DEBUG] Directions API waypoints: $waypointsStr');
     }
     final response = await _dio.get(

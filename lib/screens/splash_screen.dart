@@ -49,43 +49,43 @@ class _SplashScreenState extends State<SplashScreen>
 
   void _initializeControllers() {
     _fadeController = AnimationController(
-      duration: Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 2000),
       vsync: this,
     );
 
     _slideController = AnimationController(
-      duration: Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
 
     _scaleController = AnimationController(
-      duration: Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
 
     _rotateController = AnimationController(
-      duration: Duration(milliseconds: 2500),
+      duration: const Duration(milliseconds: 2500),
       vsync: this,
     );
 
     _busController = AnimationController(
-      duration: Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 2000),
       vsync: this,
     );
 
     // Individual bus controllers
     _bus1Controller = AnimationController(
-      duration: Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 300),
       vsync: this,
     );
 
     _bus2Controller = AnimationController(
-      duration: Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 300),
       vsync: this,
     );
 
     _bus3Controller = AnimationController(
-      duration: Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 300),
       vsync: this,
     );
   }
@@ -96,7 +96,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _slideAnimation =
-        Tween<Offset>(begin: Offset(-1.5, 0.0), end: Offset.zero).animate(
+        Tween<Offset>(begin: const Offset(-1.5, 0.0), end: Offset.zero).animate(
       CurvedAnimation(parent: _slideController, curve: Curves.elasticOut),
     );
 
@@ -127,23 +127,23 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _startAnimations() async {
-    await Future.delayed(Duration(milliseconds: 300));
+    await Future.delayed(const Duration(milliseconds: 300));
     if (mounted) _fadeController.forward();
 
-    await Future.delayed(Duration(milliseconds: 400));
+    await Future.delayed(const Duration(milliseconds: 400));
     if (mounted) _slideController.forward();
 
-    await Future.delayed(Duration(milliseconds: 600));
+    await Future.delayed(const Duration(milliseconds: 600));
     if (mounted) _scaleController.forward();
 
-    await Future.delayed(Duration(milliseconds: 200));
+    await Future.delayed(const Duration(milliseconds: 200));
     if (mounted) _rotateController.forward();
 
-    await Future.delayed(Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 500));
     if (mounted) _busController.forward();
 
     // Wait for animations to complete and then navigate
-    await Future.delayed(Duration(milliseconds: 2000));
+    await Future.delayed(const Duration(milliseconds: 2000));
     if (mounted) {
       _navigateToAppropriateScreen();
     }
@@ -231,7 +231,7 @@ class _SplashScreenState extends State<SplashScreen>
     }
 
     // Reset after a delay
-    Future.delayed(Duration(milliseconds: 2000), () {
+    Future.delayed(const Duration(milliseconds: 2000), () {
       if (mounted) {
         setState(() {
           _selectedBus = -1;
@@ -272,7 +272,7 @@ class _SplashScreenState extends State<SplashScreen>
         child: Container(
           width: double.infinity,
           height: double.infinity,
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -315,12 +315,12 @@ class _SplashScreenState extends State<SplashScreen>
       child: FadeTransition(
         opacity: _fadeAnimation,
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(20),
           ),
-          child: Text(
+          child: const Text(
             'Tap to skip',
             style: TextStyle(
               color: Colors.white,
@@ -354,7 +354,7 @@ class _SplashScreenState extends State<SplashScreen>
           left: screenWidth * 0.05,
           child: FadeTransition(
             opacity: _fadeAnimation,
-            child: Icon(Icons.location_on, size: 30, color: Colors.black87),
+            child: const Icon(Icons.location_on, size: 30, color: Colors.black87),
           ),
         ),
 
@@ -366,7 +366,7 @@ class _SplashScreenState extends State<SplashScreen>
             opacity: _fadeAnimation,
             child: Transform.rotate(
               angle: -0.2,
-              child: Icon(
+              child: const Icon(
                 Icons.directions_bus,
                 size: 35,
                 color: Colors.black87,
@@ -391,7 +391,7 @@ class _SplashScreenState extends State<SplashScreen>
                 letterSpacing: -1,
                 shadows: [
                   Shadow(
-                    offset: Offset(3, 3),
+                    offset: const Offset(3, 3),
                     blurRadius: 8,
                     color: Colors.black.withValues(alpha: 0.2),
                   ),
@@ -406,7 +406,7 @@ class _SplashScreenState extends State<SplashScreen>
           top: screenHeight * 0.22,
           right: screenWidth * 0.08,
           child: SlideTransition(
-            position: Tween<Offset>(begin: Offset(1.5, 0.0), end: Offset.zero)
+            position: Tween<Offset>(begin: const Offset(1.5, 0.0), end: Offset.zero)
                 .animate(
               CurvedAnimation(
                 parent: _slideController,
@@ -416,7 +416,7 @@ class _SplashScreenState extends State<SplashScreen>
             child: _buildModernStrokedText(
               'Bus',
               fontSize: screenWidth * 0.15,
-              fillColor: Color(0xFFCDDC39),
+              fillColor: const Color(0xFFCDDC39),
               strokeColor: Colors.black87,
               strokeWidth: 3,
             ),
@@ -443,7 +443,7 @@ class _SplashScreenState extends State<SplashScreen>
                     height: 120,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: RadialGradient(
+                      gradient: const RadialGradient(
                         colors: [Color(0xFFFFEB3B), Color(0xFFFFC107)],
                       ),
                       border: Border.all(color: Colors.white, width: 3),
@@ -451,11 +451,11 @@ class _SplashScreenState extends State<SplashScreen>
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 15,
-                          offset: Offset(0, 8),
+                          offset: const Offset(0, 8),
                         ),
                       ],
                     ),
-                    child: Column(
+                    child: const Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
@@ -552,7 +552,7 @@ class _SplashScreenState extends State<SplashScreen>
       right: 0,
       child: FadeTransition(
         opacity: _fadeAnimation,
-        child: Center(
+        child: const Center(
           child: Text(
             'Efficient • Real-time • Smart',
             style: TextStyle(
@@ -590,7 +590,7 @@ class _SplashScreenState extends State<SplashScreen>
           bool isOtherSelected = _selectedBus != -1 && _selectedBus != busIndex;
 
           return AnimatedOpacity(
-            duration: Duration(milliseconds: 300),
+            duration: const Duration(milliseconds: 300),
             opacity: isOtherSelected ? 0.6 : 1.0,
             child: Transform.scale(
               scale: isOtherSelected ? 0.85 : scaleAnimation.value,
@@ -598,7 +598,7 @@ class _SplashScreenState extends State<SplashScreen>
                 onTap: () => _onBusPressed(busIndex),
                 onTapDown: (_) => _onBusPressed(busIndex),
                 child: AnimatedContainer(
-                  duration: Duration(milliseconds: 300),
+                  duration: const Duration(milliseconds: 300),
                   width: width,
                   height: height,
                   decoration: BoxDecoration(
@@ -612,7 +612,7 @@ class _SplashScreenState extends State<SplashScreen>
                       ],
                     ),
                     border: Border.all(
-                      color: isSelected ? Color(0xFFFFEB3B) : Colors.white,
+                      color: isSelected ? const Color(0xFFFFEB3B) : Colors.white,
                       width: isSelected ? 4 : 2,
                     ),
                     boxShadow: [
@@ -628,7 +628,7 @@ class _SplashScreenState extends State<SplashScreen>
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(width / 2),
                     child: AnimatedContainer(
-                      duration: Duration(milliseconds: 300),
+                      duration: const Duration(milliseconds: 300),
                       transform: Matrix4.identity()
                         ..translate(isSelected ? 5.0 : 0.0, 0.0)
                         ..scale(isSelected ? 1.1 : 1.0),
@@ -637,7 +637,7 @@ class _SplashScreenState extends State<SplashScreen>
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
                           return Container(
-                            decoration: BoxDecoration(
+                            decoration: const BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [Color(0xFF64B5F6), Color(0xFF1976D2)],
                               ),

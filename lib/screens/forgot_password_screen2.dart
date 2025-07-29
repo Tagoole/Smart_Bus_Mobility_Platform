@@ -368,16 +368,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen2> {
           fontWeight: FontWeight.w500,
           color: _darkGreen,
         ),
-        decoration: InputDecoration(
+        decoration: const InputDecoration(
           hintText: "Enter your contact",
           hintStyle: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w400,
             color: _lightGray,
           ),
-          prefixIcon: const Icon(Icons.phone, color: _darkGreen, size: 24),
+          prefixIcon: Icon(Icons.phone, color: _darkGreen, size: 24),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
+          contentPadding: EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 16,
           ),
@@ -431,7 +431,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen2> {
     return Center(
       child: GestureDetector(
         onTap: _useAnotherWay,
-        child: Text(
+        child: const Text(
           "Use another way.",
           style: TextStyle(
             fontSize: 14,

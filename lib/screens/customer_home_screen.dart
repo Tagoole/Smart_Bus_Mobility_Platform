@@ -4,13 +4,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:smart_bus_mobility_platform1/screens/passenger_map_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/booked_buses_screen.dart'
-    as booked;
 import 'package:smart_bus_mobility_platform1/screens/current_buses_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/track_bus_screen.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:smart_bus_mobility_platform1/utils/marker_icon_utils.dart';
 import 'package:smart_bus_mobility_platform1/widgets/live_bus_details_sheet.dart';
+import 'package:smart_bus_mobility_platform1/utils/directions_repository.dart';
 
 class BusTrackingScreen extends StatefulWidget {
   const BusTrackingScreen({super.key});
@@ -42,13 +40,22 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
   // Automatic refresh timer
   Timer? _refreshTimer;
 
+  // Carousel images (no state/timer/controller here)
+  final List<String> _carouselImages = [
+    'assets/images/bus27.jpg',
+    'assets/images/bus26.jpg',
+    'assets/images/bus25.jpg',
+    'assets/images/bus24.jpg',
+    'assets/images/bus23.jpg',
+    'assets/images/bus22.jpg',
+  ];
+
   @override
   void initState() {
     super.initState();
     _initializeAnimations();
     _fetchUsername();
     _loadUserData();
-
     // Set up automatic refresh every 30 seconds for real-time updates
     _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
       if (mounted) {
@@ -228,49 +235,40 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
       }
 
       // Handle different location data formats
-      GeoPoint? busLocation;
-      GeoPoint? pickupGeoPoint;
-
-      // Try to get bus location from different possible formats
+      double? busLat, busLng, pickupLat, pickupLng;
       final currentLocation = busData['currentLocation'];
       if (currentLocation is GeoPoint) {
-        busLocation = currentLocation;
+        busLat = currentLocation.latitude;
+        busLng = currentLocation.longitude;
       } else if (currentLocation is Map<String, dynamic>) {
-        final lat = currentLocation['latitude'];
-        final lng = currentLocation['longitude'];
-        if (lat != null && lng != null) {
-          busLocation = GeoPoint(lat.toDouble(), lng.toDouble());
-        }
+        busLat = currentLocation['latitude']?.toDouble();
+        busLng = currentLocation['longitude']?.toDouble();
       }
-
-      // Try to get pickup location from different possible formats
       if (pickupLocation is GeoPoint) {
-        pickupGeoPoint = pickupLocation;
+        pickupLat = pickupLocation.latitude;
+        pickupLng = pickupLocation.longitude;
       } else if (pickupLocation is Map<String, dynamic>) {
-        final lat = pickupLocation['latitude'];
-        final lng = pickupLocation['longitude'];
-        if (lat != null && lng != null) {
-          pickupGeoPoint = GeoPoint(lat.toDouble(), lng.toDouble());
-        }
+        pickupLat = pickupLocation['latitude']?.toDouble();
+        pickupLng = pickupLocation['longitude']?.toDouble();
       }
-
-      if (busLocation == null || pickupGeoPoint == null) {
+      if (busLat == null || busLng == null || pickupLat == null || pickupLng == null) {
         return 'Location unavailable';
       }
 
-      // Calculate distance using Haversine formula
-      double distance = _calculateDistance(
-        busLocation.latitude,
-        busLocation.longitude,
-        pickupGeoPoint.latitude,
-        pickupGeoPoint.longitude,
+      // Use Google Directions API for ETA
+      final directions = await DirectionsRepository().getDirections(
+        origin: LatLng(busLat, busLng),
+        destination: LatLng(pickupLat, pickupLng),
       );
+      if (directions != null && directions.totalDuration != null) {
+        return directions.totalDuration!;
+      }
 
-      // Estimate time based on average speed (assuming 30 km/h in city traffic)
+      // Fallback: Estimate time based on straight-line distance
+      double distance = _calculateDistance(busLat, busLng, pickupLat, pickupLng);
       double averageSpeedKmh = 30.0;
       double timeInHours = distance / averageSpeedKmh;
       int timeInMinutes = (timeInHours * 60).round();
-
       if (timeInMinutes < 1) {
         return 'Arriving now';
       } else if (timeInMinutes < 60) {
@@ -330,7 +328,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
     setState(() {
       _showDropdown = false;
     });
-    Navigator.pushNamed(context, '/profile');
+    Navigator.pushNamed(context, '/profile'); // Use named route for ProfileScreen
   }
 
   Future<void> _logout() async {
@@ -493,200 +491,173 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
               ),
             ),
             SizedBox(
-              height: 180,
+              height: 220,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: bookings.length,
-                separatorBuilder: (context, index) => const SizedBox(width: 12),
+                separatorBuilder: (context, index) => const SizedBox(width: 16),
                 itemBuilder: (context, index) {
                   final doc = bookings[index];
                   Map<String, dynamic> booking;
-
                   try {
                     final data = doc.data();
                     if (data is Map<String, dynamic>) {
                       booking = Map<String, dynamic>.from(data);
                     } else {
-                      print(
-                          'Invalid booking data format for document ${doc.id}');
                       booking = <String, dynamic>{};
                     }
                   } catch (e) {
-                    print(
-                        'Error parsing booking data for document ${doc.id}: $e');
                     booking = <String, dynamic>{};
                   }
-
-                  booking['id'] = doc.id; // Add document ID
-
+                  booking['id'] = doc.id;
+                  // Responsive width
+                  final width = MediaQuery.of(context).size.width;
+                  final cardWidth = width < 500 ? width * 0.85 : 340;
                   return GestureDetector(
-                    onTap: () {
-                      _showBookingDetails(context, booking);
-                    },
-                    child: Container(
-                      width: 260,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
+                    onTap: () => _showBookingDetails(context, booking),
+                    child: AnimatedOpacity(
+                      opacity: 1.0,
+                      duration: Duration(milliseconds: 600 + (index * 100)),
+                      child: Container(
+                        width: cardWidth.toDouble(),
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.08),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                          border: Border.all(
+                            color: Colors.green[100]!,
+                            width: 1.5,
                           ),
-                        ],
-                      ),
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
+                        ),
+                        child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Icon(Icons.directions_bus,
-                                    color: Colors.green[700], size: 28),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    booking['destination']?.toString() ??
-                                        booking['route']?.toString() ??
-                                        'Unknown Route',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-
-                            // ETA Section with real-time calculation
-                            FutureBuilder<String>(
-                              future: _calculateETA(booking),
-                              builder: (context, etaSnapshot) {
-                                String etaText = 'Calculating...';
-                                Color etaColor = Colors.orange;
-                                IconData etaIcon = Icons.access_time;
-
-                                if (etaSnapshot.hasData) {
-                                  etaText = etaSnapshot.data!;
-                                  if (etaText == 'Arriving now') {
-                                    etaColor = Colors.green;
-                                    etaIcon = Icons.near_me;
-                                  } else if (etaText.contains('min')) {
-                                    etaColor = Colors.blue;
-                                    etaIcon = Icons.schedule;
-                                  } else if (etaText.contains('Unable') ||
-                                      etaText.contains('N/A')) {
-                                    etaColor = Colors.red;
-                                    etaIcon = Icons.error_outline;
-                                  }
-                                }
-
-                                return Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: etaColor.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                        color: etaColor.withOpacity(0.3)),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(etaIcon, size: 16, color: etaColor),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'ETA: $etaText',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: etaColor,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            if (booking['pickupAddress'] != null)
-                              Row(
-                                children: [
-                                  Icon(Icons.location_on,
-                                      size: 16, color: Colors.grey[600]),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      'Pickup: ${booking['pickupAddress']}',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.grey[600],
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
+                            // Bus image/icon
+                            Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: CircleAvatar(
+                                radius: 32,
+                                backgroundColor: Colors.green[50],
+                                child: Icon(Icons.directions_bus, color: Colors.green[700], size: 36),
                               ),
-
-                            const SizedBox(height: 8),
-
-                            // Status indicator
-                            Row(
-                              children: [
-                                Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: _getStatusColor(
-                                        booking['status']?.toString()),
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  (booking['status']?.toString() ?? 'Unknown')
-                                      .toUpperCase(),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.grey[700],
-                                  ),
-                                ),
-                                const Spacer(),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green[50],
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.visibility,
-                                          size: 12, color: Colors.green[700]),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'View',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: Colors.green[700],
-                                          fontWeight: FontWeight.w600,
+                            ),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            booking['destination']?.toString() ?? booking['route']?.toString() ?? 'Unknown Route',
+                                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 1,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        // Status badge
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: _getStatusColor(booking['status']?.toString()).withOpacity(0.15),
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Text(
+                                            (booking['status']?.toString() ?? 'Unknown').toUpperCase(),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              color: _getStatusColor(booking['status']?.toString()),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    // ETA
+                                    FutureBuilder<String>(
+                                      future: _calculateETA(booking),
+                                      builder: (context, etaSnapshot) {
+                                        String etaText = 'Calculating...';
+                                        Color etaColor = Colors.orange;
+                                        IconData etaIcon = Icons.access_time;
+                                        if (etaSnapshot.hasData) {
+                                          etaText = etaSnapshot.data!;
+                                          if (etaText == 'Arriving now') {
+                                            etaColor = Colors.green;
+                                            etaIcon = Icons.near_me;
+                                          } else if (etaText.contains('min')) {
+                                            etaColor = Colors.blue;
+                                            etaIcon = Icons.schedule;
+                                          } else if (etaText.contains('Unable') || etaText.contains('N/A')) {
+                                            etaColor = Colors.red;
+                                            etaIcon = Icons.error_outline;
+                                          }
+                                        }
+                                        return Row(
+                                          children: [
+                                            Icon(etaIcon, size: 16, color: etaColor),
+                                            const SizedBox(width: 6),
+                                            Flexible(
+                                              child: Text(
+                                                'ETA: $etaText',
+                                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: etaColor),
+                                                overflow: TextOverflow.ellipsis,
+                                                maxLines: 1,
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                    ),
+                                    const SizedBox(height: 8),
+                                    // Pickup
+                                    if (booking['pickupAddress'] != null)
+                                      Row(
+                                        children: [
+                                          Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              'Pickup: ${booking['pickupAddress']}',
+                                              style: const TextStyle(fontSize: 13, color: Colors.grey),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    const SizedBox(height: 12),
+                                    // View Details button
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: ElevatedButton.icon(
+                                        onPressed: () => _showBookingDetails(context, booking),
+                                        icon: const Icon(Icons.visibility, size: 16),
+                                        label: const Text('View Details', style: TextStyle(fontSize: 13)),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.green[700],
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                          elevation: 0,
                                         ),
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
                           ],
                         ),
@@ -717,7 +688,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
 
   Widget _buildMainContent() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Action Buttons Section
         Padding(
@@ -797,6 +768,10 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
             ),
           ),
         ),
+        // Place the carousel below the main buttons
+        const SizedBox(height: 12),
+        IndependentImageCarousel(images: _carouselImages),
+        const SizedBox(height: 18),
         _buildBookedBusesSection(),
       ],
     );
@@ -930,8 +905,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                             ),
                           ),
                           onTap: _navigateToProfile,
-                          contentPadding:
-                              const EdgeInsets.symmetric(horizontal: 16),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                         ),
                         Divider(height: 1, color: Colors.grey[200]),
                         ListTile(
@@ -945,8 +919,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                             ),
                           ),
                           onTap: _logout,
-                          contentPadding:
-                              const EdgeInsets.symmetric(horizontal: 16),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                         ),
                       ],
                     ),
@@ -1000,7 +973,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading booking details: ${e.toString()}'),
+            content: Text('Error loading booking details:  {e.toString()}'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -1009,6 +982,109 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
     }
   }
 }
+
+// 1. Move the carousel widget to a new StatefulWidget class
+class IndependentImageCarousel extends StatefulWidget {
+  final List<String> images;
+  const IndependentImageCarousel({Key? key, required this.images}) : super(key: key);
+
+  @override
+  State<IndependentImageCarousel> createState() => _IndependentImageCarouselState();
+}
+
+class _IndependentImageCarouselState extends State<IndependentImageCarousel> {
+  int _carouselIndex = 0;
+  PageController? _carouselPageController;
+  Timer? _carouselTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _carouselPageController = PageController(initialPage: 0);
+    _carouselTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
+      if (mounted && _carouselPageController != null) {
+        int nextPage = (_carouselIndex + 1) % widget.images.length;
+        _carouselPageController!.animateToPage(
+          nextPage,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _carouselTimer?.cancel();
+    _carouselPageController?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SizedBox(
+        height: 200,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: Stack(
+            children: [
+              PageView.builder(
+                itemCount: widget.images.length,
+                controller: _carouselPageController,
+                onPageChanged: (index) {
+                  setState(() {
+                    _carouselIndex = index;
+                  });
+                },
+                itemBuilder: (context, index) {
+                  return Image.asset(
+                    widget.images[index],
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: 200,
+                  );
+                },
+              ),
+              Positioned(
+                bottom: 10,
+                left: 0,
+                right: 0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(widget.images.length, (index) {
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      width: _carouselIndex == index ? 18 : 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: _carouselIndex == index
+                            ? Colors.green[700]
+                            : Colors.white.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(6),
+                        boxShadow: [
+                          if (_carouselIndex == index)
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                        ],
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
 
 
 

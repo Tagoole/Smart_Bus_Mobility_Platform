@@ -48,40 +48,33 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   Future<void> _loadDashboardData() async {
     try {
       // Load summary data from Firebase
-      final driversSnapshot = await _firestore.collection('drivers').get();
+      final usersSnapshot = await _firestore.collection('users').get();
       final busesSnapshot = await _firestore.collection('buses').get();
-      final routesSnapshot = await _firestore
-          .collection('routes')
-          .where('status', isEqualTo: 'pending')
-          .get();
-      final feedbackSnapshot = await _firestore.collection('feedback').get();
-
-      // Get today's tickets
-      final today = DateTime.now();
-      final startOfDay = DateTime(today.year, today.month, today.day);
-      final ticketsSnapshot = await _firestore
-          .collection('tickets')
-          .where('createdAt', isGreaterThanOrEqualTo: startOfDay)
-          .get();
-
+      final bookingsSnapshot = await _firestore.collection('bookings').get();
+      // Filter drivers from users
+      final usersList = usersSnapshot.docs.map((doc) => doc.data() ?? {}).toList();
+      final driversList = usersList.where((user) => (user['role']?.toString()?.toLowerCase() ?? '') == 'driver').toList();
       // Load recent activities
       final activitiesSnapshot = await _firestore
           .collection('activities')
           .orderBy('timestamp', descending: true)
           .limit(4)
           .get();
-
       setState(() {
         summaryData = {
-          'activeDrivers': driversSnapshot.docs
-              .where((doc) => doc.data()['status'] == 'active')
-              .length,
-          'pendingRoutes': routesSnapshot.size,
-          'feedbackCount': feedbackSnapshot.size,
-          'totalBuses': busesSnapshot.size,
-          'ticketsToday': ticketsSnapshot.size,
+          'usersCount': usersSnapshot.size ?? 0,
+          'usersList': usersList,
+          'activeDrivers': driversList.length,
+          'driversList': driversList,
+          'totalBuses': busesSnapshot.size ?? 0,
+          'busesList': busesSnapshot.docs.map((doc) => doc.data() ?? {}).toList(),
+          'totalTickets': bookingsSnapshot.size ?? 0,
+          'ticketsList': bookingsSnapshot.docs.map((doc) {
+            final data = doc.data() ?? {};
+            data['bookingId'] = doc.id;
+            return data;
+          }).toList(),
         };
-
         recentActivities = activitiesSnapshot.docs.map((doc) {
           final data = doc.data();
           return {
@@ -91,7 +84,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
             'user': data['user'] ?? '',
           };
         }).toList();
-
         isLoading = false;
       });
     } catch (e) {
@@ -117,18 +109,59 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
 
   // Logout function
   Future<void> _handleLogout() async {
-    try {
-      await _auth.signOut();
-      if (mounted) {
-        Navigator.pushNamedAndRemoveUntil(context, '/sign-in', (route) => false);
+    // Show confirmation dialog
+    bool? shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.logout, color: Colors.red, size: 24),
+              SizedBox(width: 8),
+              Text('Logout'),
+            ],
+          ),
+          content: const Text('Are you sure you want to logout?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Logout'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLogout == true) {
+      try {
+        await _auth.signOut();
+        if (mounted) {
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            '/login',
+            (Route<dynamic> route) => false,
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error signing out: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error signing out: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 
@@ -156,7 +189,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 else ...[
                   _buildSummaryCards(),
                   _buildQuickActions(),
-                  _buildRecentActivity(),
                 ],
               ],
             ),
@@ -171,10 +203,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(24),
-          bottomRight: Radius.circular(24),
+          bottomLeft: Radius.circular(16), // reduced from 24
+          bottomRight: Radius.circular(16),
         ),
-        //Border(bottom: BorderSide(color: Color(0xFFE5E7EB), width: 1)),
         boxShadow: [
           BoxShadow(
             color: Color(0x0A000000),
@@ -184,23 +215,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(12.0), // reduced from 24
         child: Row(
           children: [
             Stack(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(8), // reduced from 16
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [Color(0xFF576238), Color(0xFF6B7244)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(12), // reduced from 16
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF576238).withValues(alpha: 0.3),
+                        color: const Color(0xFF576238).withOpacity(0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -209,14 +240,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   child: const Icon(
                     Icons.explore,
                     color: Colors.white,
-                    size: 32,
+                    size: 24, // reduced from 32
                   ),
                 ),
                 Positioned(
                   top: -4,
                   right: -4,
                   child: Container(
-                    padding: const EdgeInsets.all(4),
+                    padding: const EdgeInsets.all(2), // reduced from 4
                     decoration: const BoxDecoration(
                       color: Color(0xFFFFD95D),
                       shape: BoxShape.circle,
@@ -224,92 +255,45 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     child: const Icon(
                       Icons.trending_up,
                       color: Color(0xFF576238),
-                      size: 12,
+                      size: 10, // reduced from 12
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(width: 24),
+            const SizedBox(width: 12), // reduced from 24
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
+                children: const [
+                  Text(
                     'Admin Dashboard',
                     style: TextStyle(
-                      fontSize: 28,
+                      fontSize: 20, // reduced from 28
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF111827),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Manage your routes and operations efficiently',
-                    style: TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
+                  SizedBox(height: 2), // reduced from 4
+                  Text(
+                    'Manage your Buses and Drivers',
+                    style: TextStyle(
+                      fontSize: 12, // reduced from 16
+                      color: Color(0xFF6B7280),
+                    ),
                   ),
                 ],
               ),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Row(
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        const Text(
-                          'Last updated',
-                          style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-                        ),
-                        const Text(
-                          '2 minutes ago',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF111827),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade400,
-                            shape: BoxShape.circle,
-                          ),
-                          child: AnimatedBuilder(
-                            animation: _animationController,
-                            builder: (context, child) {
-                              return Transform.scale(
-                                scale: 0.8 + (0.2 * _animationController.value),
-                                child: child,
-                              );
-                            },
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.green.shade400,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(width: 16),
-                    IconButton(
-                      onPressed: _handleLogout,
-                      icon: const Icon(
-                        Icons.logout,
-                        color: Color(0xFF576238),
-                        size: 24,
-                      ),
-                      tooltip: 'Logout',
-                    ),
-                  ],
-                ),
-              ],
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: _handleLogout,
+              icon: const Icon(
+                Icons.logout,
+                color: Color(0xFF576238),
+                size: 20, // reduced from 24
+              ),
+              tooltip: 'Logout',
             ),
           ],
         ),
@@ -318,68 +302,42 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   }
 
   Widget _buildWelcomeSection() {
+    final width = MediaQuery.of(context).size.width;
     return Container(
-      margin: const EdgeInsets.all(24),
-      padding: const EdgeInsets.all(32),
+      margin: const EdgeInsets.all(12), // reduced from 24
+      padding: const EdgeInsets.all(16), // reduced from 32
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.white, const Color(0xFFF0EADC).withValues(alpha: 0.2)],
+          colors: [Colors.white, const Color(0xFFF0EADC).withOpacity(0.2)],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16), // reduced from 24
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 6, // reduced from 10
+            offset: const Offset(0, 2), // reduced offset
           ),
         ],
       ),
       child: Row(
         children: [
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+              children: const [
                 Text(
                   'Good morning, Admin! 👋',
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: 16, // reduced from 24
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF111827),
                   ),
                 ),
-                SizedBox(height: 12),
-                Text(
-                  'Your system is running smoothly. Here\'s today\'s overview.',
-                  style: TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFD95D).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Column(
-              children: [
-                Text(
-                  '98.5%',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF576238),
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'System Health',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-                ),
+                SizedBox(height: 6)
+                ,
               ],
             ),
           ),
@@ -389,86 +347,114 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   }
 
   Widget _buildSummaryCards() {
-    final List<Map<String, dynamic>> summaryItems = [
-      {
-        'title': 'Active Drivers',
-        'value': '${summaryData['activeDrivers'] ?? 0}',
-        'change': '+2',
-        'isIncrease': true,
-        'icon': Icons.people,
-        'color': const Color(0xFF576238),
-        'bgColor': const Color(0xFFE8F5E8),
-      },
-      {
-        'title': 'Pending Routes',
-        'value': '${summaryData['pendingRoutes'] ?? 0}',
-        'change': '-3',
-        'isIncrease': false,
-        'icon': Icons.location_on,
-        'color': const Color(0xFFD4A015),
-        'bgColor': const Color(0xFFFFFBEB),
-      },
-      {
-        'title': 'Feedback Count',
-        'value': '${summaryData['feedbackCount'] ?? 0}',
-        'change': '+12',
-        'isIncrease': true,
-        'icon': Icons.chat_bubble,
-        'color': const Color(0xFF7C3AED),
-        'bgColor': const Color(0xFFF3E8FF),
-      },
-      {
-        'title': 'Total Buses',
-        'value': '${summaryData['totalBuses'] ?? 0}',
-        'change': '+1',
-        'isIncrease': true,
-        'icon': Icons.directions_bus,
-        'color': const Color(0xFF2563EB),
-        'bgColor': const Color(0xFFEBF8FF),
-      },
-      {
-        'title': 'Tickets Today',
-        'value': '${summaryData['ticketsToday'] ?? 0}',
-        'change': '+45',
-        'isIncrease': true,
-        'icon': Icons.confirmation_number,
-        'color': const Color(0xFF059669),
-        'bgColor': const Color(0xFFECFDF5),
-      },
-    ];
-
+    final int usersCount = summaryData['usersCount'] ?? 0;
+    final int driversCount = summaryData['activeDrivers'] ?? 0;
+    final int busesCount = summaryData['totalBuses'] ?? 0;
+    final int ticketsCount = summaryData['totalTickets'] ?? 0;
+    final width = MediaQuery.of(context).size.width;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Key Metrics',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF111827),
-            ),
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            height: 140,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: summaryItems.length,
-              itemBuilder: (context, index) {
-                final item = summaryItems[index];
-                return Container(
-                  width: 160,
-                  margin: EdgeInsets.only(
-                    right: index < summaryItems.length - 1 ? 16 : 0,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: _showUsersDialog,
+                child: Card(
+                  color: const Color(0xFFFFF9E3),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.person, color: const Color(0xFFD4A015), size: 22),
+                        const SizedBox(height: 4),
+                        Text('$usersCount', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFFD4A015)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 1),
+                        const Text('Users', style: TextStyle(fontSize: 10, color: Color(0xFFD4A015)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
                   ),
-                  child: _buildSummaryCard(item),
-                );
-              },
+                ),
+              ),
             ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            Expanded(
+              child: GestureDetector(
+                onTap: _showDriversDialog,
+                child: Card(
+                  color: const Color(0xFFE8F5E8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.people, color: const Color(0xFF576238), size: 22),
+                        const SizedBox(height: 4),
+                        Text('$driversCount', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF576238)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 1),
+                        const Text('Drivers', style: TextStyle(fontSize: 10, color: Color(0xFF576238)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: GestureDetector(
+                onTap: _showBusesDialog,
+                child: Card(
+                  color: const Color(0xFFEBF8FF),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.directions_bus, color: const Color(0xFF2563EB), size: 22),
+                        const SizedBox(height: 4),
+                        Text('$busesCount', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 1),
+                        const Text('Buses', style: TextStyle(fontSize: 10, color: Color(0xFF2563EB)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: GestureDetector(
+                onTap: _showTicketsDialog,
+                child: Card(
+                  color: const Color(0xFFECFDF5),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.confirmation_number, color: const Color(0xFF059669), size: 22),
+                        const SizedBox(height: 4),
+                        Text('$ticketsCount', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF059669)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 1),
+                        const Text('Tickets', style: TextStyle(fontSize: 10, color: Color(0xFF059669)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -484,24 +470,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 400),
             curve: Curves.easeInOut,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(8), // reduced from 16
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  item['bgColor'].withValues(alpha: 0.35),
+                  item['bgColor'].withOpacity(0.35),
                   Colors.white,
-                  item['bgColor'].withValues(alpha: 0.15),
+                  item['bgColor'].withOpacity(0.15),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(12), // reduced from 20
               boxShadow: [
                 BoxShadow(
-                  color: item['color'].withValues(alpha: 0.18),
-                  blurRadius: 18,
-                  spreadRadius: 2,
-                  offset: const Offset(0, 8),
+                  color: item['color'].withOpacity(0.18),
+                  blurRadius: 10, // reduced from 18
+                  spreadRadius: 1, // reduced from 2
+                  offset: const Offset(0, 4), // reduced offset
                 ),
               ],
             ),
@@ -509,98 +495,74 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Icon with glow
                 Center(
                   child: Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: item['color'].withValues(alpha: 0.4),
-                          blurRadius: 18,
-                          spreadRadius: 2,
+                          color: item['color'].withOpacity(0.4),
+                          blurRadius: 8, // reduced from 18
+                          spreadRadius: 1, // reduced from 2
                         ),
                       ],
                     ),
                     child: CircleAvatar(
-                      backgroundColor: item['bgColor'].withValues(alpha: 0.18),
-                      radius: 18,
-                      child: Icon(item['icon'], color: item['color'], size: 22),
+                      backgroundColor: item['bgColor'].withOpacity(0.18),
+                      radius: 14, // reduced from 22
+                      child: Icon(
+                        item['icon'],
+                        color: item['color'],
+                        size: 18, // reduced from 28
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                // Value with playful font and color
+                const SizedBox(height: 8), // reduced from 14
                 Center(
                   child: Text(
                     item['value'],
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 18, // reduced from 28
                       fontWeight: FontWeight.w900,
                       color: item['color'],
                       fontFamily: 'Poppins',
                       letterSpacing: 1.2,
                       shadows: [
                         Shadow(
-                          color: item['color'].withValues(alpha: 0.2),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
+                          color: item['color'].withOpacity(0.2),
+                          blurRadius: 3, // reduced from 6
+                          offset: const Offset(0, 1), // reduced offset
                         ),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 2),
-                // Title
+                const SizedBox(height: 2), // reduced from 4
                 Center(
                   child: Text(
                     item['title'],
                     style: const TextStyle(
-                      fontSize: 11,
+                      fontSize: 10, // reduced from 14
                       color: Color(0xFF6B7280),
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                     ),
-                    textAlign: TextAlign.center,
                   ),
                 ),
-                const SizedBox(height: 6),
-                // Animated progress bar (for demo, random progress)
-                TweenAnimationBuilder<double>(
-                  tween: Tween(
-                    begin: 0.0,
-                    end: 0.7 + (item['value'].hashCode % 30) / 100,
-                  ),
-                  duration: const Duration(milliseconds: 900),
-                  builder: (context, progress, _) {
-                    return ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        minHeight: 4,
-                        backgroundColor: item['color'].withValues(alpha: 0.10),
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          item['color'],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      item['isIncrease']
-                          ? Icons.trending_up
-                          : Icons.trending_down,
+                      item['isIncrease'] ? Icons.trending_up : Icons.trending_down,
                       color: item['isIncrease'] ? Colors.green : Colors.red,
-                      size: 12,
+                      size: 10, // reduced from 12
                     ),
                     const SizedBox(width: 2),
                     Text(
                       item['change'],
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 8, // reduced from 10
                         fontWeight: FontWeight.w500,
                         color: item['isIncrease'] ? Colors.green : Colors.red,
                       ),
@@ -608,7 +570,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     const SizedBox(width: 2),
                     const Text(
                       'vs yesterday',
-                      style: TextStyle(fontSize: 8, color: Color(0xFF9CA3AF)),
+                      style: TextStyle(fontSize: 7, color: Color(0xFF9CA3AF)), // reduced from 8
                     ),
                   ],
                 ),
@@ -629,44 +591,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         'color': const Color(0xFF576238),
         'bgColor': const Color(0xFFE8F5E8),
         'action': 'manage-buses',
-      },
-      {
-        'title': 'Manage Drivers',
-        'description': 'View and manage driver assignments',
-        'icon': Icons.people,
-        'color': const Color(0xFF2563EB),
-        'bgColor': const Color(0xFFEBF8FF),
-        'action': 'manage-drivers',
-      },
-      {
-        'title': 'Create Optimized Route',
-        'description': 'Generate the most efficient routes using AI',
-        'icon': Icons.location_on,
-        'color': const Color(0xFFD4A015),
-        'bgColor': const Color(0xFFFFFBEB),
-        'action': 'create-route',
-        'featured': true,
-      },
-      {
-        'title': 'View Feedback',
-        'description': 'Review passenger feedback and ratings',
-        'icon': Icons.chat_bubble,
-        'color': const Color(0xFF7C3AED),
-        'bgColor': const Color(0xFFF3E8FF),
-        'action': 'view-feedback',
-      },
-      {
-        'title': 'Analytics & Reports',
-        'description': 'Access detailed analytics and insights',
-        'icon': Icons.bar_chart,
-        'color': const Color(0xFF059669),
-        'bgColor': const Color(0xFFECFDF5),
-        'action': 'view-reports',
-      },
+      }
     ];
-
+    final width = MediaQuery.of(context).size.width;
+    final crossAxisCount = width < 400 ? 1 : 2;
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(12), // reduced from 24
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -676,27 +606,30 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               Text(
                 'Quick Actions',
                 style: TextStyle(
-                  fontSize: 24,
+                  fontSize: 16, // reduced from 24
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF111827),
                 ),
               ),
-              SizedBox(height: 4),
+              SizedBox(height: 2), // reduced from 4
               Text(
                 'Streamline your workflow with these shortcuts',
-                style: TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
+                style: TextStyle(
+                  fontSize: 12, // reduced from 16
+                  color: Color(0xFF6B7280),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12), // reduced from 24
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 0.8,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: 8, // reduced from 16
+              mainAxisSpacing: 8, // reduced from 16
+              childAspectRatio: 1.2, // slightly more square
             ),
             itemCount: quickActions.length,
             itemBuilder: (context, index) {
@@ -725,7 +658,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 : null,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.07),
+                color: Colors.black.withOpacity(0.07),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -737,15 +670,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               if (action['featured'] == true)
                 Container(
                   margin: const EdgeInsets.only(bottom: 16),
-                  child: Row(
+                  child: const Row(
                     children: [
                       Icon(
                         Icons.star,
-                        color: const Color(0xFFFFD95D),
+                        color: Color(0xFFFFD95D),
                         size: 16,
                       ),
-                      const SizedBox(width: 8),
-                      const Text(
+                      SizedBox(width: 8),
+                      Text(
                         'FEATURED',
                         style: TextStyle(
                           fontSize: 10,
@@ -832,148 +765,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     );
   }
 
-  Widget _buildRecentActivity() {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Recent Activity',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF111827),
-                ),
-              ),
-              TextButton(
-                onPressed: () {
-                  // Navigate to full activity view
-                },
-                child: const Text(
-                  'View all',
-                  style: TextStyle(
-                    color: Color(0xFF576238),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              children: recentActivities.asMap().entries.map((entry) {
-                int index = entry.key;
-                Map<String, dynamic> activity = entry.value;
-                bool isLast = index == recentActivities.length - 1;
-
-                return Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    border: !isLast
-                        ? const Border(
-                            bottom: BorderSide(
-                              color: Color(0xFFE5E7EB),
-                              width: 1,
-                            ),
-                          )
-                        : null,
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: _getStatusColor(activity['status']),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              activity['action'],
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF111827),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Text(
-                                  activity['time'],
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF6B7280),
-                                  ),
-                                ),
-                                const Text(
-                                  ' • ',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF6B7280),
-                                  ),
-                                ),
-                                Text(
-                                  activity['user'],
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF6B7280),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _getStatusBgColor(activity['status']),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          activity['status'],
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: _getStatusColor(activity['status']),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
@@ -1032,15 +823,140 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         );
     }
   }
+
+  void _showDriversDialog() {
+    final drivers = (summaryData['driversList'] as List<dynamic>?) ?? [];
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('All Drivers'),
+        content: SizedBox(
+          width: 300,
+          height: 400,
+          child: drivers.isEmpty
+              ? const Center(child: Text('No drivers found.'))
+              : ListView.builder(
+                  itemCount: drivers.length,
+                  itemBuilder: (context, index) {
+                    final driver = drivers[index] ?? {};
+                    return ListTile(
+                      leading: const Icon(Icons.person),
+                      title: Text(driver['username'] ?? driver['name'] ?? 'No Name'),
+                      subtitle: Text(driver['email'] ?? ''),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBusesDialog() {
+    final buses = (summaryData['busesList'] as List<dynamic>?) ?? [];
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('All Buses'),
+        content: SizedBox(
+          width: 300,
+          height: 400,
+          child: buses.isEmpty
+              ? const Center(child: Text('No buses found.'))
+              : ListView.builder(
+                  itemCount: buses.length,
+                  itemBuilder: (context, index) {
+                    final bus = buses[index] ?? {};
+                    return ListTile(
+                      leading: const Icon(Icons.directions_bus),
+                      title: Text(bus['numberPlate'] ?? 'No Plate'),
+                      subtitle: Text(bus['startPoint'] != null && bus['destination'] != null
+                          ? '${bus['startPoint']} → ${bus['destination']}'
+                          : ''),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTicketsDialog() {
+    final tickets = (summaryData['ticketsList'] as List<dynamic>?) ?? [];
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('All Tickets'),
+        content: SizedBox(
+          width: 300,
+          height: 400,
+          child: tickets.isEmpty
+              ? const Center(child: Text('No tickets found.'))
+              : ListView.builder(
+                  itemCount: tickets.length,
+                  itemBuilder: (context, index) {
+                    final ticket = tickets[index] ?? {};
+                    return ListTile(
+                      leading: const Icon(Icons.confirmation_number),
+                      title: Text(ticket['bookingId'] ?? 'No ID'),
+                      subtitle: Text(ticket['userEmail'] ?? ''),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showUsersDialog() {
+    final users = (summaryData['usersList'] as List<dynamic>?) ?? [];
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('All Users'),
+        content: SizedBox(
+          width: 300,
+          height: 400,
+          child: users.isEmpty
+              ? const Center(child: Text('No users found.'))
+              : ListView.builder(
+                  itemCount: users.length,
+                  itemBuilder: (context, index) {
+                    final user = users[index] ?? {};
+                    return ListTile(
+                      leading: const Icon(Icons.person),
+                      title: Text(user['username'] ?? 'No Name'),
+                      subtitle: Text(user['email'] ?? ''),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
 }
-
-
-
-
-
-
-
-
-
 
 

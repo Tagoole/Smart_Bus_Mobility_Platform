@@ -343,7 +343,7 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
                   Container(
                     width: 80,
                     height: 80,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: Colors.green,
                       shape: BoxShape.circle,
                     ),
@@ -985,7 +985,7 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
   void _startLiveEtaUpdates() {
     _etaTimer?.cancel();
     if (_currentBookingId == null) return;
-    _etaTimer = Timer.periodic(Duration(seconds: 50), (_) async {
+    _etaTimer = Timer.periodic(const Duration(seconds: 50), (_) async {
       final eta = await _calculateAndSaveETA();
       if (eta != null) {
         await FirebaseFirestore.instance

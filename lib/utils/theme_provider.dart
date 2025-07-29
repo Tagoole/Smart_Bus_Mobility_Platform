@@ -87,8 +87,9 @@ class ThemeProvider extends ChangeNotifier {
     bool? smsNotifications,
   }) async {
     if (notifications != null) _notificationsEnabled = notifications;
-    if (emailNotifications != null)
+    if (emailNotifications != null) {
       _emailNotificationsEnabled = emailNotifications;
+    }
     if (smsNotifications != null) _smsNotificationsEnabled = smsNotifications;
 
     await _saveNotificationSettings();
@@ -175,8 +176,8 @@ class ThemeProvider extends ChangeNotifier {
       primarySwatch: Colors.green,
       primaryColor: const Color(0xFF004d00),
       scaffoldBackgroundColor: Colors.grey[100],
-      appBarTheme: AppBarTheme(
-        backgroundColor: const Color(0xFF004d00),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFF004d00),
         foregroundColor: Colors.white,
         elevation: 0,
       ),
@@ -236,6 +237,8 @@ class ThemeProvider extends ChangeNotifier {
   }
 }
  
+
+
 
 
 

@@ -130,7 +130,7 @@ class _TicketScreenState extends State<TicketScreen> {
     if (status == 'cancelled') return 'Cancelled';
     if (status == 'completed') return 'Completed';
     if (departureDate != null && departureDate.isBefore(DateTime.now())) {
-      return 'Expired';
+      return 'Active';
     }
     return 'Active';
   }
@@ -176,7 +176,7 @@ class _TicketScreenState extends State<TicketScreen> {
         ],
       ),
       body: user == null
-          ? Center(child: Text('Not logged in.'))
+          ? const Center(child: Text('Not logged in.'))
           : StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('bookings')
@@ -215,7 +215,7 @@ class _TicketScreenState extends State<TicketScreen> {
                   itemBuilder: (context, index) {
                     final doc = tickets[index];
                     final data = doc.data();
-                    if (data == null) return SizedBox.shrink();
+                    if (data == null) return const SizedBox.shrink();
                     final ticket = data as Map<String, dynamic>;
                     // Add the document ID to the ticket data
                     ticket['id'] = doc.id;
@@ -270,7 +270,7 @@ class _TicketScreenState extends State<TicketScreen> {
             color: Colors.white.withValues(alpha: 0.7),
           ),
           const SizedBox(height: 16),
-          Text(
+          const Text(
             'No tickets found',
             style: TextStyle(
               fontSize: 20,

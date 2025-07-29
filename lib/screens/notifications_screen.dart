@@ -222,22 +222,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     },
                     itemBuilder: (context) => [
                       if (!isRead)
-                        PopupMenuItem(
+                        const PopupMenuItem(
                           value: 'mark_read',
                           child: Row(
                             children: [
                               Icon(Icons.check, size: 18),
-                              const SizedBox(width: 8),
+                              SizedBox(width: 8),
                               Text('Mark as read'),
                             ],
                           ),
                         ),
-                      PopupMenuItem(
+                      const PopupMenuItem(
                         value: 'delete',
                         child: Row(
                           children: [
                             Icon(Icons.delete, size: 18, color: Colors.red),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             Text('Delete', style: TextStyle(color: Colors.red)),
                           ],
                         ),
@@ -298,18 +298,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case 'booking_confirmation':
         // Navigate to booking details
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('Navigate to booking details'),
-            duration: const Duration(seconds: 2),
+            duration: Duration(seconds: 2),
           ),
         );
         break;
       case 'bus_update':
         // Navigate to bus tracking
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('Navigate to bus tracking'),
-            duration: const Duration(seconds: 2),
+            duration: Duration(seconds: 2),
           ),
         );
         break;

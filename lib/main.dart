@@ -20,6 +20,7 @@ import 'package:smart_bus_mobility_platform1/screens/personal_data_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/payment_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/customer_home_screen.dart';
 import 'package:smart_bus_mobility_platform1/routes/app_routes.dart';
+import 'package:smart_bus_mobility_platform1/screens/bus_driver_home_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/track_bus_screen.dart';
 import 'package:flutter/services.dart';
 // Removed extra space
@@ -46,7 +47,7 @@ void main() async {
   // Initialize Firebase based on platform
   if (kIsWeb) {
     await Firebase.initializeApp(
-      options: FirebaseOptions(
+      options: const FirebaseOptions(
         apiKey: "AIzaSyAr7u8PTywBlRtm98NuqNzxPNF2w77vp9s",
         appId: "1:300946521439:web:127b0355935b896df28aea",
         messagingSenderId: "300946521439",
@@ -56,7 +57,7 @@ void main() async {
     );
   } else if (Platform.isAndroid) {
     await Firebase.initializeApp(
-      options: FirebaseOptions(
+      options: const FirebaseOptions(
         apiKey: "AIzaSyAr7u8PTywBlRtm98NuqNzxPNF2w77vp9s",
         appId: "1:300946521439:android:1699793b44477bfaf28aea",
         messagingSenderId: "300946521439",
@@ -78,7 +79,7 @@ void main() async {
     // Don't crash the app, just log the error
   };
   
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -125,16 +126,16 @@ class MyApp extends StatelessWidget {
                             // Route based on user role
                             switch (role) {
                               case 'admin':
-                                return NavBarScreen(userRole: 'admin');
+                                return const NavBarScreen(userRole: 'admin');
                               case 'driver':
-                                return NavBarScreen(userRole: 'driver');
+                                return const NavBarScreen(userRole: 'driver');
                               case 'user':
                               default:
                                 return NavBarScreen(userRole: role);
                             }
                           } else {
                             // Fallback to signin screen if role fetch fails
-                            return SignInScreen();
+                            return const SignInScreen();
                           }
                         },
                       );
@@ -150,7 +151,7 @@ class MyApp extends StatelessWidget {
                       ),
                     );
                   }
-                  return SignInScreen();
+                  return const SignInScreen();
                 },
               ),
               '/signup': (context) => const SignUpScreen(),
@@ -161,13 +162,13 @@ class MyApp extends StatelessWidget {
               '/profilescreen': (context) => const profile.ProfileScreen(),
               '/personaldata': (context) => const PersonalData(),
               '/navbar': (context) => NavBarHelper.getNavBarForCurrentUser(),
-              '/login': (context) => SignInScreen(),
-              '/payment': (context) => PaymentScreen(),
-              '/verifyEmail': (context) => EmailVerificationScreen(),
-              '/forgotPassword': (context) => ForgotPasswordScreen(),
-              '/admin': (context) => AdminDashboardScreen(),
-              '/passenger': (context) => BusTrackingScreen(),
-              '/busdriver': (context) => NavBarScreen(userRole: 'driver'),
+              '/login': (context) => const SignInScreen(),
+              '/payment': (context) => const PaymentScreen(),
+              '/verifyEmail': (context) => const EmailVerificationScreen(),
+              '/forgotPassword': (context) => const ForgotPasswordScreen(),
+              '/admin': (context) => const AdminDashboardScreen(),
+              '/passenger': (context) => const BusTrackingScreen(),
+              '/busdriver': (context) => const NavBarScreen(userRole: 'driver'),
               '/currentBus': (context) => const CurrentBusesScreen(), // Added const and comma
               '/trackBus': (context) {
                 final booking = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
@@ -246,12 +247,6 @@ class BookingDetailsScreen extends StatelessWidget {
     );
   }
 }
-
-
-
-
-
-
 
 
 
