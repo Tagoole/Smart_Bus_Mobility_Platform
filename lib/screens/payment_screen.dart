@@ -18,8 +18,11 @@ class _PaymentScreen extends State<PaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
     return Scaffold(
       body: Container(
+        width: double.infinity,
+        height: screenHeight,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [Colors.green.shade900, Colors.teal.shade700],
@@ -28,14 +31,18 @@ class _PaymentScreen extends State<PaymentScreen> {
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                _buildTopSection(),
-                const SizedBox(height: 20),
-                _buildMTNPaymentSection(),
-                const SizedBox(height: 20),
-              ],
+          child: SizedBox(
+            width: double.infinity,
+            height: screenHeight,
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  _buildTopSection(),
+                  const SizedBox(height: 20),
+                  _buildMTNPaymentSection(),
+                  const SizedBox(height: 20),
+                ],
+              ),
             ),
           ),
         ),
@@ -199,7 +206,7 @@ class _PaymentScreen extends State<PaymentScreen> {
                   headers: {'Content-Type': 'application/json'},
                   body: jsonEncode({
                     'amount': amount,
-                    'currency': 'UGX',
+                    'currency': 'EUR',
                     'externalId': 'ticket_${DateTime.now().millisecondsSinceEpoch}',
                     'payer': {'partyIdType': 'MSISDN', 'partyId': phone},
                     'payerMessage': 'Ticket payment',
@@ -232,16 +239,16 @@ class _PaymentScreen extends State<PaymentScreen> {
 
                   Navigator.of(context).pop(); // Dismiss loading dialog
 
-                  if (paymentSuccess) {
+                if (paymentSuccess) {
                     // Mark ticket as paid in Firestore
                     final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
                     final bookingId = args != null ? args['bookingId'] : null;
                     if (bookingId != null) {
                       await FirebaseFirestore.instance.collection('bookings').doc(bookingId).update({'isPaid': true});
                     }
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const PaymentSuccess()),
+                  Navigator.push(
+                    context,
+                      MaterialPageRoute(builder: (context) => PaymentSuccess(amount: amount)),
                     );
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(

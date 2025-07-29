@@ -49,43 +49,43 @@ class _SplashScreenState extends State<SplashScreen>
 
   void _initializeControllers() {
     _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 800), // Reduced from 2000
       vsync: this,
     );
 
     _slideController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 600), // Reduced from 1500
       vsync: this,
     );
 
     _scaleController = AnimationController(
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 500), // Reduced from 1000
       vsync: this,
     );
 
     _rotateController = AnimationController(
-      duration: const Duration(milliseconds: 2500),
+      duration: const Duration(milliseconds: 1000), // Reduced from 2500
       vsync: this,
     );
 
     _busController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 800), // Reduced from 2000
       vsync: this,
     );
 
     // Individual bus controllers
     _bus1Controller = AnimationController(
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 200), // Reduced from 300
       vsync: this,
     );
 
     _bus2Controller = AnimationController(
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 200), // Reduced from 300
       vsync: this,
     );
 
     _bus3Controller = AnimationController(
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 200), // Reduced from 300
       vsync: this,
     );
   }
@@ -127,23 +127,24 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _startAnimations() async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    if (mounted) _fadeController.forward();
+    // Start all animations almost simultaneously for faster loading
+    await Future.delayed(const Duration(milliseconds: 100)); // Reduced from 300
+    if (mounted) {
+      _fadeController.forward();
+      _slideController.forward();
+    }
 
-    await Future.delayed(const Duration(milliseconds: 400));
-    if (mounted) _slideController.forward();
-
-    await Future.delayed(const Duration(milliseconds: 600));
+    await Future.delayed(const Duration(milliseconds: 200)); // Reduced from 400
     if (mounted) _scaleController.forward();
 
-    await Future.delayed(const Duration(milliseconds: 200));
+    await Future.delayed(const Duration(milliseconds: 100)); // Reduced from 600
     if (mounted) _rotateController.forward();
 
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 200)); // Reduced from 500
     if (mounted) _busController.forward();
 
-    // Wait for animations to complete and then navigate
-    await Future.delayed(const Duration(milliseconds: 2000));
+    // Display splash screen for 15 seconds
+    await Future.delayed(const Duration(milliseconds: 15000)); // Changed to 15 seconds
     if (mounted) {
       _navigateToAppropriateScreen();
     }
@@ -151,44 +152,50 @@ class _SplashScreenState extends State<SplashScreen>
 
   void _navigateToAppropriateScreen() async {
     try {
+      // Add timeout to prevent hanging
+      final timeout = Future.delayed(const Duration(milliseconds: 3000));
+      
       // Check if user is already logged in
       final user = FirebaseAuth.instance.currentUser;
 
       if (user != null) {
-        // User is logged in, get user role from Firestore
-        final userDoc = await FirebaseFirestore.instance
+        // User is logged in, get user role from Firestore with timeout
+        final userDocFuture = FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
             .get();
+            
+        // Race between timeout and Firestore call
+        final userDoc = await Future.any([userDocFuture, timeout.then((_) => null)]);
 
         if (mounted) {
-          if (userDoc.exists) {
+          if (userDoc != null && userDoc.exists) {
             final userData = userDoc.data() as Map<String, dynamic>;
             final role = userData['role']?.toString().toLowerCase() ?? '';
 
             switch (role) {
               case 'admin':
-                Navigator.pushReplacementNamed(context, AppRoutes.adminScreen);
+                Navigator.pushReplacementNamed(context, '/admin');
                 break;
               case 'driver':
                 Navigator.pushReplacementNamed(
                   context,
-                  AppRoutes.driverNavbarScreen,
+                  '/busdriver',
                 );
                 break;
               case 'user':
               default:
                 Navigator.pushReplacementNamed(
                   context,
-                  AppRoutes.passengerHomeScreen,
+                  '/passenger',
                 );
                 break;
             }
           } else {
-            // Fallback to passenger screen if role fetch fails
+            // Fallback to passenger screen if role fetch fails or times out
             Navigator.pushReplacementNamed(
               context,
-              AppRoutes.passengerHomeScreen,
+              '/passenger',
             );
           }
         }
@@ -230,8 +237,8 @@ class _SplashScreenState extends State<SplashScreen>
         break;
     }
 
-    // Reset after a delay
-    Future.delayed(const Duration(milliseconds: 2000), () {
+    // Reset after a shorter delay
+    Future.delayed(const Duration(milliseconds: 1000), () { // Reduced from 2000
       if (mounted) {
         setState(() {
           _selectedBus = -1;

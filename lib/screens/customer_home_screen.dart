@@ -22,8 +22,8 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
   final int _selectedIndex = 0;
   final bool _showActiveJourney = false;
   String? _username;
+  String? _profileImageUrl;
   bool _isLoadingUser = true;
-  bool _showDropdown = false;
 
   // Enhanced data for dynamic content
   List<Map<String, dynamic>> _recentBookings = [];
@@ -57,7 +57,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
     _fetchUsername();
     _loadUserData();
     // Set up automatic refresh every 30 seconds for real-time updates
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 60), (timer) { // Increased from 30 seconds
       if (mounted) {
         _loadUserData();
       }
@@ -104,11 +104,13 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
         if (doc.exists && doc.data() != null) {
           setState(() {
             _username = doc.data()!['username'] ?? 'User';
+            _profileImageUrl = doc.data()!['profileImageUrl'];
             _isLoadingUser = false;
           });
         } else {
           setState(() {
             _username = 'User';
+            _profileImageUrl = null;
             _isLoadingUser = false;
           });
         }
@@ -116,12 +118,14 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
         print('Error fetching username: $e');
         setState(() {
           _username = 'User';
+          _profileImageUrl = null;
           _isLoadingUser = false;
         });
       }
     } else {
       setState(() {
         _username = 'User';
+        _profileImageUrl = null;
         _isLoadingUser = false;
       });
     }
@@ -132,33 +136,42 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
     if (user == null) return;
 
     try {
-      // Load recent bookings with error handling
-      final bookingsSnapshot = await FirebaseFirestore.instance
+      // Add timeout to prevent hanging
+      final timeout = Future.delayed(const Duration(milliseconds: 3000));
+      
+      // Load recent bookings with error handling and timeout
+      final bookingsFuture = FirebaseFirestore.instance
           .collection('bookings')
           .where('userId', isEqualTo: user.uid)
           .orderBy('createdAt', descending: true)
           .limit(5)
           .get();
+          
+      final bookingsSnapshot = await Future.any([bookingsFuture, timeout.then((_) => null)]);
 
       List<Map<String, dynamic>> recentBookings = [];
-      for (var doc in bookingsSnapshot.docs) {
-        final bookingData = Map<String, dynamic>.from(doc.data());
-        // Add document ID to booking data for reference
-        bookingData['id'] = doc.id;
-        recentBookings.add(bookingData);
+      if (bookingsSnapshot != null) {
+        for (var doc in bookingsSnapshot.docs) {
+          final bookingData = Map<String, dynamic>.from(doc.data());
+          // Add document ID to booking data for reference
+          bookingData['id'] = doc.id;
+          recentBookings.add(bookingData);
+        }
       }
 
-      // Check for active booking
-      final activeBookingSnapshot = await FirebaseFirestore.instance
+      // Check for active booking with timeout
+      final activeBookingFuture = FirebaseFirestore.instance
           .collection('bookings')
           .where('userId', isEqualTo: user.uid)
           .where('status', isEqualTo: 'confirmed')
           .orderBy('createdAt', descending: true)
           .limit(1)
           .get();
+          
+      final activeBookingSnapshot = await Future.any([activeBookingFuture, timeout.then((_) => null)]);
 
       Map<String, dynamic>? activeBooking;
-      if (activeBookingSnapshot.docs.isNotEmpty) {
+      if (activeBookingSnapshot != null && activeBookingSnapshot.docs.isNotEmpty) {
         activeBooking =
             Map<String, dynamic>.from(activeBookingSnapshot.docs.first.data());
         activeBooking['id'] = activeBookingSnapshot.docs.first.id;
@@ -318,24 +331,30 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
     }
   }
 
-  void _toggleDropdown() {
-    setState(() {
-      _showDropdown = !_showDropdown;
-    });
-  }
-
   void _navigateToProfile() {
-    setState(() {
-      _showDropdown = false;
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Text('Loading profile...'),
+          ],
+        ),
+      ),
+    );
+    
+    // Navigate to profile
+    Navigator.pushNamed(context, '/profile').then((_) {
+      // Close loading dialog when returning from profile
+      Navigator.of(context).pop();
     });
-    Navigator.pushNamed(context, '/profile'); // Use named route for ProfileScreen
   }
 
   Future<void> _logout() async {
-    setState(() {
-      _showDropdown = false;
-    });
-
     bool? shouldLogout = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
@@ -519,15 +538,15 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                     child: AnimatedOpacity(
                       opacity: 1.0,
                       duration: Duration(milliseconds: 600 + (index * 100)),
-                      child: Container(
+                    child: Container(
                         width: cardWidth.toDouble(),
                         margin: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.08),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -542,7 +561,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                           children: [
                             // Bus image/icon
                             Padding(
-                              padding: const EdgeInsets.all(16.0),
+                        padding: const EdgeInsets.all(16.0),
                               child: CircleAvatar(
                                 radius: 32,
                                 backgroundColor: Colors.green[50],
@@ -552,13 +571,13 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                             Expanded(
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
                                             booking['destination']?.toString() ?? booking['route']?.toString() ?? 'Unknown Route',
                                             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                                             overflow: TextOverflow.ellipsis,
@@ -577,67 +596,67 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                                             (booking['status']?.toString() ?? 'Unknown').toUpperCase(),
                                             style: TextStyle(
                                               fontSize: 12,
-                                              fontWeight: FontWeight.bold,
+                                      fontWeight: FontWeight.bold,
                                               color: _getStatusColor(booking['status']?.toString()),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
                                     ),
+                                  ),
+                                ),
+                              ],
+                            ),
                                     const SizedBox(height: 8),
                                     // ETA
-                                    FutureBuilder<String>(
-                                      future: _calculateETA(booking),
-                                      builder: (context, etaSnapshot) {
-                                        String etaText = 'Calculating...';
-                                        Color etaColor = Colors.orange;
-                                        IconData etaIcon = Icons.access_time;
-                                        if (etaSnapshot.hasData) {
-                                          etaText = etaSnapshot.data!;
-                                          if (etaText == 'Arriving now') {
-                                            etaColor = Colors.green;
-                                            etaIcon = Icons.near_me;
-                                          } else if (etaText.contains('min')) {
-                                            etaColor = Colors.blue;
-                                            etaIcon = Icons.schedule;
+                            FutureBuilder<String>(
+                              future: _calculateETA(booking),
+                              builder: (context, etaSnapshot) {
+                                String etaText = 'Calculating...';
+                                Color etaColor = Colors.orange;
+                                IconData etaIcon = Icons.access_time;
+                                if (etaSnapshot.hasData) {
+                                  etaText = etaSnapshot.data!;
+                                  if (etaText == 'Arriving now') {
+                                    etaColor = Colors.green;
+                                    etaIcon = Icons.near_me;
+                                  } else if (etaText.contains('min')) {
+                                    etaColor = Colors.blue;
+                                    etaIcon = Icons.schedule;
                                           } else if (etaText.contains('Unable') || etaText.contains('N/A')) {
-                                            etaColor = Colors.red;
-                                            etaIcon = Icons.error_outline;
-                                          }
-                                        }
+                                    etaColor = Colors.red;
+                                    etaIcon = Icons.error_outline;
+                                  }
+                                }
                                         return Row(
-                                          children: [
-                                            Icon(etaIcon, size: 16, color: etaColor),
-                                            const SizedBox(width: 6),
+                                    children: [
+                                      Icon(etaIcon, size: 16, color: etaColor),
+                                      const SizedBox(width: 6),
                                             Flexible(
                                               child: Text(
-                                                'ETA: $etaText',
+                                        'ETA: $etaText',
                                                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: etaColor),
                                                 overflow: TextOverflow.ellipsis,
                                                 maxLines: 1,
-                                              ),
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                    ),
+                                        ),
+                                      ),
+                                    ],
+                                );
+                              },
+                            ),
                                     const SizedBox(height: 8),
                                     // Pickup
-                                    if (booking['pickupAddress'] != null)
-                                      Row(
-                                        children: [
+                            if (booking['pickupAddress'] != null)
+                              Row(
+                                children: [
                                           Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
-                                          const SizedBox(width: 4),
-                                          Expanded(
-                                            child: Text(
-                                              'Pickup: ${booking['pickupAddress']}',
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      'Pickup: ${booking['pickupAddress']}',
                                               style: const TextStyle(fontSize: 13, color: Colors.grey),
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
                                     const SizedBox(height: 12),
                                     // View Details button
                                     Align(
@@ -653,11 +672,11 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                           elevation: 0,
                                         ),
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
                             ),
                           ],
                         ),
@@ -784,11 +803,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
       body: SafeArea(
         child: GestureDetector(
           onTap: () {
-            if (_showDropdown) {
-              setState(() {
-                _showDropdown = false;
-              });
-            }
+            // Removed _showDropdown logic
           },
           child: Column(
             children: [
@@ -847,18 +862,27 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
           Stack(
             children: [
               GestureDetector(
-                onTap: _toggleDropdown,
+                onTap: _navigateToProfile,
                 child: CircleAvatar(
                   backgroundColor: Colors.green[700],
-                  child: Text(
-                    _username != null && _username!.isNotEmpty
-                        ? _username![0].toUpperCase()
-                        : 'U',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
+                      ? ClipOval(
+                          child: Image.network(
+                            _profileImageUrl!,
+                            fit: BoxFit.cover,
+                            width: 40,
+                            height: 40,
+                          ),
+                        )
+                      : Text(
+                          _username != null && _username!.isNotEmpty
+                              ? _username![0].toUpperCase()
+                              : 'U',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
               if (_hasActiveBooking)
@@ -872,56 +896,6 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                       color: Colors.green,
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 2),
-                    ),
-                  ),
-                ),
-              if (_showDropdown)
-                Positioned(
-                  top: 50,
-                  right: 0,
-                  child: Container(
-                    width: 180,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ListTile(
-                          leading: const Icon(Icons.person, color: Colors.blue),
-                          title: const Text(
-                            'Profile',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          onTap: _navigateToProfile,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                        ),
-                        Divider(height: 1, color: Colors.grey[200]),
-                        ListTile(
-                          leading: const Icon(Icons.logout, color: Colors.red),
-                          title: const Text(
-                            'Logout',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.red,
-                            ),
-                          ),
-                          onTap: _logout,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                        ),
-                      ],
                     ),
                   ),
                 ),
@@ -996,21 +970,53 @@ class _IndependentImageCarouselState extends State<IndependentImageCarousel> {
   int _carouselIndex = 0;
   PageController? _carouselPageController;
   Timer? _carouselTimer;
+  final Map<int, Image> _preloadedImages = {};
 
   @override
   void initState() {
     super.initState();
     _carouselPageController = PageController(initialPage: 0);
-    _carouselTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
+    _preloadImages();
+    _carouselTimer = Timer.periodic(const Duration(seconds: 2), (timer) { // Reduced from 4 seconds
       if (mounted && _carouselPageController != null) {
         int nextPage = (_carouselIndex + 1) % widget.images.length;
         _carouselPageController!.animateToPage(
           nextPage,
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.easeInOut,
+          duration: const Duration(milliseconds: 400), // Reduced from 800
+          curve: Curves.easeInOutCubic,
         );
       }
     });
+  }
+
+  void _preloadImages() {
+    for (int i = 0; i < widget.images.length; i++) {
+      _preloadedImages[i] = Image.asset(
+        widget.images[i],
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: 200,
+        cacheWidth: 800,
+        cacheHeight: 400,
+        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          if (wasSynchronouslyLoaded) return child;
+          return AnimatedOpacity(
+            opacity: frame == null ? 0 : 1,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            child: child,
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.grey[300],
+            child: const Center(
+              child: Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
+            ),
+          );
+        },
+      );
+    }
   }
 
   @override
@@ -1038,13 +1044,42 @@ class _IndependentImageCarouselState extends State<IndependentImageCarousel> {
                   });
                 },
                 itemBuilder: (context, index) {
-                  return Image.asset(
-                    widget.images[index],
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: 200,
+                  return AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder: (Widget child, Animation<double> animation) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: child,
+                      );
+                    },
+                    child: Container(
+                      key: ValueKey(index),
+                      width: double.infinity,
+                      height: 200,
+                      child: _preloadedImages[index] ?? Container(
+                        color: Colors.grey[300],
+                        child: const Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                      ),
+                    ),
                   );
                 },
+              ),
+              // Gradient overlay for better text visibility
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.1),
+                      ],
+                    ),
+                  ),
+                ),
               ),
               Positioned(
                 bottom: 10,

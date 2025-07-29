@@ -454,8 +454,8 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     if (_driverBus == null) {
       print('No bus assigned to driver.');
       _showSnackBar('No bus assigned to you.');
-      return;
-    }
+        return;
+      }
     if (_passengers.isEmpty) {
       print('No passengers available for route generation');
       _showSnackBar('No passengers available for route generation');
@@ -486,7 +486,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       // Build passenger stops
       final passengerStops = _passengers.map((p) => map_service.BusStop(
         id: p['userId'],
-        location: map_service.LatLng(
+          location: map_service.LatLng(
           p['pickupLocation']['latitude'],
           p['pickupLocation']['longitude'],
         ),
@@ -585,31 +585,31 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
       final destination = waypoints.last;
       final intermediateWaypoints = waypoints.length > 2 ? waypoints.sublist(1, waypoints.length - 1) : null;
 
-      final directions = await _directionsRepository.getDirections(
-        origin: origin,
-        destination: destination,
+        final directions = await _directionsRepository.getDirections(
+          origin: origin,
+          destination: destination,
         waypoints: intermediateWaypoints,
-      );
+        );
 
       if (directions != null && directions.polylinePoints.isNotEmpty) {
         final fullRoutePoints = directions.polylinePoints
-            .map((point) => LatLng(point.latitude, point.longitude))
-            .toList();
+              .map((point) => LatLng(point.latitude, point.longitude))
+              .toList();
         print('Got ${fullRoutePoints.length} polyline points from Directions API');
 
-        setState(() {
-          _polylines.add(
-            Polyline(
+      setState(() {
+        _polylines.add(
+          Polyline(
               polylineId: const PolylineId('full_route'),
-              points: fullRoutePoints,
-              color: Colors.blue,
-              width: 5,
-              patterns: [
-                PatternItem.dash(20),
-                PatternItem.gap(10),
-              ],
-            ),
-          );
+            points: fullRoutePoints,
+            color: Colors.blue,
+            width: 5,
+            patterns: [
+              PatternItem.dash(20),
+              PatternItem.gap(10),
+            ],
+          ),
+        );
         });
 
         // Optionally update total distance/time if available
@@ -620,13 +620,13 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
           _routeDurationText = directions.totalDuration;
         }
 
-        // Adjust camera to show the route
-        if (_mapController != null && fullRoutePoints.isNotEmpty) {
-          final bounds = _calculateBounds(fullRoutePoints);
-          print('Adjusting camera to bounds: $bounds');
-          _mapController!.animateCamera(
-            CameraUpdate.newLatLngBounds(bounds, 50),
-          );
+      // Adjust camera to show the route
+      if (_mapController != null && fullRoutePoints.isNotEmpty) {
+        final bounds = _calculateBounds(fullRoutePoints);
+        print('Adjusting camera to bounds: $bounds');
+        _mapController!.animateCamera(
+          CameraUpdate.newLatLngBounds(bounds, 50),
+        );
         }
       } else {
         print('Directions API did not return a valid polyline, falling back to segmented polylines.');
@@ -1845,9 +1845,9 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                                 color: Colors.black.withOpacity(0.2),
                                 blurRadius: 6,
                                 offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
+                  ),
+              ],
+            ),
                           child: IconButton(
                             icon: const Icon(Icons.play_arrow, color: Colors.green),
                             onPressed: _startSimulation,

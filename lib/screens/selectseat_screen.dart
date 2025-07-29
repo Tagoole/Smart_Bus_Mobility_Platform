@@ -382,7 +382,7 @@ class _SelectSeatScreen extends State<SelectSeatScreen> {
                             '${widget.origin} → ${widget.destination}'),
                         _buildDetailRow('Seats', selectedSeats.join(', ')),
                         _buildDetailRow(
-                            'Total Fare', '\$${totalFare.toStringAsFixed(2)}'),
+                            'Total Fare', 'UGX ${totalFare.toStringAsFixed(2)}'),
                         _buildDetailRow(
                             'Bus', widget.busModel?.numberPlate ?? ''),
                       ],
