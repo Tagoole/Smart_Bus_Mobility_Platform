@@ -857,12 +857,14 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                           color: Colors.black87,
                         ),
                         overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                 const SizedBox(height: 4),
                 Text(
                   'Where to, Captain? 🚌🧭',
                   style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
                 const SizedBox(height: 8),
               ],
@@ -892,6 +894,8 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                 ),
               ),
@@ -1079,6 +1083,7 @@ class _IndependentImageCarouselState extends State<IndependentImageCarousel> {
     return Center(
       child: SizedBox(
         height: 200,
+        width: MediaQuery.of(context).size.width - 32,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(18),
           child: Stack(
