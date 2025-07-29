@@ -33,6 +33,7 @@ dependencies:
   google_fonts: 
   #flutter_google_places: 
 
+
   awesome_snackbar_content: 
   uuid:
 
@@ -90,6 +91,13 @@ dependencies:
   flutter_facebook_auth: ^6.0.4
   
 dev_dependencies:
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/logo.png"
+
   flutter_test:
     sdk: flutter
   flutter_lints: ^2.0.0
