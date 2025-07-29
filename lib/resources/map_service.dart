@@ -371,7 +371,7 @@ class DynamicBusRouteManager extends ChangeNotifier {
   Timer? _optimizationTimer;
   
   // Configuration
-  final Duration reoptimizationDelay = Duration(seconds: 2);
+  Duration reoptimizationDelay = Duration(seconds: 2);
   final int maxStopsForFullOptimization = 30;
   
   List<BusStop> get busStops => List.unmodifiable(_busStops);

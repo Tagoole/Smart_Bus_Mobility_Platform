@@ -273,8 +273,8 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
         origin: LatLng(busLat, busLng),
         destination: LatLng(pickupLat, pickupLng),
       );
-      if (directions != null && directions.totalDuration != null) {
-        return directions.totalDuration!;
+      if (directions != null) {
+        return directions.totalDuration;
       }
 
       // Fallback: Estimate time based on straight-line distance
@@ -513,7 +513,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
               height: 220,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), // <-- Add bottom padding here
                 itemCount: bookings.length,
                 separatorBuilder: (context, index) => const SizedBox(width: 16),
                 itemBuilder: (context, index) {
@@ -968,10 +968,10 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
       print('Error showing booking details: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('Error loading booking details:  {e.toString()}'),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
+            duration: Duration(seconds: 3),
           ),
         );
       }
@@ -1113,7 +1113,7 @@ class _IndependentImageCarouselState extends State<IndependentImageCarousel> {
                         child: child,
                       );
                     },
-                    child: Container(
+                    child: SizedBox(
                       key: ValueKey(index),
                       width: double.infinity,
                       height: 200,
