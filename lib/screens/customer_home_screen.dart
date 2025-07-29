@@ -560,135 +560,141 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                             width: 1.5,
                           ),
                         ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Bus image/icon
-                            Padding(
-                        padding: const EdgeInsets.all(16.0),
-                              child: CircleAvatar(
-                                radius: 32,
-                                backgroundColor: Colors.green[50],
-                                child: Icon(Icons.directions_bus, color: Colors.green[700], size: 36),
-                              ),
-                            ),
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                            booking['destination']?.toString() ?? booking['route']?.toString() ?? 'Unknown Route',
-                                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                                            overflow: TextOverflow.ellipsis,
-                                            maxLines: 1,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        // Status badge
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: _getStatusColor(booking['status']?.toString()).withOpacity(0.15),
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                          child: Text(
-                                            (booking['status']?.toString() ?? 'Unknown').toUpperCase(),
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                              color: _getStatusColor(booking['status']?.toString()),
-                                    ),
+                        child: IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Flexible(
+                                flex: 0,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: CircleAvatar(
+                                    radius: 32,
+                                    backgroundColor: Colors.green[50],
+                                    child: Icon(Icons.directions_bus, color: Colors.green[700], size: 36),
                                   ),
                                 ),
-                              ],
-                            ),
-                                    const SizedBox(height: 8),
-                                    // ETA
-                            FutureBuilder<String>(
-                              future: _calculateETA(booking),
-                              builder: (context, etaSnapshot) {
-                                String etaText = 'Calculating...';
-                                Color etaColor = Colors.orange;
-                                IconData etaIcon = Icons.access_time;
-                                if (etaSnapshot.hasData) {
-                                  etaText = etaSnapshot.data!;
-                                  if (etaText == 'Arriving now') {
-                                    etaColor = Colors.green;
-                                    etaIcon = Icons.near_me;
-                                  } else if (etaText.contains('min')) {
-                                    etaColor = Colors.blue;
-                                    etaIcon = Icons.schedule;
-                                          } else if (etaText.contains('Unable') || etaText.contains('N/A')) {
-                                    etaColor = Colors.red;
-                                    etaIcon = Icons.error_outline;
-                                  }
-                                }
-                                        return Row(
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                flex: 2,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Icon(etaIcon, size: 16, color: etaColor),
-                                      const SizedBox(width: 6),
-                                            Flexible(
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              booking['destination']?.toString() ?? booking['route']?.toString() ?? 'Unknown Route',
+                                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                              overflow: TextOverflow.ellipsis,
+                                              maxLines: 1,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          // Status badge
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: _getStatusColor(booking['status']?.toString()).withOpacity(0.15),
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            child: Text(
+                                              (booking['status']?.toString() ?? 'Unknown').toUpperCase(),
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: _getStatusColor(booking['status']?.toString()),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      // ETA
+                                      FutureBuilder<String>(
+                                        future: _calculateETA(booking),
+                                        builder: (context, etaSnapshot) {
+                                          String etaText = 'Calculating...';
+                                          Color etaColor = Colors.orange;
+                                          IconData etaIcon = Icons.access_time;
+                                          if (etaSnapshot.hasData) {
+                                            etaText = etaSnapshot.data!;
+                                            if (etaText == 'Arriving now') {
+                                              etaColor = Colors.green;
+                                              etaIcon = Icons.near_me;
+                                            } else if (etaText.contains('min')) {
+                                              etaColor = Colors.blue;
+                                              etaIcon = Icons.schedule;
+                                            } else if (etaText.contains('Unable') || etaText.contains('N/A')) {
+                                              etaColor = Colors.red;
+                                              etaIcon = Icons.error_outline;
+                                            }
+                                          }
+                                          return Row(
+                                            children: [
+                                              Icon(etaIcon, size: 16, color: etaColor),
+                                              const SizedBox(width: 6),
+                                              Flexible(
+                                                child: Text(
+                                                  'ETA: $etaText',
+                                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: etaColor),
+                                                  overflow: TextOverflow.ellipsis,
+                                                  maxLines: 1,
+                                                ),
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      ),
+                                      const SizedBox(height: 8),
+                                      // Pickup
+                                      if (booking['pickupAddress'] != null)
+                                        Row(
+                                          children: [
+                                            Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
+                                            const SizedBox(width: 4),
+                                            Expanded(
                                               child: Text(
-                                        'ETA: $etaText',
-                                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: etaColor),
+                                                'Pickup: ${booking['pickupAddress']}',
+                                                style: const TextStyle(fontSize: 13, color: Colors.grey),
+                                                maxLines: 2,
                                                 overflow: TextOverflow.ellipsis,
-                                                maxLines: 1,
+                                              ),
+                                            ),
+                                          ],
                                         ),
+                                      const SizedBox(height: 12),
+                                      // View Details button
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: ElevatedButton.icon(
+                                          onPressed: () => _showBookingDetails(context, booking),
+                                          icon: const Icon(Icons.visibility, size: 16),
+                                          label: const Text('View Details', style: TextStyle(fontSize: 13)),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.green[700],
+                                            foregroundColor: Colors.white,
+                                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                            elevation: 0,
+                                          ),
+                                        ),
+                                      ),
+                                      // Add delete icon button here
+                                      IconButton(
+                                        icon: const Icon(Icons.delete, color: Colors.red),
+                                        tooltip: 'Delete Booking',
+                                        onPressed: () => _deleteBooking(booking['id']),
                                       ),
                                     ],
-                                );
-                              },
-                            ),
-                                    const SizedBox(height: 8),
-                                    // Pickup
-                            if (booking['pickupAddress'] != null)
-                              Row(
-                                children: [
-                                          Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      'Pickup: ${booking['pickupAddress']}',
-                                              style: const TextStyle(fontSize: 13, color: Colors.grey),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
                                   ),
-                                ],
-                              ),
-                                    const SizedBox(height: 6), // Reduced from 12
-                                    // View Details button
-                                    Align(
-                                      alignment: Alignment.centerRight,
-                                      child: ElevatedButton.icon(
-                                        onPressed: () => _showBookingDetails(context, booking),
-                                        icon: const Icon(Icons.visibility, size: 16),
-                                        label: const Text('View Details', style: TextStyle(fontSize: 13)),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.green[700],
-                                          foregroundColor: Colors.white,
-                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                          elevation: 0,
-                                        ),
-                                      ),
-                                    ),
-                                    // Add delete icon button here
-                                    IconButton(
-                                      icon: const Icon(Icons.delete, color: Colors.red),
-                                      tooltip: 'Delete Booking',
-                                      onPressed: () => _deleteBooking(booking['id']),
-                                    ),
-                                  ],
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -820,9 +826,11 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
               _buildHeader(),
               Expanded(
                 child: SingleChildScrollView(
-                  child: SlideTransition(
-                    position: _slideAnimation,
-                    child: _buildMainContent(),
+                  child: IntrinsicHeight(
+                    child: SlideTransition(
+                      position: _slideAnimation,
+                      child: _buildMainContent(),
+                    ),
                   ),
                 ),
               ),
