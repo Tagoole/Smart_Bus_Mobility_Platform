@@ -674,9 +674,16 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                                         ),
                                         ),
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                    // Add delete icon button here
+                                    IconButton(
+                                      icon: const Icon(Icons.delete, color: Colors.red),
+                                      tooltip: 'Delete Booking',
+                                      onPressed: () => _deleteBooking(booking['id']),
+                                    ),
+                                  ],
                                 ),
+                              ),
                             ),
                           ],
                         ),
@@ -952,6 +959,44 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
             duration: const Duration(seconds: 3),
           ),
         );
+      }
+    }
+  }
+
+  // Add this method to delete a booking and refresh the list
+  Future<void> _deleteBooking(String bookingId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Booking'),
+        content: const Text('Are you sure you want to delete this booking? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      try {
+        await FirebaseFirestore.instance.collection('bookings').doc(bookingId).delete();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Booking deleted successfully'), backgroundColor: Colors.green),
+          );
+          _loadUserData();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error deleting booking: $e'), backgroundColor: Colors.red),
+          );
+        }
       }
     }
   }
