@@ -541,12 +541,16 @@ class _BusTrackingScreenState extends State<BusTrackingScreen>
                     child: Container(
                         width: cardWidth.toDouble(),
                         margin: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
+                        constraints: const BoxConstraints(
+                          minHeight: 180,
+                          maxHeight: 260,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.08),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
