@@ -6,7 +6,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
-import 'package:smart_bus_mobility_platform1/screens/current_buses_screen.dart';
 import 'package:smart_bus_mobility_platform1/utils/theme_provider.dart';
 import 'package:smart_bus_mobility_platform1/utils/notification_service.dart';
 import 'package:smart_bus_mobility_platform1/screens/admin_home_screen.dart';
