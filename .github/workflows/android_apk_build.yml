@@ -24,6 +24,28 @@ jobs:
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/my-release-key.jks
 
+      - name: Check if secrets are set
+        run: |
+          if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "KEYSTORE_BASE64 is NOT set"
+          else
+            echo "KEYSTORE_BASE64 is set"
+          fi
+          if [ -z "${{ secrets.KEYSTORE_PASSWORD }}" ]; then
+            echo "KEYSTORE_PASSWORD is NOT set"
+          else
+            echo "KEYSTORE_PASSWORD is set"
+          fi
+          if [ -z "${{ secrets.KEY_ALIAS }}" ]; then
+            echo "KEY_ALIAS is NOT set"
+          else
+            echo "KEY_ALIAS is set"
+          fi
+          if [ -z "${{ secrets.KEY_PASSWORD }}" ]; then
+            echo "KEY_PASSWORD is NOT set"
+          else
+            echo "KEY_PASSWORD is set"
+          fi
 
       - name: Build APK
         run: flutter build apk --release
