@@ -1,0 +1,31 @@
+name: Flutter Android Build
+
+on:
+  push:
+    branches: [main]  # Trigger on pushes to the main branch
+
+jobs:
+  build_apk:
+    runs-on: ubuntu-latest  # Use a self-hosted runner for macOS if building for iOS
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'  # Or the specific version you're using
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Upload APK as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-app-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
