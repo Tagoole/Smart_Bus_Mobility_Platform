@@ -13,7 +13,7 @@ import 'package:smart_bus_mobility_platform1/screens/splash_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/bus_management_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/nav_bar_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/track_bus_screen.dart';
-import 'package:smart_bus_mobility_platform1/screens/current_buses_screen.dart';
+import 'package:smart_bus_mobility_platform1/screens/Current_buses_screen.dart';
 import 'package:smart_bus_mobility_platform1/screens/customer_home_screen.dart' as customer;
 
 class AppRoutes {
