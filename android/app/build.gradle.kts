@@ -21,10 +21,23 @@ android {
     ndkVersion = "27.0.12077973"
     signingConfigs {
         create("release") {
-            storeFile = file(keystoreProperties["storeFile"] as String)
-            storePassword = keystoreProperties["storePassword"] as String
-            keyAlias = keystoreProperties["keyAlias"] as String
-            keyPassword = keystoreProperties["keyPassword"] as String
+            val storeFilePath = System.getenv("KEYSTORE_FILE")
+                ?: keystoreProperties["storeFile"] as String?
+                ?: "android/app/my-release-key2.jks"
+
+            storeFile = file(storeFilePath)
+
+            storePassword = System.getenv("KEYSTORE_PASSWORD")
+                ?: keystoreProperties["storePassword"] as String?
+                ?: "smartbus"
+
+            keyAlias = System.getenv("KEY_ALIAS")
+                ?: keystoreProperties["keyAlias"] as String?
+                ?: "my-key-alias"
+
+            keyPassword = System.getenv("KEY_PASSWORD")
+                ?: keystoreProperties["keyPassword"] as String?
+                ?: "smartbus"
         }
     }
     compileOptions {
