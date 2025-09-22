@@ -23,7 +23,7 @@ android {
         create("release") {
             val storeFilePath = System.getenv("KEYSTORE_FILE")
                 ?: keystoreProperties["storeFile"] as String?
-                ?: "android/app/my-release-key2.jks"
+                ?: "android/app/my-release-key.jks"
 
             storeFile = file(storeFilePath)
 
