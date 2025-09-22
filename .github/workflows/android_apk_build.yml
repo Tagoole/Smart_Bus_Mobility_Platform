@@ -59,7 +59,7 @@ jobs:
           storePassword=${KEYSTORE_PASSWORD}
           keyPassword=${KEY_PASSWORD}
           keyAlias=${KEY_ALIAS}
-          storeFile=app/my-release-key.jks
+          storeFile=my-release-key.jks
           EOF
 
       - name: Build APK (release)
