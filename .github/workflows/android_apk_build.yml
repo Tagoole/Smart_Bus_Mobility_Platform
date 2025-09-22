@@ -2,11 +2,16 @@ name: Flutter Android Build
 
 on:
   push:
-    branches: [main]  # Trigger on pushes to the main branch
+    branches: [ main ]
 
 jobs:
   build_apk:
-    runs-on: ubuntu-latest  # Use a self-hosted runner for macOS if building for iOS
+    runs-on: ubuntu-latest
+    env:
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
     steps:
       - name: Checkout repository
@@ -15,43 +20,58 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.x'  # Or the specific version you're using
-          channel: 'stable'
+          flutter-version: '3.x' # change to the exact version if you want
+          channel: stable
 
       - name: Install dependencies
         run: flutter pub get
-      
-      - name: Decode keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/my-release-key.jks
 
-      - name: Check if secrets are set
+      - name: Ensure android/app dir exists
+        run: mkdir -p android/app
+
+      - name: Fail early if secrets missing
         run: |
-          if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "KEYSTORE_BASE64 is NOT set"
-          else
-            echo "KEYSTORE_BASE64 is set"
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "Missing KEYSTORE_BASE64"; exit 1
           fi
-          if [ -z "${{ secrets.KEYSTORE_PASSWORD }}" ]; then
-            echo "KEYSTORE_PASSWORD is NOT set"
-          else
-            echo "KEYSTORE_PASSWORD is set"
+          if [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "Missing KEYSTORE_PASSWORD"; exit 1
           fi
-          if [ -z "${{ secrets.KEY_ALIAS }}" ]; then
-            echo "KEY_ALIAS is NOT set"
-          else
-            echo "KEY_ALIAS is set"
+          if [ -z "$KEY_ALIAS" ]; then
+            echo "Missing KEY_ALIAS"; exit 1
           fi
-          if [ -z "${{ secrets.KEY_PASSWORD }}" ]; then
-            echo "KEY_PASSWORD is NOT set"
-          else
-            echo "KEY_PASSWORD is set"
+          if [ -z "$KEY_PASSWORD" ]; then
+            echo "Missing KEY_PASSWORD"; exit 1
           fi
 
-      - name: Build APK
+      - name: Decode keystore (safe)
+        run: |
+          # use printf not echo to avoid adding newline
+          printf "%s" "$KEYSTORE_BASE64" | base64 --decode > android/app/my-release-key.jks
+          # quick check that file exists
+          if [ ! -f android/app/my-release-key.jks ]; then
+            echo "Failed to create keystore file"; exit 1
+          fi
+
+      - name: Write android/key.properties
+        run: |
+          cat > android/key.properties <<EOF
+          storePassword=${KEYSTORE_PASSWORD}
+          keyPassword=${KEY_PASSWORD}
+          keyAlias=${KEY_ALIAS}
+          storeFile=app/my-release-key.jks
+          EOF
+
+      - name: Build APK (release)
         run: flutter build apk --release
 
-      - name: Upload APK as an artifact
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: my-app-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Clean up sensitive files
+        if: always()
+        run: |
+          rm -f android/app/my-release-key.jks android/key.properties || true
