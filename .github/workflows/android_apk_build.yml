@@ -56,11 +56,11 @@ jobs:
       - name: Write android/key.properties
         run: |
           cat > android/key.properties <<EOF
-          storePassword=${KEYSTORE_PASSWORD}
-          keyPassword=${KEY_PASSWORD}
-          keyAlias=${KEY_ALIAS}
-          storeFile=app/my-release-key.jks
-          EOF
+      storePassword=${KEYSTORE_PASSWORD}
+      keyPassword=${KEY_PASSWORD}
+      keyAlias=${KEY_ALIAS}
+      storeFile=app/my-release-key.jks
+      EOF
 
       - name: Build APK (release)
         run: flutter build apk --release
