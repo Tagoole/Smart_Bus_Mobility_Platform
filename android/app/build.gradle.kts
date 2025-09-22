@@ -24,20 +24,19 @@ android {
             val storeFilePath = System.getenv("KEYSTORE_FILE")
                 ?: keystoreProperties["storeFile"] as String?
                 
-
             storeFile = file(storeFilePath)
 
             storePassword = System.getenv("KEYSTORE_PASSWORD")
                 ?: keystoreProperties["storePassword"] as String?
-                ?: "smartbus"
+                
 
             keyAlias = System.getenv("KEY_ALIAS")
                 ?: keystoreProperties["keyAlias"] as String?
-                ?: "my-key-alias"
+                
 
             keyPassword = System.getenv("KEY_PASSWORD")
                 ?: keystoreProperties["keyPassword"] as String?
-                ?: "smartbus"
+                
         }
     }
     compileOptions {
